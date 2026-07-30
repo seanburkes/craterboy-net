@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Description>Pure managed, deterministic Game Boy emulation core derived from SameBoy.</Description>
+    <PackageId>Craterboy.Core</PackageId>
+  </PropertyGroup>
+</Project>

@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out Craterboy
+        uses: actions/checkout@v4
+
+      - name: Check out pinned SameBoy oracle
+        uses: actions/checkout@v4
+        with:
+          repository: LIJI32/SameBoy
+          ref: 213a12ce93d66b105a113debd9396306066a7cfc
+          path: SameBoy
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build and test
+        env:
+          SAMEBOY_SOURCE_DIR: ${{ github.workspace }}/SameBoy
+        run: dotnet test Craterboy.slnx --configuration Release
