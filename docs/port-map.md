@@ -1,0 +1,34 @@
+# SameBoy-to-Craterboy port map
+
+Baseline: SameBoy 1.0.3, commit
+`213a12ce93d66b105a113debd9396306066a7cfc`.
+
+Status meanings: **partial** is implemented but not oracle-complete;
+**deferred** has no claim of implementation.
+
+| SameBoy source | Craterboy area | Status | Current evidence |
+|---|---|---|---|
+| `Core/model.h`, reset portions of `Core/gb.c` | `GameBoyModel`, `Emulator.Reset` | partial | native model-ID and post-boot register comparisons |
+| `Core/memory.c` | `Emulator.Read/Write` | partial | native WRAM, echo-RAM, and DMG unusable-range comparisons |
+| `Core/mbc.c` | `Cartridge` implementations | partial | MBC1 banking/RAM test; ROM/MBC2/MBC5 implemented |
+| `Core/sm83_cpu.c` | `Emulator.Execute` | partial | per-instruction native register comparisons for the vertical slice |
+| `Core/timing.c` | cycle counter and execution authority | partial | per-instruction native T-cycle comparisons |
+| `Core/random.c` | `IEntropyProvider` | partial | injectable boundary defined |
+| MBC3/RTC and remaining mappers | cartridge subsystem | deferred | — |
+| timer, joypad, serial, DMA | device state/scheduler | deferred | serial boundary defined only |
+| `Core/display.c` | PPU | deferred | — |
+| `Core/apu.c` | APU | deferred | — |
+| `Core/save_state.c` | BESS | deferred | — |
+| camera, printer, rumble, WorkBoy | accessories | deferred | — |
+| SGB, debugger, cheats, rewind | extended services | deferred | — |
+
+No SameBoy private native-state compatibility is planned. BESS will be the
+interoperable save-state format. A layer moves from partial to ported only
+after differential evidence is added against the pinned native oracle.
+
+The test-only oracle is built from the pinned checkout by
+`tests/native/build-oracle.sh`. Its ABI deliberately exposes only model IDs,
+register snapshots, memory operations, and single-instruction execution.
+SameBoy's 8 MHz tick result is normalized to T-cycles at that boundary. The
+native artifacts are ignored by Git and are not referenced by the shipping
+core project.

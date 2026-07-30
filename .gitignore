@@ -1,0 +1,6 @@
+bin/
+obj/
+TestResults/
+BenchmarkDotNet.Artifacts/
+tests/native/build/
+*.user
