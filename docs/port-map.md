@@ -11,7 +11,7 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | `Core/model.h`, reset portions of `Core/gb.c` | `GameBoyModel`, `Emulator.Reset` | partial | native model-ID and post-boot register comparisons |
 | `Core/memory.c` | `Emulator.Read/Write` | partial | native WRAM, echo-RAM, and DMG unusable-range comparisons |
 | `Core/mbc.c` | `Cartridge` implementations | partial | MBC1 banking/RAM test; ROM/MBC2/MBC5 implemented |
-| `Core/sm83_cpu.c` | `Emulator.Execute` | partial | per-instruction native register comparisons for the vertical slice |
+| `Core/sm83_cpu.c` | `Emulator.Execute` | partial | explicit load/store, ALU, INC/DEC, relative/absolute branch, stack, CALL/RET instructions with per-instruction native comparisons |
 | `Core/timing.c` | `Scheduler`, `EmulatorState`, and cycle execution authority | partial | per-instruction native T-cycle comparisons; participant scheduler tests |
 | `Core/timing.c`, timer portions of `Core/gb.c` | `TimerDevice` | partial | divider cadence, timer falling-edge, and overflow interrupt tests |
 | `Core/random.c` | `IEntropyProvider` | partial | injectable boundary defined |

@@ -73,6 +73,32 @@ public sealed class DifferentialTests
         Assert.Equal(oracle.Read(0xC000), managed.PeekMemory(0xC000));
     }
 
+    [Fact]
+    public void ExpandedAluAndIncrementInstructionsMatchOracle()
+    {
+        var rom = MakeRom();
+        new byte[] {
+            0x3E, 0x12, // LD A,$12
+            0x06, 0x03, // LD B,$03
+            0x80,       // ADD A,B
+            0x04,       // INC B
+            0x05,       // DEC B
+            0x90,       // SUB B
+            0xA0,       // AND B
+            0xB0,       // OR B
+            0xB8,       // CP B
+            0x00,       // NOP
+        }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        for (var instruction = 0; instruction < 10; instruction++)
+        {
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+    }
+
     private static Emulator CreateManaged(byte[] rom)
     {
         var emulator = new Emulator(GameBoyModel.DmgB);
