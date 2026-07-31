@@ -135,8 +135,50 @@ public sealed class Emulator
         0x2E => Load8(v => _state.Cpu.L = v),
         0x77 => WriteHl(),
         0x7E => ReadHl(),
+        0x02 => WritePair(_state.Cpu.BC),
+        0x0A => ReadPair(_state.Cpu.BC),
+        0x12 => WritePair(_state.Cpu.DE),
+        0x1A => ReadPair(_state.Cpu.DE),
+        0x04 => Increment(() => _state.Cpu.B, v => _state.Cpu.B = v),
+        0x05 => Decrement(() => _state.Cpu.B, v => _state.Cpu.B = v),
+        0x0C => Increment(() => _state.Cpu.C, v => _state.Cpu.C = v),
+        0x0D => Decrement(() => _state.Cpu.C, v => _state.Cpu.C = v),
+        0x14 => Increment(() => _state.Cpu.D, v => _state.Cpu.D = v),
+        0x15 => Decrement(() => _state.Cpu.D, v => _state.Cpu.D = v),
+        0x1C => Increment(() => _state.Cpu.E, v => _state.Cpu.E = v),
+        0x1D => Decrement(() => _state.Cpu.E, v => _state.Cpu.E = v),
+        0x24 => Increment(() => _state.Cpu.H, v => _state.Cpu.H = v),
+        0x25 => Decrement(() => _state.Cpu.H, v => _state.Cpu.H = v),
+        0x2C => Increment(() => _state.Cpu.L, v => _state.Cpu.L = v),
+        0x2D => Decrement(() => _state.Cpu.L, v => _state.Cpu.L = v),
+        0x3C => Increment(() => _state.Cpu.A, v => _state.Cpu.A = v),
+        0x3D => Decrement(() => _state.Cpu.A, v => _state.Cpu.A = v),
+        >= 0x80 and <= 0x87 => AddA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        >= 0x90 and <= 0x97 => SubA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        >= 0xA0 and <= 0xA7 => AndA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        >= 0xB0 and <= 0xB7 => OrA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        >= 0xB8 and <= 0xBF => CompareA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        0x18 => RelativeJump(true),
+        0x20 => RelativeJump(!Flag(CpuFlags.Zero)),
+        0x28 => RelativeJump(Flag(CpuFlags.Zero)),
+        0x30 => RelativeJump(!Flag(CpuFlags.Carry)),
+        0x38 => RelativeJump(Flag(CpuFlags.Carry)),
         0xAF => XorA(),
         0xC3 => Jump(),
+        0xC2 => AbsoluteJump(!Flag(CpuFlags.Zero)),
+        0xCA => AbsoluteJump(Flag(CpuFlags.Zero)),
+        0xD2 => AbsoluteJump(!Flag(CpuFlags.Carry)),
+        0xDA => AbsoluteJump(Flag(CpuFlags.Carry)),
+        0xC5 => Push(_state.Cpu.BC),
+        0xD5 => Push(_state.Cpu.DE),
+        0xE5 => Push(_state.Cpu.HL),
+        0xF5 => Push((ushort)((_state.Cpu.A << 8) | (_state.Cpu.F & 0xF0))),
+        0xC1 => Pop(v => _state.Cpu.BC = v),
+        0xD1 => Pop(v => _state.Cpu.DE = v),
+        0xE1 => Pop(v => _state.Cpu.HL = v),
+        0xF1 => Pop(v => { _state.Cpu.A = (byte)(v >> 8); _state.Cpu.F = (byte)(v & 0xF0); }),
+        0xC9 => Return(),
+        0xCD => Call(),
         0x76 => Halt(),
         _ => throw new NotSupportedException($"SM83 opcode 0x{opcode:X2} at 0x{_state.Cpu.PC - 1:X4} is not ported yet."),
     };
@@ -152,6 +194,95 @@ public sealed class Emulator
     private int XorA() { _state.Cpu.A = 0; _state.Cpu.F = (byte)CpuFlags.Zero; return 4; }
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
     private int Halt() { _state.Cpu.Halted = true; return 4; }
+    private int WritePair(ushort address) { Write(address, _state.Cpu.A); return 8; }
+    private int ReadPair(ushort address) { _state.Cpu.A = Read(address); return 8; }
+    private int Increment(Func<byte> getter, Action<byte> setter)
+    {
+        var value = getter();
+        var result = (byte)(value + 1);
+        setter(result);
+        _state.Cpu.F = (byte)((_state.Cpu.F & (byte)CpuFlags.Carry) |
+            (result == 0 ? (byte)CpuFlags.Zero : (byte)0) |
+            ((value & 0x0F) == 0x0F ? (byte)CpuFlags.HalfCarry : (byte)0));
+        return 4;
+    }
+    private int Decrement(Func<byte> getter, Action<byte> setter)
+    {
+        var value = getter();
+        var result = (byte)(value - 1);
+        setter(result);
+        _state.Cpu.F = (byte)((_state.Cpu.F & (byte)CpuFlags.Carry) | (byte)CpuFlags.Subtract |
+            (result == 0 ? (byte)CpuFlags.Zero : (byte)0) |
+            ((value & 0x0F) == 0 ? (byte)CpuFlags.HalfCarry : (byte)0));
+        return 4;
+    }
+    private byte ReadRegister(int index) => index switch
+    {
+        0 => _state.Cpu.B, 1 => _state.Cpu.C, 2 => _state.Cpu.D, 3 => _state.Cpu.E,
+        4 => _state.Cpu.H, 5 => _state.Cpu.L, 6 => Read(_state.Cpu.HL), 7 => _state.Cpu.A,
+        _ => throw new InvalidOperationException("Invalid SM83 register index."),
+    };
+    private int AddA(byte value, bool memory)
+    {
+        var a = _state.Cpu.A;
+        var result = a + value;
+        _state.Cpu.A = (byte)result;
+        _state.Cpu.F = (byte)((result & 0xFF) == 0 ? CpuFlags.Zero : 0);
+        if (((a & 0x0F) + (value & 0x0F)) > 0x0F) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
+        if (result > 0xFF) _state.Cpu.F |= (byte)CpuFlags.Carry;
+        return memory ? 16 : 4;
+    }
+    private int SubA(byte value, bool memory)
+    {
+        var a = _state.Cpu.A;
+        var result = a - value;
+        _state.Cpu.A = (byte)result;
+        _state.Cpu.F = (byte)(CpuFlags.Subtract | ((result & 0xFF) == 0 ? CpuFlags.Zero : 0));
+        if ((a & 0x0F) < (value & 0x0F)) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
+        if (a < value) _state.Cpu.F |= (byte)CpuFlags.Carry;
+        return memory ? 16 : 4;
+    }
+    private int AndA(byte value, bool memory) { _state.Cpu.A &= value; _state.Cpu.F = (byte)(CpuFlags.HalfCarry | (_state.Cpu.A == 0 ? CpuFlags.Zero : 0)); return memory ? 16 : 4; }
+    private int OrA(byte value, bool memory) { _state.Cpu.A |= value; _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0); return memory ? 16 : 4; }
+    private int CompareA(byte value, bool memory)
+    {
+        var a = _state.Cpu.A;
+        var result = a - value;
+        _state.Cpu.F = (byte)(CpuFlags.Subtract | ((result & 0xFF) == 0 ? CpuFlags.Zero : 0));
+        if ((a & 0x0F) < (value & 0x0F)) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
+        if (a < value) _state.Cpu.F |= (byte)CpuFlags.Carry;
+        return memory ? 16 : 4;
+    }
+    private bool Flag(CpuFlags flag) => (_state.Cpu.F & (byte)flag) != 0;
+    private int RelativeJump(bool condition)
+    {
+        var offset = (sbyte)Read(_state.Cpu.PC++);
+        if (condition) { _state.Cpu.PC = (ushort)(_state.Cpu.PC + offset); return 12; }
+        return 8;
+    }
+    private int AbsoluteJump(bool condition)
+    {
+        var low = Read(_state.Cpu.PC++); var high = Read(_state.Cpu.PC++);
+        if (condition) { _state.Cpu.PC = (ushort)(low | high << 8); return 16; }
+        return 12;
+    }
+    private int Push(ushort value)
+    {
+        _state.Cpu.SP--; Write(_state.Cpu.SP, (byte)(value >> 8));
+        _state.Cpu.SP--; Write(_state.Cpu.SP, (byte)value); return 16;
+    }
+    private int Pop(Action<ushort> setter)
+    {
+        var low = Read(_state.Cpu.SP++); var high = Read(_state.Cpu.SP++);
+        setter((ushort)(low | high << 8)); return 12;
+    }
+    private int Call()
+    {
+        var low = Read(_state.Cpu.PC++); var high = Read(_state.Cpu.PC++);
+        var returnAddress = _state.Cpu.PC;
+        Push(returnAddress); _state.Cpu.PC = (ushort)(low | high << 8); return 24;
+    }
+    private int Return() { _state.Cpu.PC = (ushort)(Read(_state.Cpu.SP++) | Read(_state.Cpu.SP++) << 8); return 16; }
     private void Advance(int cycles) => _state.Scheduler.Advance(cycles);
     private void EnsureRom() { if (_cartridge is null) throw new InvalidOperationException("Load a ROM before executing."); }
 
