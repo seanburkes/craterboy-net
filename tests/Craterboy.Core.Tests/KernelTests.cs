@@ -208,6 +208,25 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuRendersBackgroundTilePixelsWithScrollAndDmgPalette()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0x8000, 0x80); // tile 0 row 0: color 1 at x=0
+        emulator.WriteMemory(0x8001, 0x00);
+        emulator.WriteMemory(0x9800, 0x00); // top-left map entry
+        emulator.WriteMemory(0xFF47, 0xE4); // identity DMG palette
+        emulator.WriteMemory(0xFF40, 0x91); // LCD on, BG on, unsigned tile data
+        emulator.RunCycles(252); // end of visible line 0 / mode 3
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[0]);
+        Assert.Equal((byte)0, frame[1]);
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();

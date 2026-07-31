@@ -6,6 +6,7 @@ internal sealed class PpuDevice : ICycleParticipant
     public const int Height = 144;
 
     private readonly byte[] _io;
+    private readonly byte[] _vram;
     private readonly byte[] _frame = new byte[Width * Height];
     private bool _enabled;
     private int _lineCycles;
@@ -13,7 +14,11 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _mode;
     private bool _coincidence;
 
-    public PpuDevice(byte[] io) => _io = io;
+    public PpuDevice(byte[] io, byte[] vram)
+    {
+        _io = io;
+        _vram = vram;
+    }
 
     public void Reset()
     {
@@ -75,7 +80,11 @@ internal sealed class PpuDevice : ICycleParticipant
         if (_line < 144)
         {
             if (_lineCycles == 80) SetMode(3);
-            else if (_lineCycles == 252) SetMode(0);
+            else if (_lineCycles == 252)
+            {
+                RenderBackgroundLine(_line);
+                SetMode(0);
+            }
         }
         if (_lineCycles < 456) return;
 
@@ -128,5 +137,30 @@ internal sealed class PpuDevice : ICycleParticipant
         var matching = _line == _io[0x45];
         if (matching && !_coincidence && (_io[0x41] & 0x40) != 0) _io[0x0F] |= 0x02;
         _coincidence = matching;
+    }
+
+    private void RenderBackgroundLine(byte line)
+    {
+        if ((_io[0x40] & 0x01) == 0) return;
+        var mapBase = (_io[0x40] & 0x08) != 0 ? 0x1C00 : 0x1800;
+        var unsignedTiles = (_io[0x40] & 0x10) != 0;
+        var worldY = (line + _io[0x42]) & 0xFF;
+        var tileRow = worldY >> 3;
+        var row = worldY & 7;
+        var output = line * Width;
+        for (var x = 0; x < Width; x++)
+        {
+            var worldX = (x + _io[0x43]) & 0xFF;
+            var tileColumn = worldX >> 3;
+            var tile = _vram[mapBase + tileRow * 32 + tileColumn];
+            var tileAddress = unsignedTiles
+                ? tile * 16
+                : 0x1000 + (sbyte)tile * 16;
+            var low = _vram[tileAddress + row * 2];
+            var high = _vram[tileAddress + row * 2 + 1];
+            var bit = 7 - (worldX & 7);
+            var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
+            _frame[output + x] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
+        }
     }
 }
