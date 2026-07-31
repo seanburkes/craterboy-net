@@ -51,6 +51,21 @@ public sealed class DifferentialTests
     }
 
     [Fact]
+    public void JoypadSelectRegisterBusBehaviorMatchesOracle()
+    {
+        var rom = MakeRom();
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        managed.WriteMemory(0xFF00, 0x20);
+        oracle.Write(0xFF00, 0x20);
+        Assert.Equal(oracle.Read(0xFF00), managed.PeekMemory(0xFF00));
+        managed.WriteMemory(0xFF00, 0x10);
+        oracle.Write(0xFF00, 0x10);
+        Assert.Equal(oracle.Read(0xFF00), managed.PeekMemory(0xFF00));
+    }
+
+    [Fact]
     public void InitialCpuSliceMatchesRegistersAndCyclesAtEachInstruction()
     {
         var rom = MakeRom();

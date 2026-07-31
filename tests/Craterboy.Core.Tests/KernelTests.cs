@@ -137,6 +137,29 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void JoypadSelectionAndButtonPressUseActiveLowLines()
+    {
+        var emulator = NewEmulator(MakeRom());
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF00));
+
+        emulator.WriteMemory(0xFF00, 0x10); // select action buttons
+        emulator.SetButtonState(GameBoyButton.A, true);
+
+        Assert.Equal((byte)0xDE, emulator.PeekMemory(0xFF00));
+        Assert.Equal((byte)0x10, (byte)(emulator.PeekMemory(0xFF0F) & 0x10));
+        emulator.SetButtonState(GameBoyButton.A, false);
+        Assert.Equal((byte)0xDF, emulator.PeekMemory(0xFF00));
+    }
+
+    [Fact]
+    public void JoypadRejectsNonPrimaryPlayersUntilSgbSupportExists()
+    {
+        var emulator = NewEmulator(MakeRom());
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            emulator.SetButtonState(GameBoyButton.Start, true, player: 1));
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();
