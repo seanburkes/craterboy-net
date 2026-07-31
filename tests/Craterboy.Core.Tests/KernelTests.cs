@@ -227,6 +227,29 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuWindowUsesIndependentMapAndWxWyPosition()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0x8000, 0x80); // tile 0: color 1 at x=0
+        emulator.WriteMemory(0x8020, 0x00); // tile 2: color 2 at x=0
+        emulator.WriteMemory(0x8021, 0x80);
+        emulator.WriteMemory(0x9800, 0x00); // background map tile 0
+        emulator.WriteMemory(0x9C00, 0x02); // window map tile 2
+        emulator.WriteMemory(0xFF47, 0xE4);
+        emulator.WriteMemory(0xFF4A, 0); // WY
+        emulator.WriteMemory(0xFF4B, 7); // WX: window starts at x=0
+        emulator.WriteMemory(0xFF40, 0xF1); // LCD, BG, window, window map, unsigned data
+        emulator.RunCycles(252);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)2, frame[0]);
+        Assert.Equal((byte)0, frame[1]);
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();
