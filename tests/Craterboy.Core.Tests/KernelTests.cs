@@ -160,6 +160,54 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuCyclesThroughDmgVisibleLineModesAndIncrementsLy()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF40, 0x80);
+
+        Assert.Equal((byte)2, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+        emulator.RunCycles(80);
+        Assert.Equal((byte)3, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+        emulator.RunCycles(172);
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+        emulator.RunCycles(204);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xFF44));
+        Assert.Equal((byte)2, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+    }
+
+    [Fact]
+    public void PpuRaisesStatInterruptsForLyCompareAndVblank()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF41, 0x40); // LYC interrupt
+        emulator.WriteMemory(0xFF45, 1);
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.WriteMemory(0xFF0F, 0);
+        emulator.RunCycles(456);
+        Assert.Equal((byte)0x02, (byte)(emulator.PeekMemory(0xFF0F) & 0x02));
+
+        emulator.WriteMemory(0xFF41, 0x10); // VBlank STAT interrupt
+        emulator.WriteMemory(0xFF0F, 0);
+        emulator.RunCycles(456 * 143);
+        Assert.Equal((byte)144, emulator.PeekMemory(0xFF44));
+        Assert.Equal((byte)0x02, (byte)(emulator.PeekMemory(0xFF0F) & 0x02));
+    }
+
+    [Fact]
+    public void RawFrameBufferHasStableManagedSize()
+    {
+        var emulator = NewEmulator(MakeRom());
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.All(frame, pixel => Assert.Equal((byte)0, pixel));
+        Assert.Throws<ArgumentException>(() => emulator.CopyFrame(new byte[10]));
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();

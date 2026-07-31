@@ -15,6 +15,7 @@ public sealed class Emulator
     private OamDmaDevice _dma = null!;
     private SerialDevice _serial = null!;
     private JoypadDevice _joypad = null!;
+    private PpuDevice _ppu = null!;
     private Cartridge? _cartridge;
     private byte[]? _bootRom;
     private bool _bootMapped;
@@ -27,9 +28,11 @@ public sealed class Emulator
         _dma = new OamDmaDevice(Read, (index, value) => _oam[index] = value);
         _serial = new SerialDevice(_io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_io);
+        _ppu = new PpuDevice(_io);
         _state.Scheduler.Register(_timer);
         _state.Scheduler.Register(_dma);
         _state.Scheduler.Register(_serial);
+        _state.Scheduler.Register(_ppu);
         Reset();
     }
 
@@ -73,6 +76,7 @@ public sealed class Emulator
         _dma.Reset();
         _serial.Reset();
         _joypad.Reset();
+        _ppu.Reset();
         _bootMapped = _bootRom is not null && !_options.SkipBootRom;
         var cpu = _state.Cpu;
         cpu.A = _model.IsColor() ? (byte)0x11 : (byte)0x01;
@@ -89,6 +93,8 @@ public sealed class Emulator
 
     public void SetButtonState(GameBoyButton button, bool pressed, int player = 0) =>
         _joypad.SetButtonState(button, pressed, player);
+
+    public void CopyFrame(Span<byte> destination) => _ppu.CopyFrame(destination);
 
     public int StepInstruction()
     {
@@ -333,6 +339,7 @@ public sealed class Emulator
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
+            >= 0xFF40 and <= 0xFF45 => _ppu.Read(address),
             >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
             < 0xFF80 => _io[address - 0xFF00],
             < 0xFFFF => _hram[address - 0xFF80],
@@ -359,6 +366,9 @@ public sealed class Emulator
                 break;
             case 0xFF00:
                 _joypad.Write(value);
+                break;
+            case >= 0xFF40 and <= 0xFF45:
+                _ppu.Write(address, value);
                 break;
             case 0xFF46:
                 _io[0x46] = value;
