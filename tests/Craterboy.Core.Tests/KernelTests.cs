@@ -98,6 +98,40 @@ public sealed class KernelTests
         Assert.Equal((byte)0x04, (byte)(emulator.PeekMemory(0xFF0F) & 0x04));
     }
 
+    [Fact]
+    public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
+    {
+        var clock = new TestTimeProvider();
+        var rom = MakeRom(type: 0x10, romSizeCode: 1, ramSizeCode: 3);
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        emulator.LoadRom(rom);
+        emulator.WriteMemory(0, 0x0A);
+        emulator.WriteMemory(0x4000, 0x08);
+        emulator.WriteMemory(0x6000, 0);
+        emulator.WriteMemory(0x6000, 1);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xA000));
+
+        clock.Advance(TimeSpan.FromSeconds(65));
+        emulator.WriteMemory(0x6000, 0);
+        emulator.WriteMemory(0x6000, 1);
+        Assert.Equal((byte)5, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0x4000, 0x09);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xA000));
+
+        using var battery = new MemoryStream();
+        emulator.SaveBattery(battery);
+        Assert.Equal(32 * 1024 + 5, battery.Length);
+        battery.Position = 0;
+        var restored = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        restored.LoadRom(rom);
+        restored.LoadBattery(battery);
+        restored.WriteMemory(0, 0x0A);
+        restored.WriteMemory(0x4000, 0x08);
+        restored.WriteMemory(0x6000, 0);
+        restored.WriteMemory(0x6000, 1);
+        Assert.Equal((byte)5, restored.PeekMemory(0xA000));
+    }
+
     private static Emulator NewEmulator(byte[] rom)
     {
         var emulator = new Emulator(GameBoyModel.DmgB);
@@ -122,5 +156,11 @@ public sealed class KernelTests
         for (var i = 0x134; i <= 0x14C; i++)
             checksum = unchecked((byte)(checksum - rom[i] - 1));
         rom[0x14D] = checksum;
+    }
+
+    private sealed class TestTimeProvider : ITimeProvider
+    {
+        public DateTimeOffset UtcNow { get; private set; } = DateTimeOffset.UnixEpoch;
+        public void Advance(TimeSpan elapsed) => UtcNow += elapsed;
     }
 }

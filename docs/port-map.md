@@ -10,12 +10,12 @@ Status meanings: **partial** is implemented but not oracle-complete;
 |---|---|---|---|
 | `Core/model.h`, reset portions of `Core/gb.c` | `GameBoyModel`, `Emulator.Reset` | partial | native model-ID and post-boot register comparisons |
 | `Core/memory.c` | `Emulator.Read/Write` | partial | native WRAM, echo-RAM, and DMG unusable-range comparisons |
-| `Core/mbc.c` | `Cartridge` implementations | partial | MBC1 banking/RAM test; ROM/MBC2/MBC5 implemented |
+| `Core/mbc.c` | `Cartridge` implementations | partial | ROM/MBC1/MBC2/MBC5/MBC3 banking and RAM tests; MBC3 RTC fixture and stream persistence |
 | `Core/sm83_cpu.c` | `Emulator.Execute` | partial | per-instruction native register comparisons for the vertical slice |
 | `Core/timing.c` | `Scheduler`, `EmulatorState`, and cycle execution authority | partial | per-instruction native T-cycle comparisons; participant scheduler tests |
 | `Core/timing.c`, timer portions of `Core/gb.c` | `TimerDevice` | partial | divider cadence, timer falling-edge, and overflow interrupt tests |
 | `Core/random.c` | `IEntropyProvider` | partial | injectable boundary defined |
-| MBC3/RTC and remaining mappers | cartridge subsystem | deferred | — |
+| MBC3/RTC interoperability and remaining mappers | cartridge subsystem | deferred/partial | deterministic managed RTC exists; SameBoy battery/RTC byte-format parity remains deferred |
 | timer, joypad, serial, DMA | device state/scheduler | deferred | serial boundary defined only |
 | `Core/display.c` | PPU | deferred | — |
 | `Core/apu.c` | APU | deferred | — |

@@ -73,6 +73,22 @@ public sealed class DifferentialTests
         Assert.Equal(oracle.Read(0xC000), managed.PeekMemory(0xC000));
     }
 
+    [Fact]
+    public void Mbc3RomBankAndRamEnableMatchOracle()
+    {
+        var rom = MakeRom(type: 0x10, romSizeCode: 1, ramSizeCode: 3);
+        rom[0x4000] = 0x11;
+        rom[0x8000] = 0x22;
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        managed.WriteMemory(0x2000, 2); oracle.Write(0x2000, 2);
+        Assert.Equal(oracle.Read(0x4000), managed.PeekMemory(0x4000));
+        managed.WriteMemory(0, 0x0A); oracle.Write(0, 0x0A);
+        managed.WriteMemory(0xA000, 0x5A); oracle.Write(0xA000, 0x5A);
+        Assert.Equal(oracle.Read(0xA000), managed.PeekMemory(0xA000));
+    }
+
     private static Emulator CreateManaged(byte[] rom)
     {
         var emulator = new Emulator(GameBoyModel.DmgB);
@@ -92,11 +108,12 @@ public sealed class DifferentialTests
         Assert.Equal(native.ProgramCounter, managed.ProgramCounter);
     }
 
-    private static byte[] MakeRom()
+    private static byte[] MakeRom(byte type = 0, byte romSizeCode = 0, byte ramSizeCode = 0)
     {
-        var rom = new byte[32 * 1024];
-        rom[0x147] = 0;
-        rom[0x148] = 0;
+        var rom = new byte[32 * 1024 << romSizeCode];
+        rom[0x147] = type;
+        rom[0x148] = romSizeCode;
+        rom[0x149] = ramSizeCode;
         byte checksum = 0;
         for (var i = 0x134; i <= 0x14C; i++)
             checksum = unchecked((byte)(checksum - rom[i] - 1));
