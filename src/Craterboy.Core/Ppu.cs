@@ -11,6 +11,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private bool _enabled;
     private int _lineCycles;
     private byte _line;
+    private int _windowLine;
     private int _mode;
     private bool _coincidence;
 
@@ -25,6 +26,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _enabled = false;
         _lineCycles = 0;
         _line = 0;
+        _windowLine = 0;
         _mode = 0;
         _coincidence = false;
         Array.Clear(_frame);
@@ -94,6 +96,7 @@ internal sealed class PpuDevice : ICycleParticipant
         else if (_line >= 154)
         {
             _line = 0;
+            _windowLine = 0;
             SetMode(2);
         }
         else if (_line < 144) SetMode(2);
@@ -109,6 +112,7 @@ internal sealed class PpuDevice : ICycleParticipant
         if (!wasEnabled && _enabled)
         {
             _line = 0;
+            _windowLine = 0;
             _lineCycles = 0;
             _io[0x44] = 0;
             SetMode(2);
@@ -145,22 +149,33 @@ internal sealed class PpuDevice : ICycleParticipant
         var mapBase = (_io[0x40] & 0x08) != 0 ? 0x1C00 : 0x1800;
         var unsignedTiles = (_io[0x40] & 0x10) != 0;
         var worldY = (line + _io[0x42]) & 0xFF;
+        var windowStart = _io[0x4B] - 7;
+        var windowActive = (_io[0x40] & 0x20) != 0 && line >= _io[0x4A] && _io[0x4A] < 144 && windowStart < Width;
+        var windowUsed = false;
         var tileRow = worldY >> 3;
         var row = worldY & 7;
         var output = line * Width;
         for (var x = 0; x < Width; x++)
         {
-            var worldX = (x + _io[0x43]) & 0xFF;
+            var useWindow = windowActive && x >= windowStart;
+            var worldX = useWindow ? (x - windowStart) & 0xFF : (x + _io[0x43]) & 0xFF;
+            var pixelY = useWindow ? _windowLine : worldY;
             var tileColumn = worldX >> 3;
-            var tile = _vram[mapBase + tileRow * 32 + tileColumn];
+            var selectedMap = useWindow && (_io[0x40] & 0x40) != 0 ? 0x1C00 : mapBase;
+            if (useWindow && (_io[0x40] & 0x40) == 0) selectedMap = 0x1800;
+            var selectedTileRow = pixelY >> 3;
+            var tile = _vram[selectedMap + selectedTileRow * 32 + tileColumn];
             var tileAddress = unsignedTiles
                 ? tile * 16
                 : 0x1000 + (sbyte)tile * 16;
-            var low = _vram[tileAddress + row * 2];
-            var high = _vram[tileAddress + row * 2 + 1];
+            var selectedRow = pixelY & 7;
+            var low = _vram[tileAddress + selectedRow * 2];
+            var high = _vram[tileAddress + selectedRow * 2 + 1];
             var bit = 7 - (worldX & 7);
             var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
             _frame[output + x] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
+            windowUsed |= useWindow;
         }
+        if (windowUsed) _windowLine++;
     }
 }
