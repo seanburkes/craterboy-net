@@ -16,6 +16,10 @@ one byte per four T-cycles for 160 bytes, while the serial endpoint completes an
 internal-clock transfer after eight 512-T-cycle bit periods. CPU bus blocking,
 external serial clocks, and CGB HDMA remain deferred.
 
+The joypad is an active-low bus device with explicit button state injection.
+FF00 selection changes and button presses request the joypad interrupt on a
+high-to-low line transition; SGB multiplayer input is deferred.
+
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
 transactional. `PeekMemory` is intended to remain side-effect free while
