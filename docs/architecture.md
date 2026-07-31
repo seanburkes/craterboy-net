@@ -11,6 +11,11 @@ a time; the timer device is the first participant and owns DIV/TIMA/TMA/TAC
 edge behavior. This keeps device timing deterministic and prevents individual
 devices from advancing themselves or consulting wall-clock time.
 
+OAM DMA and serial transfer devices are also scheduler participants. DMA copies
+one byte per four T-cycles for 160 bytes, while the serial endpoint completes an
+internal-clock transfer after eight 512-T-cycle bit periods. CPU bus blocking,
+external serial clocks, and CGB HDMA remain deferred.
+
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
 transactional. `PeekMemory` is intended to remain side-effect free while

@@ -16,7 +16,7 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | `Core/timing.c`, timer portions of `Core/gb.c` | `TimerDevice` | partial | divider cadence, timer falling-edge, and overflow interrupt tests |
 | `Core/random.c` | `IEntropyProvider` | partial | injectable boundary defined |
 | MBC3/RTC interoperability and remaining mappers | cartridge subsystem | deferred/partial | deterministic managed RTC exists; SameBoy battery/RTC byte-format parity remains deferred |
-| timer, joypad, serial, DMA | device state/scheduler | deferred | serial boundary defined only |
+| timer, joypad, serial, DMA | device state/scheduler | partial | timer tests; OAM DMA transfer and serial endpoint timing tests |
 | `Core/display.c` | PPU | deferred | — |
 | `Core/apu.c` | APU | deferred | — |
 | `Core/save_state.c` | BESS | deferred | — |
