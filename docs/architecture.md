@@ -20,6 +20,10 @@ The joypad is an active-low bus device with explicit button state injection.
 FF00 selection changes and button presses request the joypad interrupt on a
 high-to-low line transition; SGB multiplayer input is deferred.
 
+The PPU timing kernel is also scheduler-owned. It models DMG mode 2/3/0
+transitions, VBlank lines, LY/LYC coincidence, and STAT interrupts while
+keeping raw 160×144 pixels separate from future tile/fetcher rendering.
+
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
 transactional. `PeekMemory` is intended to remain side-effect free while
