@@ -37,7 +37,7 @@ public sealed class Emulator
         if (header.RomSize != 0 && rom.Length < header.RomSize)
             throw new ArgumentException($"ROM header declares {header.RomSize} bytes but only {rom.Length} were supplied.", nameof(rom));
         var owned = rom.ToArray();
-        _cartridge = Cartridge.Create(owned, header);
+        _cartridge = Cartridge.Create(owned, header, _options.TimeProvider);
         RomHeader = header;
         Reset();
     }
@@ -104,6 +104,20 @@ public sealed class Emulator
     public byte[] SaveBattery() => (_cartridge ?? throw new InvalidOperationException("No ROM is loaded.")).SaveBattery();
     public void LoadBattery(ReadOnlySpan<byte> data) =>
         (_cartridge ?? throw new InvalidOperationException("No ROM is loaded.")).LoadBattery(data);
+
+    public void SaveBattery(Stream destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        destination.Write(SaveBattery());
+    }
+
+    public void LoadBattery(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        using var memory = new MemoryStream();
+        source.CopyTo(memory);
+        LoadBattery(memory.GetBuffer().AsSpan(0, checked((int)memory.Length)));
+    }
 
     private int Execute(byte opcode) => opcode switch
     {
