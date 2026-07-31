@@ -5,12 +5,13 @@ public sealed class Emulator
     private const int CyclesPerFrame = 70_224;
     private readonly GameBoyModel _model;
     private readonly EmulatorOptions _options;
-    private readonly CpuState _cpu = new();
+    private readonly EmulatorState _state = new();
     private readonly byte[] _vram = new byte[0x4000];
     private readonly byte[] _wram = new byte[0x8000];
     private readonly byte[] _oam = new byte[0xA0];
     private readonly byte[] _io = new byte[0x80];
     private readonly byte[] _hram = new byte[0x7F];
+    private TimerDevice _timer = null!;
     private Cartridge? _cartridge;
     private byte[]? _bootRom;
     private bool _bootMapped;
@@ -19,13 +20,15 @@ public sealed class Emulator
     {
         _model = model;
         _options = options ?? new EmulatorOptions();
+        _timer = new TimerDevice(_io);
+        _state.Scheduler.Register(_timer);
         Reset();
     }
 
     public GameBoyModel Model => _model;
-    public long CycleCount { get; private set; }
+    public long CycleCount => _state.Scheduler.CycleCount;
     public RomHeader? RomHeader { get; private set; }
-    public CpuRegisterSnapshot Registers => _cpu.Snapshot;
+    public CpuRegisterSnapshot Registers => _state.Cpu.Snapshot;
     public bool BatteryDirty => _cartridge?.BatteryDirty ?? false;
 
     public void LoadRom(ReadOnlyMemory<byte> rom)
@@ -56,14 +59,16 @@ public sealed class Emulator
 
     public void Reset()
     {
-        CycleCount = 0;
+        _state.Scheduler.Reset();
         Array.Clear(_vram); Array.Clear(_wram); Array.Clear(_oam); Array.Clear(_io); Array.Clear(_hram);
+        _timer.Reset();
         _bootMapped = _bootRom is not null && !_options.SkipBootRom;
-        _cpu.A = _model.IsColor() ? (byte)0x11 : (byte)0x01;
-        _cpu.F = 0xB0; _cpu.B = 0; _cpu.C = 0x13; _cpu.D = 0; _cpu.E = 0xD8;
-        _cpu.H = 0x01; _cpu.L = 0x4D; _cpu.SP = 0xFFFE;
-        _cpu.PC = _bootMapped ? (ushort)0 : (ushort)0x100;
-        _cpu.Ime = false; _cpu.Halted = false;
+        var cpu = _state.Cpu;
+        cpu.A = _model.IsColor() ? (byte)0x11 : (byte)0x01;
+        cpu.F = 0xB0; cpu.B = 0; cpu.C = 0x13; cpu.D = 0; cpu.E = 0xD8;
+        cpu.H = 0x01; cpu.L = 0x4D; cpu.SP = 0xFFFE;
+        cpu.PC = _bootMapped ? (ushort)0 : (ushort)0x100;
+        cpu.Ime = false; cpu.Halted = false;
         _io[0x50] = _bootMapped ? (byte)0 : (byte)1;
     }
 
@@ -74,8 +79,9 @@ public sealed class Emulator
     public int StepInstruction()
     {
         EnsureRom();
-        if (_cpu.Halted) { Advance(4); return 4; }
-        var opcode = Read(_cpu.PC++);
+        var cpu = _state.Cpu;
+        if (cpu.Halted) { Advance(4); return 4; }
+        var opcode = Read(cpu.PC++);
         var cycles = Execute(opcode);
         Advance(cycles);
         return cycles;
@@ -102,37 +108,37 @@ public sealed class Emulator
     private int Execute(byte opcode) => opcode switch
     {
         0x00 => 4,
-        0x01 => Load16(v => _cpu.BC = v),
-        0x11 => Load16(v => _cpu.DE = v),
-        0x21 => Load16(v => _cpu.HL = v),
-        0x31 => Load16(v => _cpu.SP = v),
-        0x3E => Load8(v => _cpu.A = v),
-        0x06 => Load8(v => _cpu.B = v),
-        0x0E => Load8(v => _cpu.C = v),
-        0x16 => Load8(v => _cpu.D = v),
-        0x1E => Load8(v => _cpu.E = v),
-        0x26 => Load8(v => _cpu.H = v),
-        0x2E => Load8(v => _cpu.L = v),
+        0x01 => Load16(v => _state.Cpu.BC = v),
+        0x11 => Load16(v => _state.Cpu.DE = v),
+        0x21 => Load16(v => _state.Cpu.HL = v),
+        0x31 => Load16(v => _state.Cpu.SP = v),
+        0x3E => Load8(v => _state.Cpu.A = v),
+        0x06 => Load8(v => _state.Cpu.B = v),
+        0x0E => Load8(v => _state.Cpu.C = v),
+        0x16 => Load8(v => _state.Cpu.D = v),
+        0x1E => Load8(v => _state.Cpu.E = v),
+        0x26 => Load8(v => _state.Cpu.H = v),
+        0x2E => Load8(v => _state.Cpu.L = v),
         0x77 => WriteHl(),
         0x7E => ReadHl(),
         0xAF => XorA(),
         0xC3 => Jump(),
         0x76 => Halt(),
-        _ => throw new NotSupportedException($"SM83 opcode 0x{opcode:X2} at 0x{_cpu.PC - 1:X4} is not ported yet."),
+        _ => throw new NotSupportedException($"SM83 opcode 0x{opcode:X2} at 0x{_state.Cpu.PC - 1:X4} is not ported yet."),
     };
 
-    private int Load8(Action<byte> setter) { setter(Read(_cpu.PC++)); return 8; }
+    private int Load8(Action<byte> setter) { setter(Read(_state.Cpu.PC++)); return 8; }
     private int Load16(Action<ushort> setter)
     {
-        var low = Read(_cpu.PC++); var high = Read(_cpu.PC++);
+        var low = Read(_state.Cpu.PC++); var high = Read(_state.Cpu.PC++);
         setter((ushort)(low | high << 8)); return 12;
     }
-    private int WriteHl() { Write(_cpu.HL, _cpu.A); return 8; }
-    private int ReadHl() { _cpu.A = Read(_cpu.HL); return 8; }
-    private int XorA() { _cpu.A = 0; _cpu.F = (byte)CpuFlags.Zero; return 4; }
-    private int Jump() { var lo = Read(_cpu.PC); var hi = Read((ushort)(_cpu.PC + 1)); _cpu.PC = (ushort)(lo | hi << 8); return 16; }
-    private int Halt() { _cpu.Halted = true; return 4; }
-    private void Advance(int cycles) => CycleCount = checked(CycleCount + cycles);
+    private int WriteHl() { Write(_state.Cpu.HL, _state.Cpu.A); return 8; }
+    private int ReadHl() { _state.Cpu.A = Read(_state.Cpu.HL); return 8; }
+    private int XorA() { _state.Cpu.A = 0; _state.Cpu.F = (byte)CpuFlags.Zero; return 4; }
+    private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
+    private int Halt() { _state.Cpu.Halted = true; return 4; }
+    private void Advance(int cycles) => _state.Scheduler.Advance(cycles);
     private void EnsureRom() { if (_cartridge is null) throw new InvalidOperationException("Load a ROM before executing."); }
 
     private byte Read(ushort address)
@@ -148,6 +154,7 @@ public sealed class Emulator
             < 0xFEA0 => _oam[address - 0xFE00],
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
+            >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
             < 0xFF80 => _io[address - 0xFF00],
             < 0xFFFF => _hram[address - 0xFF80],
             _ => _io[0x7F],
@@ -165,6 +172,9 @@ public sealed class Emulator
             case < 0xFE00: _wram[address - 0xE000] = value; break;
             case < 0xFEA0: _oam[address - 0xFE00] = value; break;
             case < 0xFF00: break;
+            case >= 0xFF04 and <= 0xFF07:
+                _timer.Write(address, value);
+                break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;
                 if (address == 0xFF50 && value != 0) _bootMapped = false;

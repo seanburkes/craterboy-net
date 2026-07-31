@@ -5,6 +5,12 @@ and the only authority that advances T-cycles. Host time, entropy, and serial
 I/O enter through explicit interfaces; file access and presentation stay out
 of the core.
 
+The current state kernel groups CPU registers and the master scheduler in
+`EmulatorState`. The scheduler advances registered participants one T-cycle at
+a time; the timer device is the first participant and owns DIV/TIMA/TMA/TAC
+edge behavior. This keeps device timing deterministic and prevents individual
+devices from advancing themselves or consulting wall-clock time.
+
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
 transactional. `PeekMemory` is intended to remain side-effect free while

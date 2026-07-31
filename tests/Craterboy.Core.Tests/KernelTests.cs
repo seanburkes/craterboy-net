@@ -72,6 +72,32 @@ public sealed class KernelTests
         Assert.Equal((byte)0xA5, emulator.PeekMemory(0xE123));
     }
 
+    [Fact]
+    public void SchedulerAdvancesDividerOnlyThroughEmulatedCycles()
+    {
+        var emulator = NewEmulator(MakeRom());
+
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFF04));
+        emulator.RunCycles(255);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFF04));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xFF04));
+    }
+
+    [Fact]
+    public void TimerFallsOnSelectedDividerBitAndRequestsInterruptOnOverflow()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF06, 0x3C);
+        emulator.WriteMemory(0xFF05, 0xFF);
+        emulator.WriteMemory(0xFF07, 0x05); // enable, divider bit 3 (16 T-cycles)
+
+        emulator.RunCycles(16);
+
+        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF05));
+        Assert.Equal((byte)0x04, (byte)(emulator.PeekMemory(0xFF0F) & 0x04));
+    }
+
     private static Emulator NewEmulator(byte[] rom)
     {
         var emulator = new Emulator(GameBoyModel.DmgB);

@@ -12,7 +12,8 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | `Core/memory.c` | `Emulator.Read/Write` | partial | native WRAM, echo-RAM, and DMG unusable-range comparisons |
 | `Core/mbc.c` | `Cartridge` implementations | partial | MBC1 banking/RAM test; ROM/MBC2/MBC5 implemented |
 | `Core/sm83_cpu.c` | `Emulator.Execute` | partial | per-instruction native register comparisons for the vertical slice |
-| `Core/timing.c` | cycle counter and execution authority | partial | per-instruction native T-cycle comparisons |
+| `Core/timing.c` | `Scheduler`, `EmulatorState`, and cycle execution authority | partial | per-instruction native T-cycle comparisons; participant scheduler tests |
+| `Core/timing.c`, timer portions of `Core/gb.c` | `TimerDevice` | partial | divider cadence, timer falling-edge, and overflow interrupt tests |
 | `Core/random.c` | `IEntropyProvider` | partial | injectable boundary defined |
 | MBC3/RTC and remaining mappers | cartridge subsystem | deferred | — |
 | timer, joypad, serial, DMA | device state/scheduler | deferred | serial boundary defined only |
