@@ -12,6 +12,8 @@ public sealed class Emulator
     private readonly byte[] _io = new byte[0x80];
     private readonly byte[] _hram = new byte[0x7F];
     private TimerDevice _timer = null!;
+    private OamDmaDevice _dma = null!;
+    private SerialDevice _serial = null!;
     private Cartridge? _cartridge;
     private byte[]? _bootRom;
     private bool _bootMapped;
@@ -21,7 +23,11 @@ public sealed class Emulator
         _model = model;
         _options = options ?? new EmulatorOptions();
         _timer = new TimerDevice(_io);
+        _dma = new OamDmaDevice(Read, (index, value) => _oam[index] = value);
+        _serial = new SerialDevice(_io, _options.SerialEndpoint);
         _state.Scheduler.Register(_timer);
+        _state.Scheduler.Register(_dma);
+        _state.Scheduler.Register(_serial);
         Reset();
     }
 
@@ -62,6 +68,8 @@ public sealed class Emulator
         _state.Scheduler.Reset();
         Array.Clear(_vram); Array.Clear(_wram); Array.Clear(_oam); Array.Clear(_io); Array.Clear(_hram);
         _timer.Reset();
+        _dma.Reset();
+        _serial.Reset();
         _bootMapped = _bootRom is not null && !_options.SkipBootRom;
         var cpu = _state.Cpu;
         cpu.A = _model.IsColor() ? (byte)0x11 : (byte)0x01;
@@ -94,7 +102,7 @@ public sealed class Emulator
         while (CycleCount < target)
         {
             var remaining = target - CycleCount;
-            if (remaining < 4) { Advance((int)remaining); break; }
+            if (remaining < PredictNextInstructionCycles()) { Advance((int)remaining); break; }
             StepInstruction();
         }
     }
@@ -182,6 +190,25 @@ public sealed class Emulator
         0x76 => Halt(),
         _ => throw new NotSupportedException($"SM83 opcode 0x{opcode:X2} at 0x{_state.Cpu.PC - 1:X4} is not ported yet."),
     };
+
+    private int PredictNextInstructionCycles()
+    {
+        if (_state.Cpu.Halted) return 4;
+        var opcode = Read(_state.Cpu.PC);
+        return opcode switch
+        {
+            0x01 or 0x11 or 0x21 or 0x31 => 12,
+            0xCD => 24,
+            0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
+            0xC5 or 0xD5 or 0xE5 or 0xF5 => 16,
+            0xC1 or 0xD1 or 0xE1 or 0xF1 or 0xC9 => 12,
+            0x77 or 0x7E or 0x02 or 0x0A or 0x12 or 0x1A => 8,
+            >= 0x80 and <= 0x87 or >= 0x90 and <= 0x97 or >= 0xA0 and <= 0xA7 or >= 0xB0 and <= 0xBF
+                => (opcode & 7) == 6 ? 16 : 4,
+            0x18 or 0x20 or 0x28 or 0x30 or 0x38 => 12,
+            _ => 8,
+        };
+    }
 
     private int Load8(Action<byte> setter) { setter(Read(_state.Cpu.PC++)); return 8; }
     private int Load16(Action<ushort> setter)
@@ -319,6 +346,13 @@ public sealed class Emulator
             case < 0xFF00: break;
             case >= 0xFF04 and <= 0xFF07:
                 _timer.Write(address, value);
+                break;
+            case 0xFF02:
+                _serial.WriteControl(value);
+                break;
+            case 0xFF46:
+                _io[0x46] = value;
+                _dma.Start(value);
                 break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;

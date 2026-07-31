@@ -99,6 +99,44 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void OamDmaCopiesOneHundredSixtyBytesInSixHundredFortyTCycles()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        for (var i = 0; i < 0xA0; i++) emulator.WriteMemory((ushort)(0xC000 + i), (byte)(i ^ 0x5A));
+
+        emulator.WriteMemory(0xFF46, 0xC0);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFE00));
+        emulator.RunCycles(639);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFE9F));
+        emulator.RunCycles(1);
+
+        for (var i = 0; i < 0xA0; i++)
+            Assert.Equal((byte)(i ^ 0x5A), emulator.PeekMemory((ushort)(0xFE00 + i)));
+    }
+
+    [Fact]
+    public void SerialEndpointCompletesInternalClockTransferAndRequestsInterrupt()
+    {
+        var endpoint = new TestSerialEndpoint { Response = 0x3C };
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { SerialEndpoint = endpoint });
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        emulator.LoadRom(rom);
+        emulator.WriteMemory(0xFF01, 0xA5);
+        emulator.WriteMemory(0xFF02, 0x81);
+        emulator.RunCycles(4095);
+        Assert.Equal((byte)0xA5, emulator.PeekMemory(0xFF01));
+        emulator.RunCycles(1);
+
+        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF01));
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF02) & 0x80));
+        Assert.Equal((byte)0x08, (byte)(emulator.PeekMemory(0xFF0F) & 0x08));
+        Assert.Equal((byte)0xA5, endpoint.Outgoing);
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();
@@ -162,5 +200,12 @@ public sealed class KernelTests
     {
         public DateTimeOffset UtcNow { get; private set; } = DateTimeOffset.UnixEpoch;
         public void Advance(TimeSpan elapsed) => UtcNow += elapsed;
+    }
+
+    private sealed class TestSerialEndpoint : ISerialEndpoint
+    {
+        public byte Response { get; init; }
+        public byte Outgoing { get; private set; }
+        public byte Exchange(byte outgoing) { Outgoing = outgoing; return Response; }
     }
 }
