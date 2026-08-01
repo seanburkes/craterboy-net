@@ -236,6 +236,51 @@ public sealed class DifferentialTests
         }
     }
 
+    [Theory]
+    [InlineData(0xC4)] [InlineData(0xCC)] [InlineData(0xD4)] [InlineData(0xDC)]
+    public void ConditionalCallsMatchOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        new byte[] { opcode, 0x06, 0x01 }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
+    [Theory]
+    [InlineData(0xC0)] [InlineData(0xC8)] [InlineData(0xD0)] [InlineData(0xD8)]
+    public void ConditionalReturnsMatchOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        rom[0x100] = opcode;
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+        managed.WriteMemory(0xFFFC, 0x34); oracle.Write(0xFFFC, 0x34);
+        managed.WriteMemory(0xFFFD, 0x01); oracle.Write(0xFFFD, 0x01);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
+    [Fact]
+    public void ReturnAndRestartInstructionsMatchOracle()
+    {
+        foreach (var opcode in new byte[] { 0xD9, 0xC7, 0xCF, 0xD7, 0xDF, 0xE7, 0xEF, 0xF7, 0xFF })
+        {
+            var rom = MakeRom();
+            rom[0x100] = opcode;
+            var managed = CreateManaged(rom);
+            using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+            managed.WriteMemory(0xFFFC, 0x34); oracle.Write(0xFFFC, 0x34);
+            managed.WriteMemory(0xFFFD, 0x01); oracle.Write(0xFFFD, 0x01);
+
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+    }
+
     [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
