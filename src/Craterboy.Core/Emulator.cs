@@ -218,6 +218,23 @@ public sealed class Emulator
         0x2F => ComplementA(),
         0x37 => SetCarryFlag(),
         0x3F => ComplementCarryFlag(),
+        0xC4 => ConditionalCall(!Flag(CpuFlags.Zero)),
+        0xCC => ConditionalCall(Flag(CpuFlags.Zero)),
+        0xD4 => ConditionalCall(!Flag(CpuFlags.Carry)),
+        0xDC => ConditionalCall(Flag(CpuFlags.Carry)),
+        0xC0 => ConditionalReturn(!Flag(CpuFlags.Zero)),
+        0xC8 => ConditionalReturn(Flag(CpuFlags.Zero)),
+        0xD0 => ConditionalReturn(!Flag(CpuFlags.Carry)),
+        0xD8 => ConditionalReturn(Flag(CpuFlags.Carry)),
+        0xD9 => ReturnAndEnableInterrupts(),
+        0xC7 => Restart(0x00),
+        0xCF => Restart(0x08),
+        0xD7 => Restart(0x10),
+        0xDF => Restart(0x18),
+        0xE7 => Restart(0x20),
+        0xEF => Restart(0x28),
+        0xF7 => Restart(0x30),
+        0xFF => Restart(0x38),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -294,6 +311,16 @@ public sealed class Emulator
             0x09 or 0x19 or 0x29 or 0x39 => 8,
             0x07 or 0x0F or 0x17 or 0x1F => 4,
             0x27 or 0x2F or 0x37 or 0x3F => 4,
+            0xC4 => Flag(CpuFlags.Zero) ? 12 : 24,
+            0xCC => Flag(CpuFlags.Zero) ? 24 : 12,
+            0xD4 => Flag(CpuFlags.Carry) ? 12 : 24,
+            0xDC => Flag(CpuFlags.Carry) ? 24 : 12,
+            0xC0 => Flag(CpuFlags.Zero) ? 8 : 20,
+            0xC8 => Flag(CpuFlags.Zero) ? 20 : 8,
+            0xD0 => Flag(CpuFlags.Carry) ? 8 : 20,
+            0xD8 => Flag(CpuFlags.Carry) ? 20 : 8,
+            0xD9 => 16,
+            0xC7 or 0xCF or 0xD7 or 0xDF or 0xE7 or 0xEF or 0xF7 or 0xFF => 16,
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -660,6 +687,34 @@ public sealed class Emulator
         Push(returnAddress); _state.Cpu.PC = (ushort)(low | high << 8); return 24;
     }
     private int Return() { _state.Cpu.PC = (ushort)(Read(_state.Cpu.SP++) | Read(_state.Cpu.SP++) << 8); return 16; }
+    private int ConditionalCall(bool condition)
+    {
+        var low = Read(_state.Cpu.PC++); var high = Read(_state.Cpu.PC++);
+        if (!condition) return 12;
+        var returnAddress = _state.Cpu.PC;
+        Push(returnAddress); _state.Cpu.PC = (ushort)(low | high << 8); return 24;
+    }
+
+    private int ConditionalReturn(bool condition)
+    {
+        if (!condition) return 8;
+        _state.Cpu.PC = (ushort)(Read(_state.Cpu.SP++) | Read(_state.Cpu.SP++) << 8);
+        return 20;
+    }
+
+    private int ReturnAndEnableInterrupts()
+    {
+        _state.Cpu.PC = (ushort)(Read(_state.Cpu.SP++) | Read(_state.Cpu.SP++) << 8);
+        _state.Cpu.Ime = true;
+        return 16;
+    }
+
+    private int Restart(ushort address)
+    {
+        Push(_state.Cpu.PC);
+        _state.Cpu.PC = address;
+        return 16;
+    }
     private void Advance(int cycles) => _state.Scheduler.Advance(cycles);
     private void EnsureRom() { if (_cartridge is null) throw new InvalidOperationException("Load a ROM before executing."); }
 

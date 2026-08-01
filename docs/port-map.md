@@ -11,7 +11,7 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | `Core/model.h`, reset portions of `Core/gb.c` | `GameBoyModel`, `Emulator.Reset` | partial | native model-ID and post-boot register comparisons |
 | `Core/memory.c` | `Emulator.Read/Write` | partial | native WRAM, echo-RAM, and DMG unusable-range comparisons |
 | `Core/mbc.c` | `Cartridge` implementations | partial | ROM/MBC1/MBC2/MBC5/MBC3 banking and RAM tests; MBC3 RTC fixture and stream persistence |
-| `Core/sm83_cpu.c` | `Emulator.Execute` | partial | register-transfer block, immediate accumulator ALU, 16-bit pair arithmetic, accumulator rotates/status, `(HL)` INC/DEC, explicit immediate load/store, ALU, INC/DEC, CB-prefixed rotate/shift, BIT/RES/SET, relative/absolute branch, stack, CALL/RET instructions with per-instruction native comparisons |
+| `Core/sm83_cpu.c` | `Emulator.Execute` | partial | register-transfer block, immediate accumulator ALU, 16-bit pair arithmetic, accumulator rotates/status, conditional calls/returns, RETI and RST, `(HL)` INC/DEC, explicit immediate load/store, ALU, INC/DEC, CB-prefixed rotate/shift, BIT/RES/SET, relative/absolute branch, stack, CALL/RET instructions with per-instruction native comparisons |
 | `Core/timing.c` | `Scheduler`, `EmulatorState`, and cycle execution authority | partial | per-instruction native T-cycle comparisons; participant scheduler tests |
 | `Core/timing.c`, timer portions of `Core/gb.c` | `TimerDevice` | partial | divider cadence, timer falling-edge, and overflow interrupt tests |
 | `Core/random.c` | `IEntropyProvider` | partial | injectable boundary defined |

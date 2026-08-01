@@ -87,6 +87,11 @@ the non-circular forms. They execute in 4 T-cycles.
 `CPL`, `SCF`, and `CCF` implement their documented flag-preservation rules.
 These accumulator/status instructions also execute in 4 T-cycles.
 
+Conditional `CALL` and `RET` consume their shorter not-taken timings and use
+the shared stack path when taken. `RETI` restores the return address and enables
+IME, while the eight `RST` vectors push the post-instruction PC before jumping
+to their fixed destinations.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.
