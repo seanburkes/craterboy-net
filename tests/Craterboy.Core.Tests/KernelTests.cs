@@ -401,6 +401,39 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelOneSweepPeriodControlsTheUpdateCadence()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF10, 0x21); // period 2, upward shift 1
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF13, 100);
+        emulator.WriteMemory(0xFF14, 0x80);
+
+        emulator.RunCycles(7 * 8192);
+        Assert.Equal((byte)100, emulator.PeekMemory(0xFF13));
+        emulator.RunCycles(8192);
+        Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
+    }
+
+    [Fact]
+    public void ApuChannelOneSweepDisablesOnTriggerOverflow()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF10, 0x11); // upward shift 1
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF13, 0x00);
+        emulator.WriteMemory(0xFF14, 0x87); // frequency 1792, trigger overflow
+
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void ApuEmitsDeterministicSamplesIntoCallerOwnedBuffer()
     {
         var rom = MakeRom();

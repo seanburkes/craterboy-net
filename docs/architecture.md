@@ -35,8 +35,10 @@ The APU is now a scheduler-owned register and power-control device. NR52
 gates access to the channel registers; channel sequencing and sample emission
 remain deferred to later APU slices. Channel 1 has basic trigger, length, and
 NR52 status timing plus the envelope frame step.
-Channel 1 frequency sweep updates are also clocked at the four-step sweep
-cadence. The core emits channel samples into a bounded managed ring and exposes
+Channel 1 frequency sweep updates are clocked at the hardware sweep cadence,
+with the NR10 period selecting the number of four-step intervals between
+updates; trigger-time overflow disables the channel. The core emits channel
+samples into a bounded managed ring and exposes
 caller-owned buffer draining; host playback remains outside the core.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
