@@ -187,6 +187,7 @@ public sealed class Emulator
     {
         0x00 => 4,
         0xCB => ExecuteCb(Read(_state.Cpu.PC++)),
+        >= 0x40 and <= 0x7F when opcode != 0x76 => LoadRegister(opcode),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -255,6 +256,8 @@ public sealed class Emulator
         return opcode switch
         {
             0xCB => PredictCbCycles(Read((ushort)(_state.Cpu.PC + 1))),
+            >= 0x40 and <= 0x7F when opcode != 0x76 =>
+                (opcode & 7) == 6 || ((opcode >> 3) & 7) == 6 ? 8 : 4,
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -363,6 +366,14 @@ public sealed class Emulator
     }
 
     private int Load8(Action<byte> setter) { setter(Read(_state.Cpu.PC++)); return 8; }
+    private int LoadRegister(byte opcode)
+    {
+        var destination = (opcode >> 3) & 7;
+        var source = opcode & 7;
+        WriteRegister(destination, ReadRegister(source));
+        return destination == 6 || source == 6 ? 8 : 4;
+    }
+
     private int Load16(Action<ushort> setter)
     {
         var low = Read(_state.Cpu.PC++); var high = Read(_state.Cpu.PC++);

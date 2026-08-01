@@ -62,6 +62,11 @@ carry flag and sets H. Register and `(HL)` forms share the decoder but retain
 their distinct 8/12/16 T-cycle timings. Every CB opcode is compared with the
 pinned SameBoy oracle in the differential suite.
 
+The ordinary register-transfer block (`LD r,r'`) is also decoded generically,
+including the memory forms that use `(HL)`. The HALT opcode remains a separate
+control-flow operation, and the transfer block is covered opcode-by-opcode
+against SameBoy.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.
