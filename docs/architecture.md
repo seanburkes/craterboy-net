@@ -39,6 +39,8 @@ Channel 1 frequency sweep updates are also clocked at the four-step sweep
 cadence. The core emits channel samples into a bounded managed ring and exposes
 caller-owned buffer draining; host playback remains outside the core.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
+Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
+also present.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
