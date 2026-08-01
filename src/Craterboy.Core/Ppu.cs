@@ -26,6 +26,10 @@ internal sealed class PpuDevice : ICycleParticipant
         _oam = oam;
     }
 
+    public bool CpuCanAccessVram => !_enabled || _mode != 3;
+
+    public bool CpuCanAccessOam => !_enabled || (_mode != 2 && _mode != 3);
+
     public void Reset()
     {
         _enabled = false;
