@@ -213,6 +213,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuDisablingLcdResetsTimingAndBlanksTheFrame()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0x8000, 0x80);
+        emulator.WriteMemory(0x9800, 0);
+        emulator.WriteMemory(0xFF47, 0xE4);
+        emulator.WriteMemory(0xFF40, 0x91); // LCD and background on
+        emulator.RunCycles(252);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[0]);
+
+        emulator.WriteMemory(0xFF40, 0);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFF44));
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+        emulator.CopyFrame(frame);
+        Assert.All(frame, pixel => Assert.Equal((byte)0, pixel));
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());

@@ -29,6 +29,7 @@ overlap priority; FIFO behavior remains separate.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
+Disabling the LCD resets LY/timing state and blanks the raw frame buffer.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and

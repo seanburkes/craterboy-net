@@ -17,7 +17,7 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | `Core/random.c` | `IEntropyProvider` | partial | injectable boundary defined |
 | MBC3/RTC interoperability and remaining mappers | cartridge subsystem | deferred/partial | deterministic managed RTC exists; SameBoy battery/RTC byte-format parity remains deferred |
 | timer, joypad, serial, DMA | device state/scheduler | partial | timer, OAM DMA, serial endpoint, and FF00 joypad edge tests |
-| `Core/display.c` | `PpuDevice` | partial | LCD mode timing, edge-triggered LY/LYC/STAT interrupts, CPU VRAM/OAM access blocking, DMG background/window/sprite tile and palette rendering including 8×16 sprites and overlap priority, and raw frame-buffer tests |
+| `Core/display.c` | `PpuDevice` | partial | LCD mode timing/reset, edge-triggered LY/LYC/STAT interrupts, CPU VRAM/OAM access blocking, DMG background/window/sprite tile and palette rendering including 8×16 sprites and overlap priority, and raw frame-buffer tests |
 | `Core/apu.c` | APU | deferred | — |
 | `Core/save_state.c` | BESS | deferred | — |
 | camera, printer, rumble, WorkBoy | accessories | deferred | — |
