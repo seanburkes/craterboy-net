@@ -27,6 +27,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _channel4Volume;
     private int _channel4EnvelopeTimer;
     private ushort _noiseLfsr;
+    private int _noiseTimer;
     private bool _mixerConfigured;
     private int _sampleCycles;
     private int _wavePhase;
@@ -62,6 +63,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel4Volume = 0;
         _channel4EnvelopeTimer = 0;
         _noiseLfsr = 0x7FFF;
+        _noiseTimer = 0;
         _mixerConfigured = false;
         _sampleCycles = 0;
         _wavePhase = 0;
@@ -105,6 +107,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel4Volume = 0;
                 _channel4EnvelopeTimer = 0;
                 _noiseLfsr = 0x7FFF;
+                _noiseTimer = 0;
                 _mixerConfigured = false;
                 Array.Clear(_io, 0x30, 0x10);
             }
@@ -161,6 +164,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel4EnvelopeTimer = (_io[0x21] & 0x07) == 0 ? 8 : (_io[0x21] & 0x07);
                 _channel4Enabled = (_io[0x21] & 0xF8) != 0;
                 _noiseLfsr = 0x7FFF;
+                _noiseTimer = 0;
                 UpdateStatus();
                 break;
             case 0xFF14 when (value & 0x80) != 0:
@@ -291,9 +295,14 @@ internal sealed class ApuDevice : ICycleParticipant
         {
             var high = (_noiseLfsr & 1) == 0;
             channels[3] = high ? _channel4Volume * 2048 : -_channel4Volume * 2048;
-            var feedback = (_noiseLfsr & 1) ^ ((_noiseLfsr >> 1) & 1);
-            _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
-            if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
+            if (_noiseTimer-- <= 0)
+            {
+                var feedback = (_noiseLfsr & 1) ^ ((_noiseLfsr >> 1) & 1);
+                _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
+                if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
+                var divisor = (_io[0x22] & 0x07) switch { 0 => 8, 1 => 16, 2 => 32, 3 => 48, 4 => 64, 5 => 80, 6 => 96, _ => 112 };
+                _noiseTimer = divisor << ((_io[0x22] >> 4) & 0x0F);
+            }
         }
         var routing = _mixerConfigured ? _io[0x25] : 0xFF;
         var left = 0;
