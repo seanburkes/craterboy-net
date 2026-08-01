@@ -961,12 +961,13 @@ public sealed class Emulator
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
+            0xFF0F => (byte)(0xE0 | (_io[0x0F] & 0x1F)),
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 => _ppu.Read(address),
             >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
             < 0xFF80 => _io[address - 0xFF00],
             < 0xFFFF => _hram[address - 0xFF80],
-            _ => _io[0x7F],
+            0xFFFF => _io[0x7F],
         };
     }
 
@@ -1004,12 +1005,17 @@ public sealed class Emulator
                 _io[0x46] = value;
                 _dma.Start(value);
                 break;
+            case 0xFF0F:
+                _io[0x0F] = (byte)(value & 0x1F);
+                break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;
                 if (address == 0xFF50 && value != 0) _bootMapped = false;
                 break;
             case < 0xFFFF: _hram[address - 0xFF80] = value; break;
-            default: _io[0x7F] = value; break;
+            case 0xFFFF:
+                _io[0x7F] = value;
+                break;
         }
     }
 }
