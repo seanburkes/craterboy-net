@@ -115,6 +115,10 @@ IF bit, pushes PC, jumps to the vector, disables IME, and consumes 20 T-cycles.
 An interrupt request wakes HALT even when IME is disabled; in that case the
 CPU resumes instruction execution without servicing the request.
 
+The DMG interrupt bus exposes IF (`FF0F`) with fixed high bits (`111`) and only
+stores its low five request bits. IE (`FFFF`) is retained as the raw enable
+register value; interrupt arbitration uses its low five bits.
+
 Signed SP-relative operations use the unsigned low-nibble and low-byte views
 of the offset for H/C, as required by the SM83, while applying the offset as a
 signed byte to the 16-bit result. `ADD SP,e8` takes 16 T-cycles, `LD HL,SP+e8`

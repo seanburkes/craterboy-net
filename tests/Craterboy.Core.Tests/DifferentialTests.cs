@@ -455,6 +455,24 @@ public sealed class DifferentialTests
     }
 
     [Fact]
+    public void InterruptRegistersMaskWritesAndExposeFixedHighBits()
+    {
+        var rom = MakeRom();
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        managed.WriteMemory(0xFF0F, 0xFF); oracle.Write(0xFF0F, 0xFF);
+        managed.WriteMemory(0xFFFF, 0xFF); oracle.Write(0xFFFF, 0xFF);
+        Assert.Equal(oracle.Read(0xFF0F), managed.PeekMemory(0xFF0F));
+        Assert.Equal(oracle.Read(0xFFFF), managed.PeekMemory(0xFFFF));
+
+        managed.WriteMemory(0xFF0F, 0x00); oracle.Write(0xFF0F, 0x00);
+        managed.WriteMemory(0xFFFF, 0x00); oracle.Write(0xFFFF, 0x00);
+        Assert.Equal(oracle.Read(0xFF0F), managed.PeekMemory(0xFF0F));
+        Assert.Equal(oracle.Read(0xFFFF), managed.PeekMemory(0xFFFF));
+    }
+
+    [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
         var rom = MakeRom();
