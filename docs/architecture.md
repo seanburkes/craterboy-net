@@ -118,6 +118,10 @@ The register ALU decoder now covers `ADC A,r`, `SBC A,r`, and `XOR A,r`,
 including `(HL)` forms. These operations share the immediate ALU flag rules
 and retain 4 T-cycles for registers and 8 T-cycles for `(HL)`.
 
+The existing `ADD`, `SUB`, `AND`, `OR`, and `CP` register ALU paths use the
+same 4/8-T-cycle register-versus-memory timing. The complete `0x80–0xBF`
+ALU block is covered by an opcode-by-opcode differential sweep.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.
