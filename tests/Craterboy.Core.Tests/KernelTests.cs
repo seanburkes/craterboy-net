@@ -284,6 +284,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuUsesBothTilesForDmgSixteenPixelSprites()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0x8000, 0x80); // top tile
+        emulator.WriteMemory(0x8010, 0x80); // bottom tile
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, 8);
+        emulator.WriteMemory(0xFE02, 1); // odd tile index is normalized to 0/1
+        emulator.WriteMemory(0xFF48, 0x04);
+        emulator.WriteMemory(0xFF40, 0x96); // LCD, 8x16 sprites, BG off
+        emulator.RunCycles(8 * 456 + 252);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[0]);
+        Assert.Equal((byte)1, frame[8 * 160]);
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();
