@@ -419,6 +419,19 @@ public sealed class DifferentialTests
     }
 
     [Fact]
+    public void JumpHlMatchesOracle()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x21, 0x06, 0x01, 0xE9 }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
+    [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
         var rom = MakeRom();
