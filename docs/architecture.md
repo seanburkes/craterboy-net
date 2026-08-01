@@ -56,6 +56,11 @@ transactional. `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
 
+CPU memory-transfer instructions now cover absolute A loads/stores, high-page
+(`FF00+n`) loads/stores, C-indexed high-page loads/stores, and storing SP to an
+absolute address. Their operand widths and 8/12/16/20 T-cycle timings are kept
+explicit in the decoder and compared with SameBoy.
+
 The CPU decoder includes the complete CB-prefixed instruction family. Rotate,
 shift, and SWAP operations update Z/N/H/C explicitly, while BIT preserves the
 carry flag and sets H. Register and `(HL)` forms share the decoder but retain
