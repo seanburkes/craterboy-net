@@ -193,7 +193,7 @@ internal sealed class PpuDevice : ICycleParticipant
     {
         if ((_io[0x40] & 0x02) == 0) return;
         var written = new bool[Width];
-        var height = 8; // DMG 8x16 selection is deferred to the CGB/sprite slice.
+        var height = (_io[0x40] & 0x04) != 0 ? 16 : 8;
         var selected = 0;
         for (var sprite = 0; sprite < 40 && selected < 10; sprite++)
         {
@@ -206,6 +206,15 @@ internal sealed class PpuDevice : ICycleParticipant
             if (row < 0 || row >= height) continue;
             selected++;
             if ((attributes & 0x40) != 0) row = height - 1 - row;
+            if (height == 16)
+            {
+                tile &= 0xFE;
+                if (row >= 8)
+                {
+                    tile++;
+                    row -= 8;
+                }
+            }
             var tileAddress = tile * 16 + row * 2;
             var low = _vram[tileAddress];
             var high = _vram[tileAddress + 1];
