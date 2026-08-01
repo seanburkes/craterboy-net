@@ -5,8 +5,11 @@ internal sealed class ApuDevice : ICycleParticipant
     private readonly byte[] _io;
     private bool _powered;
     private int _frameCycles;
+    private int _frameStep;
     private int _channel1Length;
     private bool _channel1Enabled;
+    private int _channel1Volume;
+    private int _envelopeTimer;
 
     public ApuDevice(byte[] io) => _io = io;
 
@@ -14,8 +17,11 @@ internal sealed class ApuDevice : ICycleParticipant
     {
         _powered = false;
         _frameCycles = 0;
+        _frameStep = 0;
         _channel1Length = 0;
         _channel1Enabled = false;
+        _channel1Volume = 0;
+        _envelopeTimer = 0;
         Array.Clear(_io, 0x10, 0x16);
         _io[0x26] = 0;
     }
@@ -34,6 +40,8 @@ internal sealed class ApuDevice : ICycleParticipant
                 Array.Clear(_io, 0x10, 0x16);
                 _channel1Length = 0;
                 _channel1Enabled = false;
+                _channel1Volume = 0;
+                _envelopeTimer = 0;
             }
             _powered = powered;
             _io[0x26] = (byte)(powered ? 0x80 : 0);
@@ -50,6 +58,8 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF14 when (value & 0x80) != 0:
                 if (_channel1Length == 0) _channel1Length = 64;
                 _channel1Enabled = (_io[0x12] & 0xF8) != 0;
+                _channel1Volume = _io[0x12] >> 4;
+                _envelopeTimer = (_io[0x12] & 0x07) == 0 ? 8 : (_io[0x12] & 0x07);
                 UpdateStatus();
                 break;
         }
@@ -60,10 +70,18 @@ internal sealed class ApuDevice : ICycleParticipant
         if (!_powered) return;
         if (++_frameCycles < 8192) return;
         _frameCycles = 0;
+        _frameStep = (_frameStep + 1) & 7;
         if ((_io[0x14] & 0x40) != 0 && _channel1Enabled && _channel1Length > 0 && --_channel1Length == 0)
         {
             _channel1Enabled = false;
             UpdateStatus();
+        }
+        if (_frameStep == 0 && _channel1Enabled && (_io[0x12] & 0x07) != 0 && --_envelopeTimer == 0)
+        {
+            if ((_io[0x12] & 0x08) != 0 && _channel1Volume < 15) _channel1Volume++;
+            else if ((_io[0x12] & 0x08) == 0 && _channel1Volume > 0) _channel1Volume--;
+            _io[0x12] = (byte)((_io[0x12] & 0x0F) | (_channel1Volume << 4));
+            _envelopeTimer = _io[0x12] & 0x07;
         }
     }
 
