@@ -7,7 +7,9 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private readonly byte[] _io;
     private readonly byte[] _vram;
+    private readonly byte[] _oam;
     private readonly byte[] _frame = new byte[Width * Height];
+    private readonly byte[] _backgroundColors = new byte[Width];
     private bool _enabled;
     private int _lineCycles;
     private byte _line;
@@ -15,10 +17,11 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _mode;
     private bool _coincidence;
 
-    public PpuDevice(byte[] io, byte[] vram)
+    public PpuDevice(byte[] io, byte[] vram, byte[] oam)
     {
         _io = io;
         _vram = vram;
+        _oam = oam;
     }
 
     public void Reset()
@@ -145,7 +148,12 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private void RenderBackgroundLine(byte line)
     {
-        if ((_io[0x40] & 0x01) == 0) return;
+        if ((_io[0x40] & 0x01) == 0)
+        {
+            Array.Clear(_backgroundColors);
+            RenderSprites(line, line * Width);
+            return;
+        }
         var mapBase = (_io[0x40] & 0x08) != 0 ? 0x1C00 : 0x1800;
         var unsignedTiles = (_io[0x40] & 0x10) != 0;
         var worldY = (line + _io[0x42]) & 0xFF;
@@ -173,9 +181,46 @@ internal sealed class PpuDevice : ICycleParticipant
             var high = _vram[tileAddress + selectedRow * 2 + 1];
             var bit = 7 - (worldX & 7);
             var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
+            _backgroundColors[x] = (byte)color;
             _frame[output + x] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
             windowUsed |= useWindow;
         }
         if (windowUsed) _windowLine++;
+        RenderSprites(line, output);
+    }
+
+    private void RenderSprites(byte line, int output)
+    {
+        if ((_io[0x40] & 0x02) == 0) return;
+        var written = new bool[Width];
+        var height = 8; // DMG 8x16 selection is deferred to the CGB/sprite slice.
+        var selected = 0;
+        for (var sprite = 0; sprite < 40 && selected < 10; sprite++)
+        {
+            var oam = sprite * 4;
+            var y = _oam[oam] - 16;
+            var x = _oam[oam + 1] - 8;
+            var tile = _oam[oam + 2];
+            var attributes = _oam[oam + 3];
+            var row = line - y;
+            if (row < 0 || row >= height) continue;
+            selected++;
+            if ((attributes & 0x40) != 0) row = height - 1 - row;
+            var tileAddress = tile * 16 + row * 2;
+            var low = _vram[tileAddress];
+            var high = _vram[tileAddress + 1];
+            var palette = (attributes & 0x10) != 0 ? _io[0x49] : _io[0x48];
+            for (var pixel = 0; pixel < 8; pixel++)
+            {
+                var screenX = x + pixel;
+                if (screenX < 0 || screenX >= Width || written[screenX]) continue;
+                var bit = (attributes & 0x20) != 0 ? pixel : 7 - pixel;
+                var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
+                if (color == 0) continue;
+                if ((attributes & 0x80) != 0 && _backgroundColors[screenX] != 0) continue;
+                _frame[output + screenX] = (byte)((palette >> (color * 2)) & 0x03);
+                written[screenX] = true;
+            }
+        }
     }
 }

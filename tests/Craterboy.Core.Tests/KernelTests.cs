@@ -250,6 +250,40 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuComposesTransparentAndPriorityAwareDmgSprites()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0x8000, 0x80); // sprite color 1 at x=0
+        emulator.WriteMemory(0x8001, 0x00);
+        emulator.WriteMemory(0xFE00, 16); // y=0
+        emulator.WriteMemory(0xFE01, 8);  // x=0
+        emulator.WriteMemory(0xFE02, 0);
+        emulator.WriteMemory(0xFF48, 0x04); // OBP0 maps sprite color 1 to shade 1
+        emulator.WriteMemory(0xFF40, 0x92); // LCD on, sprites on, BG off
+        emulator.RunCycles(252);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[0]);
+        Assert.Equal((byte)0, frame[1]);
+
+        var priority = NewEmulator(rom);
+        priority.WriteMemory(0x8000, 0x80);
+        priority.WriteMemory(0xFE00, 16);
+        priority.WriteMemory(0xFE01, 8);
+        priority.WriteMemory(0xFE02, 0);
+        priority.WriteMemory(0x9800, 0);
+        priority.WriteMemory(0xFF47, 0xE4);
+        priority.WriteMemory(0xFF40, 0x93); // BG and sprites on
+        priority.WriteMemory(0xFE03, 0x80); // sprite behind nonzero background
+        priority.RunCycles(252);
+        priority.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[0]);
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();

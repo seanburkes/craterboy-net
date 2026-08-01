@@ -24,7 +24,8 @@ The PPU timing kernel is also scheduler-owned. It models DMG mode 2/3/0
 transitions, VBlank lines, LY/LYC coincidence, and STAT interrupts. The first
 renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 160×144 pixels. Window positioning and its independent tile-map line counter
-are now modeled; sprites/FIFO behavior remains separate.
+are modeled, along with DMG 8×8 sprite composition; FIFO behavior and 8×16
+sprite selection remain separate.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
