@@ -108,6 +108,26 @@ public sealed class DifferentialTests
     }
 
     [Fact]
+    public void RegisterTransfersMatchOracle()
+    {
+        for (var opcode = 0x40; opcode <= 0x7F; opcode++)
+        {
+            if (opcode == 0x76) continue;
+            var rom = MakeRom();
+            new byte[] { 0x21, 0x00, 0xC0, (byte)opcode }.CopyTo(rom, 0x100);
+            var managed = CreateManaged(rom);
+            using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+            managed.WriteMemory(0xC000, 0x81);
+            oracle.Write(0xC000, 0x81);
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+            Assert.Equal(oracle.Read(0xC000), managed.PeekMemory(0xC000));
+        }
+    }
+
+    [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
         var rom = MakeRom();
