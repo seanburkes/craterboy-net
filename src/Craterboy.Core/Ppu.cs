@@ -17,6 +17,8 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _mode;
     private bool _coincidence;
 
+    private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
+
     public PpuDevice(byte[] io, byte[] vram, byte[] oam)
     {
         _io = io;
@@ -194,8 +196,9 @@ internal sealed class PpuDevice : ICycleParticipant
         if ((_io[0x40] & 0x02) == 0) return;
         var written = new bool[Width];
         var height = (_io[0x40] & 0x04) != 0 ? 16 : 8;
+        var candidates = new SpriteCandidate[10];
         var selected = 0;
-        for (var sprite = 0; sprite < 40 && selected < 10; sprite++)
+        for (var sprite = 0; sprite < 40 && selected < candidates.Length; sprite++)
         {
             var oam = sprite * 4;
             var y = _oam[oam] - 16;
@@ -204,8 +207,30 @@ internal sealed class PpuDevice : ICycleParticipant
             var attributes = _oam[oam + 3];
             var row = line - y;
             if (row < 0 || row >= height) continue;
-            selected++;
             if ((attributes & 0x40) != 0) row = height - 1 - row;
+            candidates[selected++] = new SpriteCandidate(sprite, x, row, tile, attributes);
+        }
+
+        // DMG resolves overlapping sprites by lower screen X, then OAM order.
+        for (var i = 1; i < selected; i++)
+        {
+            var candidate = candidates[i];
+            var j = i - 1;
+            while (j >= 0 && (candidates[j].X > candidate.X ||
+                              candidates[j].X == candidate.X && candidates[j].OamIndex > candidate.OamIndex))
+            {
+                candidates[j + 1] = candidates[j--];
+            }
+            candidates[j + 1] = candidate;
+        }
+
+        for (var index = 0; index < selected; index++)
+        {
+            var candidate = candidates[index];
+            var x = candidate.X;
+            var row = candidate.Row;
+            var tile = candidate.Tile;
+            var attributes = candidate.Attributes;
             if (height == 16)
             {
                 tile &= 0xFE;
