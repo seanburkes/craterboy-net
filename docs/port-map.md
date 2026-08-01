@@ -9,7 +9,7 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | SameBoy source | Craterboy area | Status | Current evidence |
 |---|---|---|---|
 | `Core/model.h`, reset portions of `Core/gb.c` | `GameBoyModel`, `Emulator.Reset` | partial | native model-ID and post-boot register comparisons |
-| `Core/memory.c` | `Emulator.Read/Write` | partial | native WRAM, echo-RAM, DMG unusable-range, absolute/high-page CPU transfer comparisons |
+| `Core/memory.c` | `Emulator.Read/Write` | partial | native WRAM, echo-RAM, DMG unusable-range, absolute/high-page, and auto-indexed CPU transfer comparisons |
 | `Core/mbc.c` | `Cartridge` implementations | partial | ROM/MBC1/MBC2/MBC5/MBC3 banking and RAM tests; MBC3 RTC fixture and stream persistence |
 | `Core/sm83_cpu.c` | `Emulator.Execute` | partial | register-transfer block, register ADC/SBC/XOR, immediate accumulator ALU, signed SP-relative operations, 16-bit pair arithmetic, accumulator rotates/status, delayed EI/DI control, conditional calls/returns, RETI and RST, `(HL)` INC/DEC, explicit immediate load/store, ALU, INC/DEC, CB-prefixed rotate/shift, BIT/RES/SET, relative/absolute branch, stack, CALL/RET instructions with per-instruction native comparisons |
 | `Core/timing.c` | `Scheduler`, `EmulatorState`, and cycle execution authority | partial | per-instruction native T-cycle comparisons; participant scheduler tests |
