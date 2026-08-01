@@ -506,6 +506,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIsStableForEquivalentRunsAndChangesWithState()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var first = NewEmulator(rom);
+        var second = NewEmulator(rom);
+        first.RunCycles(64);
+        second.RunCycles(64);
+        Assert.Equal(first.ComputeStateHash(), second.ComputeStateHash());
+
+        second.WriteMemory(0xC000, 0xA5);
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());

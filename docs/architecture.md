@@ -59,6 +59,8 @@ read/write side effects.
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.
+`ComputeStateHash` provides a stable SHA-256 digest for replay/conformance
+comparisons without exposing mutable emulator state.
 
 `Craterboy.Tester` is a headless conformance entry point. A native SameBoy
 adapter will live only in tests/CI and will never be included in packages.
