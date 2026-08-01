@@ -398,6 +398,26 @@ public sealed class DifferentialTests
         }
     }
 
+    [Theory]
+    [InlineData(0x22)] [InlineData(0x32)] [InlineData(0x2A)] [InlineData(0x3A)] [InlineData(0x36)]
+    public void AutoIndexedAndImmediateHlTransfersMatchOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        var program = opcode == 0x36
+            ? new byte[] { 0x21, 0x00, 0xC0, opcode, 0x5A }
+            : new byte[] { 0x21, 0x00, 0xC0, opcode };
+        program.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+        managed.WriteMemory(0xC000, 0x81);
+        oracle.Write(0xC000, 0x81);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+        Assert.Equal(oracle.Read(0xC000), managed.PeekMemory(0xC000));
+    }
+
     [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {

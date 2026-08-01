@@ -223,6 +223,11 @@ public sealed class Emulator
         0xE8 => AddSignedToSp(),
         0xF8 => LoadHlFromSignedSp(),
         0xF9 => LoadSpFromHl(),
+        0x22 => StoreHlAndIncrement(),
+        0x32 => StoreHlAndDecrement(),
+        0x2A => LoadAAndIncrementHl(),
+        0x3A => LoadAAndDecrementHl(),
+        0x36 => StoreImmediateHl(),
         0x07 => RotateLeftCircularA(),
         0x0F => RotateRightCircularA(),
         0x17 => RotateLeftA(),
@@ -333,6 +338,8 @@ public sealed class Emulator
             0xE8 => 16,
             0xF8 => 12,
             0xF9 => 8,
+            0x22 or 0x32 or 0x2A or 0x3A => 8,
+            0x36 => 12,
             0x07 or 0x0F or 0x17 or 0x1F => 4,
             0x27 or 0x2F or 0x37 or 0x3F => 4,
             0xF3 or 0xFB => 4,
@@ -539,6 +546,36 @@ public sealed class Emulator
     {
         _state.Cpu.SP = _state.Cpu.HL;
         return 8;
+    }
+
+    private int StoreHlAndIncrement()
+    {
+        Write(_state.Cpu.HL++, _state.Cpu.A);
+        return 8;
+    }
+
+    private int StoreHlAndDecrement()
+    {
+        Write(_state.Cpu.HL--, _state.Cpu.A);
+        return 8;
+    }
+
+    private int LoadAAndIncrementHl()
+    {
+        _state.Cpu.A = Read(_state.Cpu.HL++);
+        return 8;
+    }
+
+    private int LoadAAndDecrementHl()
+    {
+        _state.Cpu.A = Read(_state.Cpu.HL--);
+        return 8;
+    }
+
+    private int StoreImmediateHl()
+    {
+        Write(_state.Cpu.HL, Read(_state.Cpu.PC++));
+        return 12;
     }
 
     private ushort AddSignedOffset(ushort value, sbyte offset)
