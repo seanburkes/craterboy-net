@@ -75,6 +75,10 @@ timing. These immediate forms are included in the differential suite.
 The memory forms `INC (HL)` and `DEC (HL)` reuse the byte flag behavior while
 performing the read-modify-write through the bus and taking 12 T-cycles.
 
+The 16-bit pair operations (`INC`/`DEC` on BC, DE, HL, and SP, plus `ADD HL,
+rr`) are explicit and retain the Game Boy rule that `ADD HL,rr` preserves Z
+while recalculating H and C. Each operation takes 8 T-cycles.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.
