@@ -46,6 +46,7 @@ present.
 NR50 master volume and NR51 per-channel routing now shape the emitted PCM.
 Channel 2 envelope timing now mirrors channel 1’s frame-step behavior.
 Channel 4 envelope timing is covered by the same deterministic cadence.
+Channel 3 frequency registers now drive its managed wave phase progression.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and

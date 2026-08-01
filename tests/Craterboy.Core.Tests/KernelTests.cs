@@ -437,6 +437,20 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelThreeTracksFrequencyRegistersOnTrigger()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1D, 0x34);
+        emulator.WriteMemory(0xFF1E, 0x85);
+
+        Assert.Equal((byte)0x34, emulator.PeekMemory(0xFF1D));
+        Assert.Equal((byte)0x85, emulator.PeekMemory(0xFF1E));
+        Assert.Equal((byte)0x84, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
