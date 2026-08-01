@@ -192,6 +192,50 @@ public sealed class DifferentialTests
         AssertRegistersEqual(managed.Registers, oracle.Registers);
     }
 
+    [Theory]
+    [InlineData(0x2F)] [InlineData(0x37)] [InlineData(0x3F)]
+    public void AccumulatorStatusOperationsMatchOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x3E, 0x3C, opcode }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
+    [Fact]
+    public void DecimalAdjustAfterAdditionMatchesOracle()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x3E, 0x15, 0xC6, 0x27, 0x27 }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        for (var index = 0; index < 3; index++)
+        {
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+    }
+
+    [Fact]
+    public void DecimalAdjustAfterSubtractionMatchesOracle()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x3E, 0x42, 0xD6, 0x27, 0x27 }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        for (var index = 0; index < 3; index++)
+        {
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+    }
+
     [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
