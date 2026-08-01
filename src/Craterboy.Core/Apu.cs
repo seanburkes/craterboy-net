@@ -288,7 +288,7 @@ internal sealed class ApuDevice : ICycleParticipant
             var nibble = (_wave3Phase & 1) == 0 ? packed >> 4 : packed & 0x0F;
             var volumeCode = (_io[0x1C] >> 5) & 0x03;
             var waveSample = volumeCode switch { 0 => 0, 1 => nibble, 2 => nibble >> 1, _ => nibble >> 2 };
-            channels[2] = (waveSample - 4) * 2048;
+            channels[2] = volumeCode == 0 ? 0 : (waveSample - 4) * 2048;
             _wave3Phase = (_wave3Phase + Math.Max(1, _channel3Frequency >> 8)) & 31;
         }
         if (_channel4Enabled)

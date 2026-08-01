@@ -48,6 +48,7 @@ Channel 2 envelope timing now mirrors channel 1’s frame-step behavior.
 Channel 4 envelope timing is covered by the same deterministic cadence.
 Channel 3 frequency registers now drive its managed wave phase progression.
 Channel 4 NR43 divisor and shift fields control the deterministic LFSR cadence.
+Channel 3 NR32 volume code 0 correctly mutes its PCM contribution.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and

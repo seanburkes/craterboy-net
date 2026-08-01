@@ -452,6 +452,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelThreeVolumeCodeZeroMutesWaveOutput()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF30, 0xF0);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1C, 0x00); // volume code 0: mute
+        emulator.WriteMemory(0xFF1E, 0x80);
+        emulator.RunCycles(95);
+
+        var samples = new short[1];
+        Assert.Equal(1, emulator.CopyAudioSamples(samples));
+        Assert.Equal((short)0, samples[0]);
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
