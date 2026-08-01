@@ -14,6 +14,9 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _sweepTicks;
     private int _channel1Frequency;
     private bool _sweepEnabled;
+    private int _channel2Length;
+    private bool _channel2Enabled;
+    private int _channel2Volume;
     private int _sampleCycles;
     private int _wavePhase;
     private readonly short[] _samples = new short[4096];
@@ -35,6 +38,9 @@ internal sealed class ApuDevice : ICycleParticipant
         _sweepTicks = 0;
         _channel1Frequency = 0;
         _sweepEnabled = false;
+        _channel2Length = 0;
+        _channel2Enabled = false;
+        _channel2Volume = 0;
         _sampleCycles = 0;
         _wavePhase = 0;
         _sampleRead = 0;
@@ -63,6 +69,9 @@ internal sealed class ApuDevice : ICycleParticipant
                 _sweepTicks = 0;
                 _channel1Frequency = 0;
                 _sweepEnabled = false;
+                _channel2Length = 0;
+                _channel2Enabled = false;
+                _channel2Volume = 0;
             }
             _powered = powered;
             _io[0x26] = (byte)(powered ? 0x80 : 0);
@@ -78,6 +87,15 @@ internal sealed class ApuDevice : ICycleParticipant
                 break;
             case 0xFF13:
                 _channel1Frequency = (_channel1Frequency & 0x700) | value;
+                break;
+            case 0xFF16:
+                _channel2Length = 64 - (value & 0x3F);
+                break;
+            case 0xFF19 when (value & 0x80) != 0:
+                if (_channel2Length == 0) _channel2Length = 64;
+                _channel2Volume = _io[0x17] >> 4;
+                _channel2Enabled = (_io[0x17] & 0xF8) != 0;
+                UpdateStatus();
                 break;
             case 0xFF14 when (value & 0x80) != 0:
                 if (_channel1Length == 0) _channel1Length = 64;
@@ -106,6 +124,11 @@ internal sealed class ApuDevice : ICycleParticipant
         if ((_io[0x14] & 0x40) != 0 && _channel1Enabled && _channel1Length > 0 && --_channel1Length == 0)
         {
             _channel1Enabled = false;
+            UpdateStatus();
+        }
+        if ((_io[0x19] & 0x40) != 0 && _channel2Enabled && _channel2Length > 0 && --_channel2Length == 0)
+        {
+            _channel2Enabled = false;
             UpdateStatus();
         }
         if (_frameStep == 0 && _channel1Enabled && (_io[0x12] & 0x07) != 0 && --_envelopeTimer == 0)
@@ -158,8 +181,15 @@ internal sealed class ApuDevice : ICycleParticipant
             var duty = (_io[0x11] >> 6) & 0x03;
             var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
             sample = (short)(high ? _channel1Volume * 2048 : -_channel1Volume * 2048);
-            _wavePhase = (_wavePhase + 1) & 7;
         }
+        if (_channel2Enabled)
+        {
+            var duty = (_io[0x16] >> 6) & 0x03;
+            var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
+            sample += (short)(high ? _channel2Volume * 2048 : -_channel2Volume * 2048);
+        }
+        _wavePhase = (_wavePhase + 1) & 7;
+        sample = Math.Clamp(sample, short.MinValue, short.MaxValue);
         if (_sampleCount == _samples.Length)
         {
             _sampleRead = (_sampleRead + 1) % _samples.Length;
@@ -170,5 +200,5 @@ internal sealed class ApuDevice : ICycleParticipant
         _sampleCount++;
     }
 
-    private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0));
+    private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0) | (_channel2Enabled ? 0x02 : 0));
 }
