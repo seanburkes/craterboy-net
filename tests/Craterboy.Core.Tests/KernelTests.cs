@@ -58,6 +58,18 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StopConsumesPaddingByteAndHalts()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+
+        Assert.Equal(4, emulator.StepInstruction());
+        Assert.Equal((ushort)0x102, emulator.Registers.ProgramCounter);
+        Assert.True(emulator.Registers.Halted);
+    }
+
+    [Fact]
     public void CpuVerticalSliceExecutesLoadsStoreAndXor()
     {
         var rom = MakeRom();

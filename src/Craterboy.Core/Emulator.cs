@@ -189,6 +189,7 @@ public sealed class Emulator
     private int Execute(byte opcode) => opcode switch
     {
         0x00 => 4,
+        0x10 => Stop(),
         0xCB => ExecuteCb(Read(_state.Cpu.PC++)),
         >= 0x40 and <= 0x7F when opcode != 0x76 => LoadRegister(opcode),
         0xC6 => AddImmediate(),
@@ -223,6 +224,7 @@ public sealed class Emulator
         0xE8 => AddSignedToSp(),
         0xF8 => LoadHlFromSignedSp(),
         0xF9 => LoadSpFromHl(),
+        0xE9 => JumpHl(),
         0x22 => StoreHlAndIncrement(),
         0x32 => StoreHlAndDecrement(),
         0x2A => LoadAAndIncrementHl(),
@@ -338,6 +340,7 @@ public sealed class Emulator
             0xE8 => 16,
             0xF8 => 12,
             0xF9 => 8,
+            0xE9 => 4,
             0x22 or 0x32 or 0x2A or 0x3A => 8,
             0x36 => 12,
             0x07 or 0x0F or 0x17 or 0x1F => 4,
@@ -546,6 +549,19 @@ public sealed class Emulator
     {
         _state.Cpu.SP = _state.Cpu.HL;
         return 8;
+    }
+
+    private int JumpHl()
+    {
+        _state.Cpu.PC = _state.Cpu.HL;
+        return 4;
+    }
+
+    private int Stop()
+    {
+        _ = Read(_state.Cpu.PC++);
+        _state.Cpu.Halted = true;
+        return 4;
     }
 
     private int StoreHlAndIncrement()

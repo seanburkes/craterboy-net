@@ -65,6 +65,10 @@ The `(HL+)` and `(HL-)` forms perform the bus access before updating HL, while
 `LD (HL),d8` consumes its immediate operand without changing flags. These
 forms use 8 and 12 T-cycles respectively.
 
+`JP (HL)` transfers control directly to the current 16-bit HL value in 4
+T-cycles. `STOP` consumes its required padding byte, enters the halted state,
+and also takes 4 T-cycles in the current DMG execution model.
+
 The CPU decoder includes the complete CB-prefixed instruction family. Rotate,
 shift, and SWAP operations update Z/N/H/C explicitly, while BIT preserves the
 carry flag and sets H. Register and `(HL)` forms share the decoder but retain
