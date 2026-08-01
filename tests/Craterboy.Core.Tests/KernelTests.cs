@@ -488,6 +488,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void EmulatorReplaysInputEventsAtTheirRecordedCycles()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF00, 0x10); // action-button row
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(20, GameBoyButton.A, true));
+        recording.Add(new InputEvent(40, GameBoyButton.A, false));
+
+        emulator.ReplayInputRecording(recording);
+
+        Assert.Equal(40, emulator.CycleCount);
+        Assert.Equal((byte)0xDF, emulator.PeekMemory(0xFF00));
+        Assert.Throws<InvalidOperationException>(() => emulator.ReplayInputRecording(recording));
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());

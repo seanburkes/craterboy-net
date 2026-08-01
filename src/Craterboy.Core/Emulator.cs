@@ -126,6 +126,24 @@ public sealed class Emulator
 
     public void RunFrame() => RunCycles(CyclesPerFrame);
 
+    public void ReplayInputRecording(InputRecording recording)
+    {
+        ArgumentNullException.ThrowIfNull(recording);
+        foreach (var inputEvent in recording.Events)
+        {
+            if (inputEvent.Cycle < CycleCount)
+                throw new InvalidOperationException("Input recording event precedes the current emulated cycle.");
+            var remaining = inputEvent.Cycle - CycleCount;
+            while (remaining > 0)
+            {
+                var step = (int)Math.Min(remaining, int.MaxValue);
+                RunCycles(step);
+                remaining -= step;
+            }
+            SetButtonState(inputEvent.Button, inputEvent.Pressed, inputEvent.Player);
+        }
+    }
+
     public byte[] SaveBattery() => (_cartridge ?? throw new InvalidOperationException("No ROM is loaded.")).SaveBattery();
     public void LoadBattery(ReadOnlySpan<byte> data) =>
         (_cartridge ?? throw new InvalidOperationException("No ROM is loaded.")).LoadBattery(data);
