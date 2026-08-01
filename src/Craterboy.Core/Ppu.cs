@@ -16,6 +16,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _windowLine;
     private int _mode;
     private bool _coincidence;
+    private bool _statLine;
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
@@ -38,6 +39,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _windowLine = 0;
         _mode = 0;
         _coincidence = false;
+        _statLine = false;
         Array.Clear(_frame);
         _io[0x40] = 0;
         _io[0x41] = 0x80;
@@ -139,17 +141,29 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private void SetMode(int mode)
     {
-        if (_mode == mode) return;
+        if (_mode == mode)
+        {
+            UpdateStatLine();
+            return;
+        }
         _mode = mode;
-        var mask = mode switch { 0 => 0x08, 1 => 0x10, 2 => 0x20, _ => 0 };
-        if ((_io[0x41] & mask) != 0) _io[0x0F] |= 0x02;
+        UpdateStatLine();
     }
 
     private void UpdateCoincidence()
     {
         var matching = _line == _io[0x45];
-        if (matching && !_coincidence && (_io[0x41] & 0x40) != 0) _io[0x0F] |= 0x02;
         _coincidence = matching;
+        UpdateStatLine();
+    }
+
+    private void UpdateStatLine()
+    {
+        var modeMask = _mode switch { 0 => 0x08, 1 => 0x10, 2 => 0x20, _ => 0 };
+        var active = (_coincidence && (_io[0x41] & 0x40) != 0) ||
+                     (modeMask != 0 && (_io[0x41] & modeMask) != 0);
+        if (active && !_statLine) _io[0x0F] |= 0x02;
+        _statLine = active;
     }
 
     private void RenderBackgroundLine(byte line)

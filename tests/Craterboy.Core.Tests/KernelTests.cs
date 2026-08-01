@@ -198,6 +198,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuRaisesStatInterruptWhenAnEnabledSourceBecomesActive()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF0F, 0);
+        emulator.WriteMemory(0xFF45, 0); // current LY already matches
+        emulator.WriteMemory(0xFF41, 0x40); // enable LYC after match
+        Assert.Equal((byte)0x02, (byte)(emulator.PeekMemory(0xFF0F) & 0x02));
+
+        emulator.WriteMemory(0xFF0F, 0);
+        emulator.WriteMemory(0xFF41, 0x20); // mode 2 source, LCD is still off
+        emulator.WriteMemory(0xFF40, 0x80); // enabling LCD enters mode 2
+        Assert.Equal((byte)0x02, (byte)(emulator.PeekMemory(0xFF0F) & 0x02));
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
