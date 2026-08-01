@@ -145,14 +145,17 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF16:
                 _channel2Length = 64 - (value & 0x3F);
                 break;
-            case 0xFF19 when (value & 0x80) != 0:
-                if (_channel2Length == 0) _channel2Length = 64;
+            case 0xFF19:
                 _channel2Frequency = (_channel2Frequency & 0x0FF) | ((value & 0x07) << 8);
-                _channel2Volume = _io[0x17] >> 4;
-                _channel2EnvelopeTimer = (_io[0x17] & 0x07) == 0 ? 8 : (_io[0x17] & 0x07);
-                _channel2Enabled = (_io[0x17] & 0xF8) != 0;
-                _wave2Phase = 0;
-                UpdateStatus();
+                if ((value & 0x80) != 0)
+                {
+                    if (_channel2Length == 0) _channel2Length = 64;
+                    _channel2Volume = _io[0x17] >> 4;
+                    _channel2EnvelopeTimer = (_io[0x17] & 0x07) == 0 ? 8 : (_io[0x17] & 0x07);
+                    _channel2Enabled = (_io[0x17] & 0xF8) != 0;
+                    _wave2Phase = 0;
+                    UpdateStatus();
+                }
                 break;
             case 0xFF1B:
                 _channel3Length = 256 - value;
@@ -179,16 +182,19 @@ internal sealed class ApuDevice : ICycleParticipant
                 _noiseTimer = 0;
                 UpdateStatus();
                 break;
-            case 0xFF14 when (value & 0x80) != 0:
-                if (_channel1Length == 0) _channel1Length = 64;
+            case 0xFF14:
                 _channel1Frequency = (_channel1Frequency & 0x0FF) | ((value & 0x07) << 8);
-                _channel1Enabled = (_io[0x12] & 0xF8) != 0;
-                _channel1Volume = _io[0x12] >> 4;
-                _envelopeTimer = (_io[0x12] & 0x07) == 0 ? 8 : (_io[0x12] & 0x07);
-                _sweepTicks = 0;
-                _sweepEnabled = (_io[0x10] & 0x70) != 0;
-                _wave1Phase = 0;
-                UpdateStatus();
+                if ((value & 0x80) != 0)
+                {
+                    if (_channel1Length == 0) _channel1Length = 64;
+                    _channel1Enabled = (_io[0x12] & 0xF8) != 0;
+                    _channel1Volume = _io[0x12] >> 4;
+                    _envelopeTimer = (_io[0x12] & 0x07) == 0 ? 8 : (_io[0x12] & 0x07);
+                    _sweepTicks = 0;
+                    _sweepEnabled = (_io[0x10] & 0x70) != 0;
+                    _wave1Phase = 0;
+                    UpdateStatus();
+                }
                 break;
         }
     }
