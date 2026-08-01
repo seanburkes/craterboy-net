@@ -281,6 +281,71 @@ public sealed class DifferentialTests
         }
     }
 
+    [Theory]
+    [InlineData(0xE0)] [InlineData(0xE2)] [InlineData(0xEA)]
+    public void AbsoluteAndHighPageWritesMatchOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        var prefix = opcode == 0xE2 ? new byte[] { 0x0E, 0x80 } : Array.Empty<byte>();
+        var program = new byte[prefix.Length + (opcode == 0xEA ? 3 : 2)];
+        prefix.CopyTo(program, 0);
+        program[prefix.Length] = opcode;
+        if (opcode == 0xEA) { program[^2] = 0x00; program[^1] = 0xC0; }
+        else program[^1] = 0x80;
+        program.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        if (prefix.Length != 0)
+        {
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        }
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+        var address = opcode == 0xEA ? (ushort)0xC000 : (ushort)0xFF80;
+        Assert.Equal(oracle.Read(address), managed.PeekMemory(address));
+    }
+
+    [Theory]
+    [InlineData(0xF0)] [InlineData(0xF2)] [InlineData(0xFA)]
+    public void AbsoluteAndHighPageReadsMatchOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        var prefix = opcode == 0xF2 ? new byte[] { 0x0E, 0x80 } : Array.Empty<byte>();
+        var program = new byte[prefix.Length + (opcode == 0xFA ? 3 : 2)];
+        prefix.CopyTo(program, 0);
+        program[prefix.Length] = opcode;
+        if (opcode == 0xFA) { program[^2] = 0x00; program[^1] = 0xC0; }
+        else program[^1] = 0x80;
+        program.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+        var address = opcode == 0xFA ? (ushort)0xC000 : (ushort)0xFF80;
+        managed.WriteMemory(address, 0xA5);
+        oracle.Write(address, 0xA5);
+
+        if (prefix.Length != 0)
+        {
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        }
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
+    [Fact]
+    public void StoreStackPointerAbsoluteMatchesOracle()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x08, 0x00, 0xC0 }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(oracle.Read(0xC000), managed.PeekMemory(0xC000));
+        Assert.Equal(oracle.Read(0xC001), managed.PeekMemory(0xC001));
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
     [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {

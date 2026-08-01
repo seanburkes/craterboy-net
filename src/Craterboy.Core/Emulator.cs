@@ -210,6 +210,13 @@ public sealed class Emulator
         0x19 => AddHl(_state.Cpu.DE),
         0x29 => AddHl(_state.Cpu.HL),
         0x39 => AddHl(_state.Cpu.SP),
+        0x08 => WriteSpAbsolute(),
+        0xE0 => WriteHighPage(),
+        0xE2 => WriteCPage(),
+        0xEA => WriteAbsoluteA(),
+        0xF0 => ReadHighPage(),
+        0xF2 => ReadCPage(),
+        0xFA => ReadAbsoluteA(),
         0x07 => RotateLeftCircularA(),
         0x0F => RotateRightCircularA(),
         0x17 => RotateLeftA(),
@@ -309,6 +316,10 @@ public sealed class Emulator
             0x34 or 0x35 => 12,
             0x03 or 0x13 or 0x23 or 0x33 or 0x0B or 0x1B or 0x2B or 0x3B or
             0x09 or 0x19 or 0x29 or 0x39 => 8,
+            0xE2 or 0xF2 => 8,
+            0xE0 or 0xF0 => 12,
+            0xEA or 0xFA => 16,
+            0x08 => 20,
             0x07 or 0x0F or 0x17 or 0x1F => 4,
             0x27 or 0x2F or 0x37 or 0x3F => 4,
             0xC4 => Flag(CpuFlags.Zero) ? 12 : 24,
@@ -441,6 +452,57 @@ public sealed class Emulator
     {
         var low = Read(_state.Cpu.PC++); var high = Read(_state.Cpu.PC++);
         setter((ushort)(low | high << 8)); return 12;
+    }
+
+    private ushort ReadImmediateAddress()
+    {
+        var low = Read(_state.Cpu.PC++);
+        var high = Read(_state.Cpu.PC++);
+        return (ushort)(low | high << 8);
+    }
+
+    private int WriteSpAbsolute()
+    {
+        var address = ReadImmediateAddress();
+        Write(address, (byte)_state.Cpu.SP);
+        Write((ushort)(address + 1), (byte)(_state.Cpu.SP >> 8));
+        return 20;
+    }
+
+    private int WriteAbsoluteA()
+    {
+        Write(ReadImmediateAddress(), _state.Cpu.A);
+        return 16;
+    }
+
+    private int ReadAbsoluteA()
+    {
+        _state.Cpu.A = Read(ReadImmediateAddress());
+        return 16;
+    }
+
+    private int WriteHighPage()
+    {
+        Write((ushort)(0xFF00 | Read(_state.Cpu.PC++)), _state.Cpu.A);
+        return 12;
+    }
+
+    private int ReadHighPage()
+    {
+        _state.Cpu.A = Read((ushort)(0xFF00 | Read(_state.Cpu.PC++)));
+        return 12;
+    }
+
+    private int WriteCPage()
+    {
+        Write((ushort)(0xFF00 | _state.Cpu.C), _state.Cpu.A);
+        return 8;
+    }
+
+    private int ReadCPage()
+    {
+        _state.Cpu.A = Read((ushort)(0xFF00 | _state.Cpu.C));
+        return 8;
     }
 
     private int IncrementPair(Func<ushort> getter, Action<ushort> setter)
