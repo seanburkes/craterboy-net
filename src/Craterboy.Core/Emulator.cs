@@ -331,11 +331,11 @@ public sealed class Emulator
         return address switch
         {
             < 0x8000 => _cartridge?.Read(address) ?? 0xFF,
-            < 0xA000 => _vram[address - 0x8000],
+            < 0xA000 => _ppu.CpuCanAccessVram ? _vram[address - 0x8000] : (byte)0xFF,
             < 0xC000 => _cartridge?.Read(address) ?? 0xFF,
             < 0xE000 => _wram[address - 0xC000],
             < 0xFE00 => _wram[address - 0xE000],
-            < 0xFEA0 => _oam[address - 0xFE00],
+            < 0xFEA0 => _ppu.CpuCanAccessOam ? _oam[address - 0xFE00] : (byte)0xFF,
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
@@ -352,11 +352,15 @@ public sealed class Emulator
         switch (address)
         {
             case < 0x8000: _cartridge?.Write(address, value); break;
-            case < 0xA000: _vram[address - 0x8000] = value; break;
+            case < 0xA000:
+                if (_ppu.CpuCanAccessVram) _vram[address - 0x8000] = value;
+                break;
             case < 0xC000: _cartridge?.Write(address, value); break;
             case < 0xE000: _wram[address - 0xC000] = value; break;
             case < 0xFE00: _wram[address - 0xE000] = value; break;
-            case < 0xFEA0: _oam[address - 0xFE00] = value; break;
+            case < 0xFEA0:
+                if (_ppu.CpuCanAccessOam) _oam[address - 0xFE00] = value;
+                break;
             case < 0xFF00: break;
             case >= 0xFF04 and <= 0xFF07:
                 _timer.Write(address, value);

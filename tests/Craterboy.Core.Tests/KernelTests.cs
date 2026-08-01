@@ -274,10 +274,10 @@ public sealed class KernelTests
         priority.WriteMemory(0xFE00, 16);
         priority.WriteMemory(0xFE01, 8);
         priority.WriteMemory(0xFE02, 0);
+        priority.WriteMemory(0xFE03, 0x80); // sprite behind nonzero background
         priority.WriteMemory(0x9800, 0);
         priority.WriteMemory(0xFF47, 0xE4);
         priority.WriteMemory(0xFF40, 0x93); // BG and sprites on
-        priority.WriteMemory(0xFE03, 0x80); // sprite behind nonzero background
         priority.RunCycles(252);
         priority.CopyFrame(frame);
         Assert.Equal((byte)1, frame[0]);
@@ -327,6 +327,30 @@ public sealed class KernelTests
         var frame = new byte[160 * 144];
         emulator.CopyFrame(frame);
         Assert.Equal((byte)2, frame[1]);
+    }
+
+    [Fact]
+    public void PpuBlocksCpuVramAndOamAccessDuringTransferModes()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0x8000, 0x12);
+        emulator.WriteMemory(0xFE00, 0x34);
+        emulator.WriteMemory(0xFF40, 0x80); // LCD on: mode 2
+
+        Assert.Equal((byte)0x12, emulator.ReadMemory(0x8000));
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
+        emulator.WriteMemory(0x8000, 0x78); // VRAM is writable in mode 2
+        emulator.WriteMemory(0xFE00, 0x56); // OAM is blocked in mode 2
+
+        emulator.RunCycles(80); // mode 3
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0x8000));
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
+        emulator.WriteMemory(0x8000, 0x9A);
+        emulator.WriteMemory(0xFE00, 0xBC);
+
+        emulator.RunCycles(172); // mode 0
+        Assert.Equal((byte)0x78, emulator.ReadMemory(0x8000));
+        Assert.Equal((byte)0x34, emulator.ReadMemory(0xFE00));
     }
 
     [Fact]

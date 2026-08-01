@@ -26,6 +26,8 @@ renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 160×144 pixels. Window positioning and its independent tile-map line counter
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
 overlap priority; FIFO behavior remains separate.
+CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
+restored during HBlank/VBlank.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
