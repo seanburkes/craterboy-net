@@ -19,7 +19,7 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | timer, joypad, serial, DMA | device state/scheduler | partial | timer, OAM DMA, serial endpoint, and FF00 joypad edge tests |
 | `Core/display.c` | `PpuDevice` | partial | LCD mode timing/reset, edge-triggered LY/LYC/STAT interrupts, CPU VRAM/OAM access blocking, DMG background/window/sprite tile and palette rendering including 8×16 sprites and overlap priority, and raw frame-buffer tests |
 | `Core/apu.c` | `ApuDevice` | partial | NR50/NR51 mixer routing, channel 1/2/4 envelope and sweep foundations, channel 3 frequency/wave RAM and NR32 mute, channel 4 NR43 noise cadence, four channel trigger/length/status, and bounded PCM mixing; hardware fidelity remains partial |
-| `Core/save_state.c` | `InputRecording` / BESS | partial | versioned input recording, exact-cycle replay, and deterministic state hashing; full BESS state remains deferred |
+| `Core/save_state.c` | `InputRecording` / BESS | partial | versioned input recording, exact-cycle replay, deterministic hashing including cartridge state; full BESS state remains deferred |
 | camera, printer, rumble, WorkBoy | accessories | deferred | — |
 | SGB, debugger, cheats, rewind | extended services | deferred | — |
 
