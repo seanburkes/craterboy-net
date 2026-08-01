@@ -67,6 +67,11 @@ including the memory forms that use `(HL)`. The HALT opcode remains a separate
 control-flow operation, and the transfer block is covered opcode-by-opcode
 against SameBoy.
 
+Immediate accumulator arithmetic and logic (`ADD`, `ADC`, `SUB`, `SBC`, `AND`,
+`XOR`, `OR`, and `CP` with an 8-bit operand) uses the same flag helpers as the
+register ALU operations while retaining the instruction-specific 8 T-cycle
+timing. These immediate forms are included in the differential suite.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.

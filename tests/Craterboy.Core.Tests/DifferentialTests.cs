@@ -128,6 +128,22 @@ public sealed class DifferentialTests
     }
 
     [Fact]
+    public void ImmediateAccumulatorOperationsMatchOracle()
+    {
+        foreach (var opcode in new byte[] { 0xC6, 0xCE, 0xD6, 0xDE, 0xE6, 0xEE, 0xF6, 0xFE })
+        {
+            var rom = MakeRom();
+            rom[0x100] = opcode;
+            rom[0x101] = 0x01;
+            var managed = CreateManaged(rom);
+            using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+    }
+
+    [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
         var rom = MakeRom();
