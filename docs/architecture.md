@@ -43,6 +43,8 @@ Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present.
 Channel 4 noise LFSR, trigger/length timing, status, and PCM mixing are also
 present.
+Channel 1 and channel 2 pulse phases reset on trigger and advance from their
+frequency registers, keeping their duty waveforms independent.
 NR50 master volume and NR51 per-channel routing now shape the emitted PCM.
 Channel 2 envelope timing now mirrors channel 1’s frame-step behavior.
 Channel 4 envelope timing is covered by the same deterministic cadence.

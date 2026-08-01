@@ -14,10 +14,13 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _sweepTicks;
     private int _channel1Frequency;
     private bool _sweepEnabled;
+    private int _wave1Phase;
     private int _channel2Length;
     private bool _channel2Enabled;
     private int _channel2Volume;
     private int _channel2EnvelopeTimer;
+    private int _channel2Frequency;
+    private int _wave2Phase;
     private int _channel3Length;
     private bool _channel3Enabled;
     private int _wave3Phase;
@@ -30,7 +33,6 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _noiseTimer;
     private bool _mixerConfigured;
     private int _sampleCycles;
-    private int _wavePhase;
     private readonly short[] _samples = new short[4096];
     private int _sampleRead;
     private int _sampleWrite;
@@ -50,10 +52,13 @@ internal sealed class ApuDevice : ICycleParticipant
         _sweepTicks = 0;
         _channel1Frequency = 0;
         _sweepEnabled = false;
+        _wave1Phase = 0;
         _channel2Length = 0;
         _channel2Enabled = false;
         _channel2Volume = 0;
         _channel2EnvelopeTimer = 0;
+        _channel2Frequency = 0;
+        _wave2Phase = 0;
         _channel3Length = 0;
         _channel3Enabled = false;
         _wave3Phase = 0;
@@ -66,7 +71,6 @@ internal sealed class ApuDevice : ICycleParticipant
         _noiseTimer = 0;
         _mixerConfigured = false;
         _sampleCycles = 0;
-        _wavePhase = 0;
         _sampleRead = 0;
         _sampleWrite = 0;
         _sampleCount = 0;
@@ -94,10 +98,13 @@ internal sealed class ApuDevice : ICycleParticipant
                 _sweepTicks = 0;
                 _channel1Frequency = 0;
                 _sweepEnabled = false;
+                _wave1Phase = 0;
                 _channel2Length = 0;
                 _channel2Enabled = false;
                 _channel2Volume = 0;
                 _channel2EnvelopeTimer = 0;
+                _channel2Frequency = 0;
+                _wave2Phase = 0;
                 _channel3Length = 0;
                 _channel3Enabled = false;
                 _wave3Phase = 0;
@@ -132,14 +139,19 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF13:
                 _channel1Frequency = (_channel1Frequency & 0x700) | value;
                 break;
+            case 0xFF18:
+                _channel2Frequency = (_channel2Frequency & 0x700) | value;
+                break;
             case 0xFF16:
                 _channel2Length = 64 - (value & 0x3F);
                 break;
             case 0xFF19 when (value & 0x80) != 0:
                 if (_channel2Length == 0) _channel2Length = 64;
+                _channel2Frequency = (_channel2Frequency & 0x0FF) | ((value & 0x07) << 8);
                 _channel2Volume = _io[0x17] >> 4;
                 _channel2EnvelopeTimer = (_io[0x17] & 0x07) == 0 ? 8 : (_io[0x17] & 0x07);
                 _channel2Enabled = (_io[0x17] & 0xF8) != 0;
+                _wave2Phase = 0;
                 UpdateStatus();
                 break;
             case 0xFF1B:
@@ -175,6 +187,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _envelopeTimer = (_io[0x12] & 0x07) == 0 ? 8 : (_io[0x12] & 0x07);
                 _sweepTicks = 0;
                 _sweepEnabled = (_io[0x10] & 0x70) != 0;
+                _wave1Phase = 0;
                 UpdateStatus();
                 break;
         }
@@ -273,14 +286,16 @@ internal sealed class ApuDevice : ICycleParticipant
         if (_channel1Enabled)
         {
             var duty = (_io[0x11] >> 6) & 0x03;
-            var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
+            var high = ((DutyPatterns[duty] >> (7 - _wave1Phase)) & 1) != 0;
             channels[0] = high ? _channel1Volume * 2048 : -_channel1Volume * 2048;
+            _wave1Phase = (_wave1Phase + Math.Max(1, _channel1Frequency >> 8)) & 7;
         }
         if (_channel2Enabled)
         {
             var duty = (_io[0x16] >> 6) & 0x03;
-            var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
+            var high = ((DutyPatterns[duty] >> (7 - _wave2Phase)) & 1) != 0;
             channels[1] = high ? _channel2Volume * 2048 : -_channel2Volume * 2048;
+            _wave2Phase = (_wave2Phase + Math.Max(1, _channel2Frequency >> 8)) & 7;
         }
         if (_channel3Enabled)
         {
@@ -315,7 +330,6 @@ internal sealed class ApuDevice : ICycleParticipant
         var rightVolume = _mixerConfigured ? (_io[0x24] & 0x07) + 1 : 8;
         var leftVolume = _mixerConfigured ? ((_io[0x24] >> 4) & 0x07) + 1 : 8;
         var sample = (left * leftVolume + right * rightVolume) / 16;
-        _wavePhase = (_wavePhase + 1) & 7;
         sample = Math.Clamp(sample, short.MinValue, short.MaxValue);
         if (_sampleCount == _samples.Length)
         {
