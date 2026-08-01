@@ -282,8 +282,11 @@ public sealed class Emulator
         0x3C => Increment(() => _state.Cpu.A, v => _state.Cpu.A = v),
         0x3D => Decrement(() => _state.Cpu.A, v => _state.Cpu.A = v),
         >= 0x80 and <= 0x87 => AddA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        >= 0x88 and <= 0x8F => AddCarryA(ReadRegister(opcode & 7), (opcode & 7) == 6),
         >= 0x90 and <= 0x97 => SubA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        >= 0x98 and <= 0x9F => SubCarryA(ReadRegister(opcode & 7), (opcode & 7) == 6),
         >= 0xA0 and <= 0xA7 => AndA(ReadRegister(opcode & 7), (opcode & 7) == 6),
+        >= 0xA8 and <= 0xAF => XorRegisterA(ReadRegister(opcode & 7), (opcode & 7) == 6),
         >= 0xB0 and <= 0xB7 => OrA(ReadRegister(opcode & 7), (opcode & 7) == 6),
         >= 0xB8 and <= 0xBF => CompareA(ReadRegister(opcode & 7), (opcode & 7) == 6),
         0x18 => RelativeJump(true),
@@ -291,7 +294,6 @@ public sealed class Emulator
         0x28 => RelativeJump(Flag(CpuFlags.Zero)),
         0x30 => RelativeJump(!Flag(CpuFlags.Carry)),
         0x38 => RelativeJump(Flag(CpuFlags.Carry)),
-        0xAF => XorA(),
         0xC3 => Jump(),
         0xC2 => AbsoluteJump(!Flag(CpuFlags.Zero)),
         0xCA => AbsoluteJump(Flag(CpuFlags.Zero)),
@@ -351,6 +353,8 @@ public sealed class Emulator
             0xC1 or 0xD1 or 0xE1 or 0xF1 or 0xC9 => 12,
             0x77 or 0x7E or 0x02 or 0x0A or 0x12 or 0x1A => 8,
             >= 0x80 and <= 0x87 or >= 0x90 and <= 0x97 or >= 0xA0 and <= 0xA7 or >= 0xB0 and <= 0xBF
+                => (opcode & 7) == 6 ? 16 : 4,
+            >= 0x88 and <= 0x8F or >= 0x98 and <= 0x9F or >= 0xA8 and <= 0xAF
                 => (opcode & 7) == 6 ? 16 : 4,
             0x18 or 0x20 or 0x28 or 0x30 or 0x38 => 12,
             _ => 8,
@@ -718,6 +722,18 @@ public sealed class Emulator
 
     private int AddImmediate() { AddA(Read(_state.Cpu.PC++), false); return 8; }
 
+    private int AddCarryA(byte value, bool memory)
+    {
+        var carry = Flag(CpuFlags.Carry) ? 1 : 0;
+        var a = _state.Cpu.A;
+        var result = a + value + carry;
+        _state.Cpu.A = (byte)result;
+        _state.Cpu.F = (byte)((result & 0xFF) == 0 ? CpuFlags.Zero : 0);
+        if (((a & 0x0F) + (value & 0x0F) + carry) > 0x0F) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
+        if (result > 0xFF) _state.Cpu.F |= (byte)CpuFlags.Carry;
+        return memory ? 8 : 4;
+    }
+
     private int AddCarryImmediate()
     {
         var value = Read(_state.Cpu.PC++);
@@ -743,6 +759,18 @@ public sealed class Emulator
 
     private int SubImmediate() { SubA(Read(_state.Cpu.PC++), false); return 8; }
 
+    private int SubCarryA(byte value, bool memory)
+    {
+        var carry = Flag(CpuFlags.Carry) ? 1 : 0;
+        var a = _state.Cpu.A;
+        var result = a - value - carry;
+        _state.Cpu.A = (byte)result;
+        _state.Cpu.F = (byte)(CpuFlags.Subtract | ((result & 0xFF) == 0 ? CpuFlags.Zero : 0));
+        if ((a & 0x0F) < (value & 0x0F) + carry) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
+        if (a < value + carry) _state.Cpu.F |= (byte)CpuFlags.Carry;
+        return memory ? 8 : 4;
+    }
+
     private int SubCarryImmediate()
     {
         var value = Read(_state.Cpu.PC++);
@@ -756,6 +784,7 @@ public sealed class Emulator
         return 8;
     }
     private int AndA(byte value, bool memory) { _state.Cpu.A &= value; _state.Cpu.F = (byte)(CpuFlags.HalfCarry | (_state.Cpu.A == 0 ? CpuFlags.Zero : 0)); return memory ? 16 : 4; }
+    private int XorRegisterA(byte value, bool memory) { _state.Cpu.A ^= value; _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0); return memory ? 8 : 4; }
     private int OrA(byte value, bool memory) { _state.Cpu.A |= value; _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0); return memory ? 16 : 4; }
     private int CompareA(byte value, bool memory)
     {
