@@ -44,7 +44,8 @@ also present.
 Channel 4 noise LFSR, trigger/length timing, status, and PCM mixing are also
 present.
 Channel 1 and channel 2 pulse phases reset on trigger and advance from their
-frequency registers, keeping their duty waveforms independent.
+frequency registers, keeping their duty waveforms independent. Active channels
+also apply high-frequency register writes without requiring a retrigger.
 NR50 master volume and NR51 per-channel routing now shape the emitted PCM.
 Channel 2 envelope timing now mirrors channel 1’s frame-step behavior.
 Channel 4 envelope timing is covered by the same deterministic cadence.

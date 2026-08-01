@@ -462,6 +462,28 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuActivePulseRespondsToFrequencyWriteWithoutRetrigger()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF16, 0x00); // duty 0
+        emulator.WriteMemory(0xFF17, 0xF0); // DAC and volume
+        emulator.WriteMemory(0xFF19, 0x80); // trigger at low frequency
+        emulator.RunCycles(95);
+        var first = new short[1];
+        Assert.Equal(1, emulator.CopyAudioSamples(first));
+
+        emulator.WriteMemory(0xFF19, 0x87); // update frequency, no trigger
+        emulator.RunCycles(95 * 2);
+        var following = new short[2];
+        Assert.Equal(2, emulator.CopyAudioSamples(following));
+        Assert.NotEqual(first[0], following[1]);
+        Assert.Equal((byte)0x82, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void ApuChannelThreePlaysWaveRamAndReportsStatus()
     {
         var rom = MakeRom();
