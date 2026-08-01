@@ -362,6 +362,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelFourNoiseTriggersAndExpiresByLength()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF21, 0xF0); // DAC and volume
+        emulator.WriteMemory(0xFF20, 0x3F); // length = 1 tick
+        emulator.WriteMemory(0xFF22, 0x00);
+        emulator.WriteMemory(0xFF23, 0xC0); // length enable + trigger
+        Assert.Equal((byte)0x88, emulator.PeekMemory(0xFF26));
+
+        emulator.RunCycles(95);
+        var samples = new short[1];
+        Assert.Equal(1, emulator.CopyAudioSamples(samples));
+        Assert.NotEqual((short)0, samples[0]);
+        emulator.RunCycles(8192 - 95);
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
