@@ -72,6 +72,9 @@ Immediate accumulator arithmetic and logic (`ADD`, `ADC`, `SUB`, `SBC`, `AND`,
 register ALU operations while retaining the instruction-specific 8 T-cycle
 timing. These immediate forms are included in the differential suite.
 
+The memory forms `INC (HL)` and `DEC (HL)` reuse the byte flag behavior while
+performing the read-modify-write through the bus and taking 12 T-cycles.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.

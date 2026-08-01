@@ -143,6 +143,25 @@ public sealed class DifferentialTests
         }
     }
 
+    [Theory]
+    [InlineData(0x34, 0x0F, 0x10)]
+    [InlineData(0x35, 0x10, 0x0F)]
+    public void MemoryIncrementAndDecrementMatchOracle(byte opcode, byte initial, byte expected)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x21, 0x00, 0xC0, opcode }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+        managed.WriteMemory(0xC000, initial);
+        oracle.Write(0xC000, initial);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(expected, managed.PeekMemory(0xC000));
+        Assert.Equal(expected, oracle.Read(0xC000));
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
     [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {

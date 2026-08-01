@@ -196,6 +196,8 @@ public sealed class Emulator
         0xEE => XorImmediate(),
         0xF6 => OrImmediate(),
         0xFE => CompareImmediate(),
+        0x34 => IncrementHl(),
+        0x35 => DecrementHl(),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -267,6 +269,7 @@ public sealed class Emulator
             >= 0x40 and <= 0x7F when opcode != 0x76 =>
                 (opcode & 7) == 6 || ((opcode >> 3) & 7) == 6 ? 8 : 4,
             0xC6 or 0xCE or 0xD6 or 0xDE or 0xE6 or 0xEE or 0xF6 or 0xFE => 8,
+            0x34 or 0x35 => 12,
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -405,6 +408,13 @@ public sealed class Emulator
             ((value & 0x0F) == 0x0F ? (byte)CpuFlags.HalfCarry : (byte)0));
         return 4;
     }
+
+    private int IncrementHl()
+    {
+        var value = Read(_state.Cpu.HL);
+        Increment(() => value, result => Write(_state.Cpu.HL, result));
+        return 12;
+    }
     private int Decrement(Func<byte> getter, Action<byte> setter)
     {
         var value = getter();
@@ -414,6 +424,13 @@ public sealed class Emulator
             (result == 0 ? (byte)CpuFlags.Zero : (byte)0) |
             ((value & 0x0F) == 0 ? (byte)CpuFlags.HalfCarry : (byte)0));
         return 4;
+    }
+
+    private int DecrementHl()
+    {
+        var value = Read(_state.Cpu.HL);
+        Decrement(() => value, result => Write(_state.Cpu.HL, result));
+        return 12;
     }
     private byte ReadRegister(int index) => index switch
     {
