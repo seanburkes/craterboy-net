@@ -17,6 +17,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _channel2Length;
     private bool _channel2Enabled;
     private int _channel2Volume;
+    private int _channel2EnvelopeTimer;
     private int _channel3Length;
     private bool _channel3Enabled;
     private int _wave3Phase;
@@ -49,6 +50,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel2Length = 0;
         _channel2Enabled = false;
         _channel2Volume = 0;
+        _channel2EnvelopeTimer = 0;
         _channel3Length = 0;
         _channel3Enabled = false;
         _wave3Phase = 0;
@@ -89,6 +91,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel2Length = 0;
                 _channel2Enabled = false;
                 _channel2Volume = 0;
+                _channel2EnvelopeTimer = 0;
                 _channel3Length = 0;
                 _channel3Enabled = false;
                 _wave3Phase = 0;
@@ -126,6 +129,7 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF19 when (value & 0x80) != 0:
                 if (_channel2Length == 0) _channel2Length = 64;
                 _channel2Volume = _io[0x17] >> 4;
+                _channel2EnvelopeTimer = (_io[0x17] & 0x07) == 0 ? 8 : (_io[0x17] & 0x07);
                 _channel2Enabled = (_io[0x17] & 0xF8) != 0;
                 UpdateStatus();
                 break;
@@ -198,6 +202,13 @@ internal sealed class ApuDevice : ICycleParticipant
             else if ((_io[0x12] & 0x08) == 0 && _channel1Volume > 0) _channel1Volume--;
             _io[0x12] = (byte)((_io[0x12] & 0x0F) | (_channel1Volume << 4));
             _envelopeTimer = _io[0x12] & 0x07;
+        }
+        if (_frameStep == 0 && _channel2Enabled && (_io[0x17] & 0x07) != 0 && --_channel2EnvelopeTimer == 0)
+        {
+            if ((_io[0x17] & 0x08) != 0 && _channel2Volume < 15) _channel2Volume++;
+            else if ((_io[0x17] & 0x08) == 0 && _channel2Volume > 0) _channel2Volume--;
+            _io[0x17] = (byte)((_io[0x17] & 0x0F) | (_channel2Volume << 4));
+            _channel2EnvelopeTimer = _io[0x17] & 0x07;
         }
         if (_channel1Enabled && _sweepEnabled && ++_sweepTicks >= 4)
         {
