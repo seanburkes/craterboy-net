@@ -16,6 +16,7 @@ public sealed class Emulator
     private SerialDevice _serial = null!;
     private JoypadDevice _joypad = null!;
     private PpuDevice _ppu = null!;
+    private ApuDevice _apu = null!;
     private Cartridge? _cartridge;
     private byte[]? _bootRom;
     private bool _bootMapped;
@@ -29,10 +30,12 @@ public sealed class Emulator
         _serial = new SerialDevice(_io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_io);
         _ppu = new PpuDevice(_io, _vram, _oam);
+        _apu = new ApuDevice(_io);
         _state.Scheduler.Register(_timer);
         _state.Scheduler.Register(_dma);
         _state.Scheduler.Register(_serial);
         _state.Scheduler.Register(_ppu);
+        _state.Scheduler.Register(_apu);
         Reset();
     }
 
@@ -77,6 +80,7 @@ public sealed class Emulator
         _serial.Reset();
         _joypad.Reset();
         _ppu.Reset();
+        _apu.Reset();
         _bootMapped = _bootRom is not null && !_options.SkipBootRom;
         var cpu = _state.Cpu;
         cpu.A = _model.IsColor() ? (byte)0x11 : (byte)0x01;
@@ -339,6 +343,7 @@ public sealed class Emulator
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
+            >= 0xFF10 and <= 0xFF26 => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 => _ppu.Read(address),
             >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
             < 0xFF80 => _io[address - 0xFF00],
@@ -370,6 +375,9 @@ public sealed class Emulator
                 break;
             case 0xFF00:
                 _joypad.Write(value);
+                break;
+            case >= 0xFF10 and <= 0xFF26:
+                _apu.Write(address, value);
                 break;
             case >= 0xFF40 and <= 0xFF45:
                 _ppu.Write(address, value);
