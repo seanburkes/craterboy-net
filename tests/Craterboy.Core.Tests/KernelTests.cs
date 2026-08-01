@@ -108,6 +108,25 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void InterruptRegisterHighBitsDoNotWakeOrDispatchCpu()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xFB, 0x00, 0x76 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.StepInstruction();
+        emulator.StepInstruction();
+        emulator.StepInstruction();
+
+        emulator.WriteMemory(0xFFFF, 0xE0);
+        emulator.WriteMemory(0xFF0F, 0xE0);
+
+        Assert.Equal(4, emulator.StepInstruction());
+        Assert.Equal((ushort)0x0103, emulator.Registers.ProgramCounter);
+        Assert.True(emulator.Registers.Halted);
+        Assert.True(emulator.Registers.InterruptMasterEnable);
+    }
+
+    [Fact]
     public void CpuVerticalSliceExecutesLoadsStoreAndXor()
     {
         var rom = MakeRom();
