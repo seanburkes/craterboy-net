@@ -374,6 +374,31 @@ public sealed class DifferentialTests
     }
 
     [Fact]
+    public void RegisterAdcSbcAndXorOperationsMatchOracle()
+    {
+        foreach (var opcode in Enumerable.Concat(
+                     Enumerable.Range(0x88, 8),
+                     Enumerable.Concat(Enumerable.Range(0x98, 8), Enumerable.Range(0xA8, 8))))
+        {
+            var register = opcode & 7;
+            var prefix = register == 6 ? new byte[] { 0x21, 0x00, 0xC0 } : Array.Empty<byte>();
+            var rom = MakeRom();
+            prefix.Concat(new[] { (byte)opcode }).ToArray().CopyTo(rom, 0x100);
+            var managed = CreateManaged(rom);
+            using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+            if (register == 6)
+            {
+                managed.WriteMemory(0xC000, 0x81);
+                oracle.Write(0xC000, 0x81);
+                Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            }
+
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+    }
+
+    [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
         var rom = MakeRom();

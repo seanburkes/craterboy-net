@@ -106,6 +106,10 @@ of the offset for H/C, as required by the SM83, while applying the offset as a
 signed byte to the 16-bit result. `ADD SP,e8` takes 16 T-cycles, `LD HL,SP+e8`
 takes 12, and `LD SP,HL` takes 8 without changing flags.
 
+The register ALU decoder now covers `ADC A,r`, `SBC A,r`, and `XOR A,r`,
+including `(HL)` forms. These operations share the immediate ALU flag rules
+and retain 4 T-cycles for registers and 8 T-cycles for `(HL)`.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.
