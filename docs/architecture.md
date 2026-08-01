@@ -92,6 +92,10 @@ the shared stack path when taken. `RETI` restores the return address and enables
 IME, while the eight `RST` vectors push the post-instruction PC before jumping
 to their fixed destinations.
 
+`EI` tracks a one-instruction delayed IME enable in CPU state, and `DI` clears
+both IME and a pending enable. The pending state is included in deterministic
+state hashes so replay checkpoints distinguish the interrupt boundary.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.

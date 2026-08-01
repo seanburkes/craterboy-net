@@ -32,6 +32,32 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void EnableInterruptsTakesEffectAfterTheFollowingInstruction()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xFB, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+
+        emulator.StepInstruction();
+        Assert.False(emulator.Registers.InterruptMasterEnable);
+        emulator.StepInstruction();
+        Assert.True(emulator.Registers.InterruptMasterEnable);
+    }
+
+    [Fact]
+    public void DisableInterruptsCancelsPendingEnable()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xFB, 0xF3, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+
+        emulator.StepInstruction();
+        emulator.StepInstruction();
+        emulator.StepInstruction();
+        Assert.False(emulator.Registers.InterruptMasterEnable);
+    }
+
+    [Fact]
     public void CpuVerticalSliceExecutesLoadsStoreAndXor()
     {
         var rom = MakeRom();
