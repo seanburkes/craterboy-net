@@ -178,6 +178,20 @@ public sealed class DifferentialTests
         AssertRegistersEqual(managed.Registers, oracle.Registers);
     }
 
+    [Theory]
+    [InlineData(0x07)] [InlineData(0x0F)] [InlineData(0x17)] [InlineData(0x1F)]
+    public void AccumulatorRotatesMatchOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x3E, 0x81, opcode }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
     [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
