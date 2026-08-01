@@ -33,7 +33,8 @@ Disabling the LCD resets LY/timing state and blanks the raw frame buffer.
 
 The APU is now a scheduler-owned register and power-control device. NR52
 gates access to the channel registers; channel sequencing and sample emission
-remain deferred to later APU slices.
+remain deferred to later APU slices. Channel 1 has basic trigger, length, and
+NR52 status timing.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
