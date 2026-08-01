@@ -24,6 +24,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private bool _channel4Enabled;
     private int _channel4Volume;
     private ushort _noiseLfsr;
+    private bool _mixerConfigured;
     private int _sampleCycles;
     private int _wavePhase;
     private readonly short[] _samples = new short[4096];
@@ -55,6 +56,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel4Enabled = false;
         _channel4Volume = 0;
         _noiseLfsr = 0x7FFF;
+        _mixerConfigured = false;
         _sampleCycles = 0;
         _wavePhase = 0;
         _sampleRead = 0;
@@ -94,6 +96,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel4Enabled = false;
                 _channel4Volume = 0;
                 _noiseLfsr = 0x7FFF;
+                _mixerConfigured = false;
                 Array.Clear(_io, 0x30, 0x10);
             }
             _powered = powered;
@@ -108,6 +111,7 @@ internal sealed class ApuDevice : ICycleParticipant
             return;
         }
         _io[address - 0xFF00] = value;
+        if (address is 0xFF24 or 0xFF25) _mixerConfigured = true;
         switch (address)
         {
             case 0xFF11:
@@ -232,18 +236,18 @@ internal sealed class ApuDevice : ICycleParticipant
 
     private void EmitSample()
     {
-        var sample = (short)0;
+        Span<int> channels = stackalloc int[4];
         if (_channel1Enabled)
         {
             var duty = (_io[0x11] >> 6) & 0x03;
             var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
-            sample = (short)(high ? _channel1Volume * 2048 : -_channel1Volume * 2048);
+            channels[0] = high ? _channel1Volume * 2048 : -_channel1Volume * 2048;
         }
         if (_channel2Enabled)
         {
             var duty = (_io[0x16] >> 6) & 0x03;
             var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
-            sample += (short)(high ? _channel2Volume * 2048 : -_channel2Volume * 2048);
+            channels[1] = high ? _channel2Volume * 2048 : -_channel2Volume * 2048;
         }
         if (_channel3Enabled)
         {
@@ -251,17 +255,28 @@ internal sealed class ApuDevice : ICycleParticipant
             var nibble = (_wave3Phase & 1) == 0 ? packed >> 4 : packed & 0x0F;
             var volumeCode = (_io[0x1C] >> 5) & 0x03;
             var waveSample = volumeCode switch { 0 => 0, 1 => nibble, 2 => nibble >> 1, _ => nibble >> 2 };
-            sample += (short)((waveSample - 4) * 2048);
+            channels[2] = (waveSample - 4) * 2048;
             _wave3Phase = (_wave3Phase + 1) & 31;
         }
         if (_channel4Enabled)
         {
             var high = (_noiseLfsr & 1) == 0;
-            sample += (short)(high ? _channel4Volume * 2048 : -_channel4Volume * 2048);
+            channels[3] = high ? _channel4Volume * 2048 : -_channel4Volume * 2048;
             var feedback = (_noiseLfsr & 1) ^ ((_noiseLfsr >> 1) & 1);
             _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
             if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
         }
+        var routing = _mixerConfigured ? _io[0x25] : 0xFF;
+        var left = 0;
+        var right = 0;
+        for (var channel = 0; channel < channels.Length; channel++)
+        {
+            if ((routing & (1 << channel)) != 0) right += channels[channel];
+            if ((routing & (1 << (channel + 4))) != 0) left += channels[channel];
+        }
+        var rightVolume = _mixerConfigured ? (_io[0x24] & 0x07) + 1 : 8;
+        var leftVolume = _mixerConfigured ? ((_io[0x24] >> 4) & 0x07) + 1 : 8;
+        var sample = (left * leftVolume + right * rightVolume) / 16;
         _wavePhase = (_wavePhase + 1) & 7;
         sample = Math.Clamp(sample, short.MinValue, short.MaxValue);
         if (_sampleCount == _samples.Length)
@@ -269,7 +284,7 @@ internal sealed class ApuDevice : ICycleParticipant
             _sampleRead = (_sampleRead + 1) % _samples.Length;
             _sampleCount--;
         }
-        _samples[_sampleWrite] = sample;
+        _samples[_sampleWrite] = (short)sample;
         _sampleWrite = (_sampleWrite + 1) % _samples.Length;
         _sampleCount++;
     }

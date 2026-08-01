@@ -43,6 +43,7 @@ Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present.
 Channel 4 noise LFSR, trigger/length timing, status, and PCM mixing are also
 present.
+NR50 master volume and NR51 per-channel routing now shape the emitted PCM.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
