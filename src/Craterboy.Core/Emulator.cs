@@ -220,6 +220,9 @@ public sealed class Emulator
         0xF0 => ReadHighPage(),
         0xF2 => ReadCPage(),
         0xFA => ReadAbsoluteA(),
+        0xE8 => AddSignedToSp(),
+        0xF8 => LoadHlFromSignedSp(),
+        0xF9 => LoadSpFromHl(),
         0x07 => RotateLeftCircularA(),
         0x0F => RotateRightCircularA(),
         0x17 => RotateLeftA(),
@@ -325,6 +328,9 @@ public sealed class Emulator
             0xE0 or 0xF0 => 12,
             0xEA or 0xFA => 16,
             0x08 => 20,
+            0xE8 => 16,
+            0xF8 => 12,
+            0xF9 => 8,
             0x07 or 0x0F or 0x17 or 0x1F => 4,
             0x27 or 0x2F or 0x37 or 0x3F => 4,
             0xF3 or 0xFB => 4,
@@ -509,6 +515,38 @@ public sealed class Emulator
     {
         _state.Cpu.A = Read((ushort)(0xFF00 | _state.Cpu.C));
         return 8;
+    }
+
+    private int AddSignedToSp()
+    {
+        var offset = (sbyte)Read(_state.Cpu.PC++);
+        _state.Cpu.SP = AddSignedOffset(_state.Cpu.SP, offset);
+        return 16;
+    }
+
+    private int LoadHlFromSignedSp()
+    {
+        var offset = (sbyte)Read(_state.Cpu.PC++);
+        _state.Cpu.HL = AddSignedOffset(_state.Cpu.SP, offset);
+        return 12;
+    }
+
+    private int LoadSpFromHl()
+    {
+        _state.Cpu.SP = _state.Cpu.HL;
+        return 8;
+    }
+
+    private ushort AddSignedOffset(ushort value, sbyte offset)
+    {
+        var unsignedOffset = (byte)offset;
+        var result = value + offset;
+        _state.Cpu.F = (byte)
+        (
+            (((value & 0x0F) + (unsignedOffset & 0x0F)) > 0x0F ? (byte)CpuFlags.HalfCarry : 0) |
+            (((value & 0xFF) + unsignedOffset) > 0xFF ? (byte)CpuFlags.Carry : 0)
+        );
+        return (ushort)result;
     }
 
     private int IncrementPair(Func<ushort> getter, Action<ushort> setter)

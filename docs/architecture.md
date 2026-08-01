@@ -101,6 +101,11 @@ to their fixed destinations.
 both IME and a pending enable. The pending state is included in deterministic
 state hashes so replay checkpoints distinguish the interrupt boundary.
 
+Signed SP-relative operations use the unsigned low-nibble and low-byte views
+of the offset for H/C, as required by the SM83, while applying the offset as a
+signed byte to the 16-bit result. `ADD SP,e8` takes 16 T-cycles, `LD HL,SP+e8`
+takes 12, and `LD SP,HL` takes 8 without changing flags.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.

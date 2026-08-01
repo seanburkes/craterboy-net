@@ -346,6 +346,33 @@ public sealed class DifferentialTests
         AssertRegistersEqual(managed.Registers, oracle.Registers);
     }
 
+    [Theory]
+    [InlineData(0xE8, 1)] [InlineData(0xE8, -2)]
+    [InlineData(0xF8, 1)] [InlineData(0xF8, -2)]
+    public void SignedStackPointerOffsetsMatchOracle(byte opcode, sbyte offset)
+    {
+        var rom = MakeRom();
+        new byte[] { opcode, unchecked((byte)offset) }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
+    [Fact]
+    public void LoadStackPointerFromHlMatchesOracle()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x21, 0x34, 0x12, 0xF9 }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
     [Fact]
     public void ExpandedAluAndIncrementInstructionsMatchOracle()
     {
