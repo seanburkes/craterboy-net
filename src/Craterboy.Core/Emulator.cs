@@ -214,6 +214,10 @@ public sealed class Emulator
         0x0F => RotateRightCircularA(),
         0x17 => RotateLeftA(),
         0x1F => RotateRightA(),
+        0x27 => DecimalAdjustA(),
+        0x2F => ComplementA(),
+        0x37 => SetCarryFlag(),
+        0x3F => ComplementCarryFlag(),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -289,6 +293,7 @@ public sealed class Emulator
             0x03 or 0x13 or 0x23 or 0x33 or 0x0B or 0x1B or 0x2B or 0x3B or
             0x09 or 0x19 or 0x29 or 0x39 => 8,
             0x07 or 0x0F or 0x17 or 0x1F => 4,
+            0x27 or 0x2F or 0x37 or 0x3F => 4,
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -465,6 +470,49 @@ public sealed class Emulator
         var carry = (byte)(_state.Cpu.A & 1);
         _state.Cpu.A = (byte)((_state.Cpu.A >> 1) | (Flag(CpuFlags.Carry) ? 0x80 : 0));
         _state.Cpu.F = (byte)(carry != 0 ? CpuFlags.Carry : 0);
+        return 4;
+    }
+
+    private int DecimalAdjustA()
+    {
+        var subtract = Flag(CpuFlags.Subtract);
+        var halfCarry = Flag(CpuFlags.HalfCarry);
+        var carry = Flag(CpuFlags.Carry);
+        var value = _state.Cpu.A;
+        if (!subtract)
+        {
+            if (carry || value > 0x99) { value += 0x60; carry = true; }
+            if (halfCarry || (value & 0x0F) > 9) value += 0x06;
+        }
+        else
+        {
+            if (carry) value -= 0x60;
+            if (halfCarry) value -= 0x06;
+        }
+        _state.Cpu.A = (byte)value;
+        _state.Cpu.F = (byte)((subtract ? CpuFlags.Subtract : 0) |
+            (value == 0 ? CpuFlags.Zero : 0) | (carry ? CpuFlags.Carry : 0));
+        return 4;
+    }
+
+    private int ComplementA()
+    {
+        _state.Cpu.A = (byte)~_state.Cpu.A;
+        _state.Cpu.F = (byte)((_state.Cpu.F & ((byte)CpuFlags.Zero | (byte)CpuFlags.Carry)) |
+            (byte)CpuFlags.Subtract | (byte)CpuFlags.HalfCarry);
+        return 4;
+    }
+
+    private int SetCarryFlag()
+    {
+        _state.Cpu.F = (byte)((_state.Cpu.F & (byte)CpuFlags.Zero) | (byte)CpuFlags.Carry);
+        return 4;
+    }
+
+    private int ComplementCarryFlag()
+    {
+        _state.Cpu.F = (byte)((_state.Cpu.F & (byte)CpuFlags.Zero) |
+            (Flag(CpuFlags.Carry) ? 0 : (byte)CpuFlags.Carry));
         return 4;
     }
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }

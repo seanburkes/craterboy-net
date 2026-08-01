@@ -83,6 +83,10 @@ The unprefixed accumulator rotations (`RLCA`, `RRCA`, `RLA`, and `RRA`) clear
 Z/N/H and expose the shifted-out bit through C, with the prior C entering only
 the non-circular forms. They execute in 4 T-cycles.
 
+`DAA` now performs decimal correction after addition and subtraction, while
+`CPL`, `SCF`, and `CCF` implement their documented flag-preservation rules.
+These accumulator/status instructions also execute in 4 T-cycles.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.
