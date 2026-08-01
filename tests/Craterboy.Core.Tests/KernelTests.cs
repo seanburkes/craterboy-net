@@ -383,6 +383,28 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuMixerHonorsNr51RoutingAndNr50Volume()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF14, 0x80);
+        emulator.WriteMemory(0xFF25, 0x00); // explicit mute
+        emulator.WriteMemory(0xFF24, 0x77);
+        emulator.RunCycles(95);
+        var samples = new short[1];
+        emulator.CopyAudioSamples(samples);
+        Assert.Equal((short)0, samples[0]);
+
+        emulator.WriteMemory(0xFF25, 0x11); // channel 1 to both sides
+        emulator.RunCycles(95);
+        emulator.CopyAudioSamples(samples);
+        Assert.NotEqual((short)0, samples[0]);
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
