@@ -398,6 +398,29 @@ public sealed class DifferentialTests
         }
     }
 
+    [Fact]
+    public void AllRegisterAluOperationsMatchOracle()
+    {
+        for (var opcode = 0x80; opcode <= 0xBF; opcode++)
+        {
+            var register = opcode & 7;
+            var prefix = register == 6 ? new byte[] { 0x21, 0x00, 0xC0 } : Array.Empty<byte>();
+            var rom = MakeRom();
+            prefix.Concat(new[] { (byte)opcode }).ToArray().CopyTo(rom, 0x100);
+            var managed = CreateManaged(rom);
+            using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+            if (register == 6)
+            {
+                managed.WriteMemory(0xC000, 0x81);
+                oracle.Write(0xC000, 0x81);
+                Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            }
+
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+    }
+
     [Theory]
     [InlineData(0x22)] [InlineData(0x32)] [InlineData(0x2A)] [InlineData(0x3A)] [InlineData(0x36)]
     public void AutoIndexedAndImmediateHlTransfersMatchOracle(byte opcode)

@@ -770,7 +770,7 @@ public sealed class Emulator
         _state.Cpu.F = (byte)((result & 0xFF) == 0 ? CpuFlags.Zero : 0);
         if (((a & 0x0F) + (value & 0x0F)) > 0x0F) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
         if (result > 0xFF) _state.Cpu.F |= (byte)CpuFlags.Carry;
-        return memory ? 16 : 4;
+        return memory ? 8 : 4;
     }
 
     private int AddImmediate() { AddA(Read(_state.Cpu.PC++), false); return 8; }
@@ -807,7 +807,7 @@ public sealed class Emulator
         _state.Cpu.F = (byte)(CpuFlags.Subtract | ((result & 0xFF) == 0 ? CpuFlags.Zero : 0));
         if ((a & 0x0F) < (value & 0x0F)) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
         if (a < value) _state.Cpu.F |= (byte)CpuFlags.Carry;
-        return memory ? 16 : 4;
+        return memory ? 8 : 4;
     }
 
     private int SubImmediate() { SubA(Read(_state.Cpu.PC++), false); return 8; }
@@ -836,9 +836,9 @@ public sealed class Emulator
         if (a < value + carry) _state.Cpu.F |= (byte)CpuFlags.Carry;
         return 8;
     }
-    private int AndA(byte value, bool memory) { _state.Cpu.A &= value; _state.Cpu.F = (byte)(CpuFlags.HalfCarry | (_state.Cpu.A == 0 ? CpuFlags.Zero : 0)); return memory ? 16 : 4; }
+    private int AndA(byte value, bool memory) { _state.Cpu.A &= value; _state.Cpu.F = (byte)(CpuFlags.HalfCarry | (_state.Cpu.A == 0 ? CpuFlags.Zero : 0)); return memory ? 8 : 4; }
     private int XorRegisterA(byte value, bool memory) { _state.Cpu.A ^= value; _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0); return memory ? 8 : 4; }
-    private int OrA(byte value, bool memory) { _state.Cpu.A |= value; _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0); return memory ? 16 : 4; }
+    private int OrA(byte value, bool memory) { _state.Cpu.A |= value; _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0); return memory ? 8 : 4; }
     private int CompareA(byte value, bool memory)
     {
         var a = _state.Cpu.A;
@@ -846,7 +846,7 @@ public sealed class Emulator
         _state.Cpu.F = (byte)(CpuFlags.Subtract | ((result & 0xFF) == 0 ? CpuFlags.Zero : 0));
         if ((a & 0x0F) < (value & 0x0F)) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
         if (a < value) _state.Cpu.F |= (byte)CpuFlags.Carry;
-        return memory ? 16 : 4;
+        return memory ? 8 : 4;
     }
 
     private int AndImmediate() { AndA(Read(_state.Cpu.PC++), false); return 8; }
