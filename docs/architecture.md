@@ -56,5 +56,8 @@ transactional. `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
 
+`InputRecording` provides a versioned, cycle-ordered event stream for
+deterministic replay; malformed recordings are rejected before publication.
+
 `Craterboy.Tester` is a headless conformance entry point. A native SameBoy
 adapter will live only in tests/CI and will never be included in packages.
