@@ -95,6 +95,26 @@ public sealed class Emulator
     public byte ReadMemory(ushort address) => Read(address);
     public void WriteMemory(ushort address, byte value) => Write(address, value);
 
+    public byte[] ComputeStateHash()
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write((byte)_model);
+            writer.Write(CycleCount);
+            writer.Write(_bootMapped);
+            writer.Write(_state.Cpu.A); writer.Write(_state.Cpu.F);
+            writer.Write(_state.Cpu.B); writer.Write(_state.Cpu.C);
+            writer.Write(_state.Cpu.D); writer.Write(_state.Cpu.E);
+            writer.Write(_state.Cpu.H); writer.Write(_state.Cpu.L);
+            writer.Write(_state.Cpu.SP); writer.Write(_state.Cpu.PC);
+            writer.Write(_state.Cpu.Ime); writer.Write(_state.Cpu.Halted);
+            writer.Write(_vram); writer.Write(_wram); writer.Write(_oam);
+            writer.Write(_io); writer.Write(_hram);
+        }
+        return System.Security.Cryptography.SHA256.HashData(stream.GetBuffer().AsSpan(0, checked((int)stream.Length)));
+    }
+
     public void SetButtonState(GameBoyButton button, bool pressed, int player = 0) =>
         _joypad.SetButtonState(button, pressed, player);
 
