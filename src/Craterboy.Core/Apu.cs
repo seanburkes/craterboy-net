@@ -11,7 +11,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private bool _channel1Enabled;
     private int _channel1Volume;
     private int _envelopeTimer;
-    private int _sweepTicks;
+    private int _sweepTimer;
     private int _channel1Frequency;
     private bool _sweepEnabled;
     private int _wave1Phase;
@@ -49,7 +49,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel1Enabled = false;
         _channel1Volume = 0;
         _envelopeTimer = 0;
-        _sweepTicks = 0;
+        _sweepTimer = 0;
         _channel1Frequency = 0;
         _sweepEnabled = false;
         _wave1Phase = 0;
@@ -95,7 +95,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel1Enabled = false;
                 _channel1Volume = 0;
                 _envelopeTimer = 0;
-                _sweepTicks = 0;
+                _sweepTimer = 0;
                 _channel1Frequency = 0;
                 _sweepEnabled = false;
                 _wave1Phase = 0;
@@ -190,8 +190,12 @@ internal sealed class ApuDevice : ICycleParticipant
                     _channel1Enabled = (_io[0x12] & 0xF8) != 0;
                     _channel1Volume = _io[0x12] >> 4;
                     _envelopeTimer = (_io[0x12] & 0x07) == 0 ? 8 : (_io[0x12] & 0x07);
-                    _sweepTicks = 0;
                     _sweepEnabled = (_io[0x10] & 0x70) != 0;
+                    _sweepTimer = SweepPeriodTicks();
+                    if ((_io[0x10] & 0x07) != 0 && SweepFrequency() > 2047)
+                    {
+                        _channel1Enabled = false;
+                    }
                     _wave1Phase = 0;
                     UpdateStatus();
                 }
@@ -251,27 +255,32 @@ internal sealed class ApuDevice : ICycleParticipant
             _io[0x21] = (byte)((_io[0x21] & 0x0F) | (_channel4Volume << 4));
             _channel4EnvelopeTimer = _io[0x21] & 0x07;
         }
-        if (_channel1Enabled && _sweepEnabled && ++_sweepTicks >= 4)
+        if (_channel1Enabled && _sweepEnabled && --_sweepTimer <= 0)
         {
-            _sweepTicks = 0;
-            var period = (_io[0x10] >> 4) & 0x07;
-            var shift = _io[0x10] & 0x07;
-            var delta = _channel1Frequency >> shift;
-            var next = (_io[0x10] & 0x08) != 0
-                ? _channel1Frequency - delta
-                : _channel1Frequency + delta;
+            _sweepTimer = SweepPeriodTicks();
+            var next = SweepFrequency();
             if (next > 2047 || next < 0)
             {
                 _channel1Enabled = false;
                 UpdateStatus();
             }
-            else if (period != 0)
+            else if ((_io[0x10] & 0x07) != 0)
             {
                 _channel1Frequency = next;
                 _io[0x13] = (byte)next;
                 _io[0x14] = (byte)((_io[0x14] & 0xF8) | (next >> 8));
             }
         }
+    }
+
+    private int SweepPeriodTicks() => Math.Max(1, (_io[0x10] >> 4) & 0x07) * 4;
+
+    private int SweepFrequency()
+    {
+        var delta = _channel1Frequency >> (_io[0x10] & 0x07);
+        return (_io[0x10] & 0x08) != 0
+            ? _channel1Frequency - delta
+            : _channel1Frequency + delta;
     }
 
     public int CopySamples(Span<short> destination)
