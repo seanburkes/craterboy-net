@@ -109,6 +109,12 @@ to their fixed destinations.
 both IME and a pending enable. The pending state is included in deterministic
 state hashes so replay checkpoints distinguish the interrupt boundary.
 
+When IME is active, pending IE/IF bits are serviced before the next opcode in
+priority order (VBlank, STAT, timer, serial, joypad). Service clears the chosen
+IF bit, pushes PC, jumps to the vector, disables IME, and consumes 20 T-cycles.
+An interrupt request wakes HALT even when IME is disabled; in that case the
+CPU resumes instruction execution without servicing the request.
+
 Signed SP-relative operations use the unsigned low-nibble and low-byte views
 of the offset for H/C, as required by the SM83, while applying the offset as a
 signed byte to the 16-bit result. `ADD SP,e8` takes 16 T-cycles, `LD HL,SP+e8`

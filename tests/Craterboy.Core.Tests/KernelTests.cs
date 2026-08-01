@@ -70,6 +70,44 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PendingInterruptServicesHighestPriorityVector()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xFB, 0x00, 0x76 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.StepInstruction();
+        emulator.StepInstruction();
+        emulator.StepInstruction();
+        Assert.True(emulator.Registers.InterruptMasterEnable);
+
+        emulator.WriteMemory(0xFFFF, 0x1F);
+        emulator.WriteMemory(0xFF0F, 0x1F);
+        Assert.Equal(20, emulator.StepInstruction());
+        Assert.Equal((ushort)0x0040, emulator.Registers.ProgramCounter);
+        Assert.Equal((ushort)0xFFFC, emulator.Registers.StackPointer);
+        Assert.Equal((byte)0x03, emulator.PeekMemory(0xFFFC));
+        Assert.Equal((byte)0x01, emulator.PeekMemory(0xFFFD));
+        Assert.Equal((byte)0x1E, (byte)(emulator.PeekMemory(0xFF0F) & 0x1F));
+        Assert.False(emulator.Registers.InterruptMasterEnable);
+        Assert.False(emulator.Registers.Halted);
+    }
+
+    [Fact]
+    public void PendingInterruptWakesHaltedCpuWhenImeIsDisabled()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x76, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.StepInstruction();
+        emulator.WriteMemory(0xFFFF, 0x01);
+        emulator.WriteMemory(0xFF0F, 0x01);
+
+        Assert.Equal(4, emulator.StepInstruction());
+        Assert.Equal((ushort)0x0102, emulator.Registers.ProgramCounter);
+        Assert.False(emulator.Registers.Halted);
+    }
+
+    [Fact]
     public void CpuVerticalSliceExecutesLoadsStoreAndXor()
     {
         var rom = MakeRom();

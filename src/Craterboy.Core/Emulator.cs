@@ -126,6 +126,8 @@ public sealed class Emulator
     {
         EnsureRom();
         var cpu = _state.Cpu;
+        if (TryServiceInterrupt()) return 20;
+        if (cpu.Halted && PendingInterrupts() != 0) cpu.Halted = false;
         if (cpu.Halted) { Advance(4); return 4; }
         var opcode = Read(cpu.PC++);
         var enableImeAfterInstruction = cpu.ImeEnablePending;
@@ -717,6 +719,32 @@ public sealed class Emulator
     {
         _state.Cpu.ImeEnablePending = true;
         return 4;
+    }
+
+    private byte PendingInterrupts() => (byte)(_io[0x0F] & _io[0x7F] & 0x1F);
+
+    private bool TryServiceInterrupt()
+    {
+        var cpu = _state.Cpu;
+        var pending = PendingInterrupts();
+        if (pending == 0 || !cpu.Ime || cpu.ImeEnablePending) return false;
+
+        var (mask, vector) = pending switch
+        {
+            _ when (pending & 0x01) != 0 => ((byte)0x01, (ushort)0x0040),
+            _ when (pending & 0x02) != 0 => ((byte)0x02, (ushort)0x0048),
+            _ when (pending & 0x04) != 0 => ((byte)0x04, (ushort)0x0050),
+            _ when (pending & 0x08) != 0 => ((byte)0x08, (ushort)0x0058),
+            _ => ((byte)0x10, (ushort)0x0060),
+        };
+        _io[0x0F] &= (byte)~mask;
+        cpu.Halted = false;
+        cpu.Ime = false;
+        cpu.ImeEnablePending = false;
+        Push(cpu.PC);
+        cpu.PC = vector;
+        Advance(20);
+        return true;
     }
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
     private int Halt() { _state.Cpu.Halted = true; return 4; }
