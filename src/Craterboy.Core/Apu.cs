@@ -20,6 +20,10 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _channel3Length;
     private bool _channel3Enabled;
     private int _wave3Phase;
+    private int _channel4Length;
+    private bool _channel4Enabled;
+    private int _channel4Volume;
+    private ushort _noiseLfsr;
     private int _sampleCycles;
     private int _wavePhase;
     private readonly short[] _samples = new short[4096];
@@ -47,6 +51,10 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel3Length = 0;
         _channel3Enabled = false;
         _wave3Phase = 0;
+        _channel4Length = 0;
+        _channel4Enabled = false;
+        _channel4Volume = 0;
+        _noiseLfsr = 0x7FFF;
         _sampleCycles = 0;
         _wavePhase = 0;
         _sampleRead = 0;
@@ -82,6 +90,10 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel3Length = 0;
                 _channel3Enabled = false;
                 _wave3Phase = 0;
+                _channel4Length = 0;
+                _channel4Enabled = false;
+                _channel4Volume = 0;
+                _noiseLfsr = 0x7FFF;
                 Array.Clear(_io, 0x30, 0x10);
             }
             _powered = powered;
@@ -122,6 +134,16 @@ internal sealed class ApuDevice : ICycleParticipant
                 _wave3Phase = 0;
                 UpdateStatus();
                 break;
+            case 0xFF20:
+                _channel4Length = 64 - (value & 0x3F);
+                break;
+            case 0xFF23 when (value & 0x80) != 0:
+                if (_channel4Length == 0) _channel4Length = 64;
+                _channel4Volume = _io[0x21] >> 4;
+                _channel4Enabled = (_io[0x21] & 0xF8) != 0;
+                _noiseLfsr = 0x7FFF;
+                UpdateStatus();
+                break;
             case 0xFF14 when (value & 0x80) != 0:
                 if (_channel1Length == 0) _channel1Length = 64;
                 _channel1Frequency = (_channel1Frequency & 0x0FF) | ((value & 0x07) << 8);
@@ -159,6 +181,11 @@ internal sealed class ApuDevice : ICycleParticipant
         if ((_io[0x1E] & 0x40) != 0 && _channel3Enabled && _channel3Length > 0 && --_channel3Length == 0)
         {
             _channel3Enabled = false;
+            UpdateStatus();
+        }
+        if ((_io[0x23] & 0x40) != 0 && _channel4Enabled && _channel4Length > 0 && --_channel4Length == 0)
+        {
+            _channel4Enabled = false;
             UpdateStatus();
         }
         if (_frameStep == 0 && _channel1Enabled && (_io[0x12] & 0x07) != 0 && --_envelopeTimer == 0)
@@ -227,6 +254,14 @@ internal sealed class ApuDevice : ICycleParticipant
             sample += (short)((waveSample - 4) * 2048);
             _wave3Phase = (_wave3Phase + 1) & 31;
         }
+        if (_channel4Enabled)
+        {
+            var high = (_noiseLfsr & 1) == 0;
+            sample += (short)(high ? _channel4Volume * 2048 : -_channel4Volume * 2048);
+            var feedback = (_noiseLfsr & 1) ^ ((_noiseLfsr >> 1) & 1);
+            _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
+            if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
+        }
         _wavePhase = (_wavePhase + 1) & 7;
         sample = Math.Clamp(sample, short.MinValue, short.MaxValue);
         if (_sampleCount == _samples.Length)
@@ -239,5 +274,5 @@ internal sealed class ApuDevice : ICycleParticipant
         _sampleCount++;
     }
 
-    private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0) | (_channel2Enabled ? 0x02 : 0) | (_channel3Enabled ? 0x04 : 0));
+    private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0) | (_channel2Enabled ? 0x02 : 0) | (_channel3Enabled ? 0x04 : 0) | (_channel4Enabled ? 0x08 : 0));
 }
