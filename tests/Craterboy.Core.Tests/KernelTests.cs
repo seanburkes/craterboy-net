@@ -373,6 +373,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF22, 0x00);
         emulator.WriteMemory(0xFF23, 0xC0); // length enable + trigger
         Assert.Equal((byte)0x88, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF22));
 
         emulator.RunCycles(95);
         var samples = new short[1];
