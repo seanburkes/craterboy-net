@@ -2,6 +2,7 @@ namespace Craterboy;
 
 internal sealed class ApuDevice : ICycleParticipant
 {
+    private static readonly byte[] DutyPatterns = [0b00000001, 0b10000001, 0b10000111, 0b01111110];
     private readonly byte[] _io;
     private bool _powered;
     private int _frameCycles;
@@ -13,6 +14,12 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _sweepTicks;
     private int _channel1Frequency;
     private bool _sweepEnabled;
+    private int _sampleCycles;
+    private int _wavePhase;
+    private readonly short[] _samples = new short[4096];
+    private int _sampleRead;
+    private int _sampleWrite;
+    private int _sampleCount;
 
     public ApuDevice(byte[] io) => _io = io;
 
@@ -28,6 +35,11 @@ internal sealed class ApuDevice : ICycleParticipant
         _sweepTicks = 0;
         _channel1Frequency = 0;
         _sweepEnabled = false;
+        _sampleCycles = 0;
+        _wavePhase = 0;
+        _sampleRead = 0;
+        _sampleWrite = 0;
+        _sampleCount = 0;
         Array.Clear(_io, 0x10, 0x16);
         _io[0x26] = 0;
     }
@@ -83,6 +95,11 @@ internal sealed class ApuDevice : ICycleParticipant
     public void AdvanceTCycle()
     {
         if (!_powered) return;
+        if (++_sampleCycles >= 95)
+        {
+            _sampleCycles = 0;
+            EmitSample();
+        }
         if (++_frameCycles < 8192) return;
         _frameCycles = 0;
         _frameStep = (_frameStep + 1) & 7;
@@ -119,6 +136,38 @@ internal sealed class ApuDevice : ICycleParticipant
                 _io[0x14] = (byte)((_io[0x14] & 0xF8) | (next >> 8));
             }
         }
+    }
+
+    public int CopySamples(Span<short> destination)
+    {
+        var copied = 0;
+        while (copied < destination.Length && _sampleCount > 0)
+        {
+            destination[copied++] = _samples[_sampleRead];
+            _sampleRead = (_sampleRead + 1) % _samples.Length;
+            _sampleCount--;
+        }
+        return copied;
+    }
+
+    private void EmitSample()
+    {
+        var sample = (short)0;
+        if (_channel1Enabled)
+        {
+            var duty = (_io[0x11] >> 6) & 0x03;
+            var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
+            sample = (short)(high ? _channel1Volume * 2048 : -_channel1Volume * 2048);
+            _wavePhase = (_wavePhase + 1) & 7;
+        }
+        if (_sampleCount == _samples.Length)
+        {
+            _sampleRead = (_sampleRead + 1) % _samples.Length;
+            _sampleCount--;
+        }
+        _samples[_sampleWrite] = sample;
+        _sampleWrite = (_sampleWrite + 1) % _samples.Length;
+        _sampleCount++;
     }
 
     private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0));
