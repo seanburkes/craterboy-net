@@ -87,7 +87,7 @@ public sealed class Emulator
         cpu.F = 0xB0; cpu.B = 0; cpu.C = 0x13; cpu.D = 0; cpu.E = 0xD8;
         cpu.H = 0x01; cpu.L = 0x4D; cpu.SP = 0xFFFE;
         cpu.PC = _bootMapped ? (ushort)0 : (ushort)0x100;
-        cpu.Ime = false; cpu.Halted = false;
+        cpu.Ime = false; cpu.ImeEnablePending = false; cpu.Halted = false;
         _io[0x50] = _bootMapped ? (byte)0 : (byte)1;
     }
 
@@ -108,7 +108,7 @@ public sealed class Emulator
             writer.Write(_state.Cpu.D); writer.Write(_state.Cpu.E);
             writer.Write(_state.Cpu.H); writer.Write(_state.Cpu.L);
             writer.Write(_state.Cpu.SP); writer.Write(_state.Cpu.PC);
-            writer.Write(_state.Cpu.Ime); writer.Write(_state.Cpu.Halted);
+            writer.Write(_state.Cpu.Ime); writer.Write(_state.Cpu.ImeEnablePending); writer.Write(_state.Cpu.Halted);
             writer.Write(_vram); writer.Write(_wram); writer.Write(_oam);
             writer.Write(_io); writer.Write(_hram);
             writer.Write(_cartridge?.SaveBattery() ?? Array.Empty<byte>());
@@ -128,8 +128,11 @@ public sealed class Emulator
         var cpu = _state.Cpu;
         if (cpu.Halted) { Advance(4); return 4; }
         var opcode = Read(cpu.PC++);
+        var enableImeAfterInstruction = cpu.ImeEnablePending;
+        cpu.ImeEnablePending = false;
         var cycles = Execute(opcode);
         Advance(cycles);
+        if (enableImeAfterInstruction && opcode != 0xF3) cpu.Ime = true;
         return cycles;
     }
 
@@ -225,6 +228,8 @@ public sealed class Emulator
         0x2F => ComplementA(),
         0x37 => SetCarryFlag(),
         0x3F => ComplementCarryFlag(),
+        0xF3 => DisableInterrupts(),
+        0xFB => EnableInterrupts(),
         0xC4 => ConditionalCall(!Flag(CpuFlags.Zero)),
         0xCC => ConditionalCall(Flag(CpuFlags.Zero)),
         0xD4 => ConditionalCall(!Flag(CpuFlags.Carry)),
@@ -322,6 +327,7 @@ public sealed class Emulator
             0x08 => 20,
             0x07 or 0x0F or 0x17 or 0x1F => 4,
             0x27 or 0x2F or 0x37 or 0x3F => 4,
+            0xF3 or 0xFB => 4,
             0xC4 => Flag(CpuFlags.Zero) ? 12 : 24,
             0xCC => Flag(CpuFlags.Zero) ? 24 : 12,
             0xD4 => Flag(CpuFlags.Carry) ? 12 : 24,
@@ -602,6 +608,19 @@ public sealed class Emulator
     {
         _state.Cpu.F = (byte)((_state.Cpu.F & (byte)CpuFlags.Zero) |
             (Flag(CpuFlags.Carry) ? 0 : (byte)CpuFlags.Carry));
+        return 4;
+    }
+
+    private int DisableInterrupts()
+    {
+        _state.Cpu.Ime = false;
+        _state.Cpu.ImeEnablePending = false;
+        return 4;
+    }
+
+    private int EnableInterrupts()
+    {
+        _state.Cpu.ImeEnablePending = true;
         return 4;
     }
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
