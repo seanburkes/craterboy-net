@@ -56,6 +56,12 @@ transactional. `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
 
+The CPU decoder includes the complete CB-prefixed instruction family. Rotate,
+shift, and SWAP operations update Z/N/H/C explicitly, while BIT preserves the
+carry flag and sets H. Register and `(HL)` forms share the decoder but retain
+their distinct 8/12/16 T-cycle timings. Every CB opcode is compared with the
+pinned SameBoy oracle in the differential suite.
+
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles.

@@ -186,6 +186,7 @@ public sealed class Emulator
     private int Execute(byte opcode) => opcode switch
     {
         0x00 => 4,
+        0xCB => ExecuteCb(Read(_state.Cpu.PC++)),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -253,6 +254,7 @@ public sealed class Emulator
         var opcode = Read(_state.Cpu.PC);
         return opcode switch
         {
+            0xCB => PredictCbCycles(Read((ushort)(_state.Cpu.PC + 1))),
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -264,6 +266,100 @@ public sealed class Emulator
             0x18 or 0x20 or 0x28 or 0x30 or 0x38 => 12,
             _ => 8,
         };
+    }
+
+    private int ExecuteCb(byte opcode)
+    {
+        var register = opcode & 7;
+        var memory = register == 6;
+        var value = ReadRegister(register);
+        var group = opcode >> 6;
+
+        if (group == 1)
+        {
+            var bit = (opcode >> 3) & 7;
+            _state.Cpu.F = (byte)((_state.Cpu.F & (byte)CpuFlags.Carry) | (byte)CpuFlags.HalfCarry |
+                ((value & (1 << bit)) == 0 ? (byte)CpuFlags.Zero : (byte)0));
+            return memory ? 12 : 8;
+        }
+
+        if (group == 2)
+            value = (byte)(value & ~(1 << ((opcode >> 3) & 7)));
+        else if (group == 3)
+            value = (byte)(value | (1 << ((opcode >> 3) & 7)));
+        else
+        {
+            var operation = (opcode >> 3) & 7;
+            var carry = (byte)((value >> 7) & 1);
+            switch (operation)
+            {
+                case 0: // RLC
+                    value = (byte)((value << 1) | carry);
+                    _state.Cpu.F = (byte)((value == 0 ? CpuFlags.Zero : 0) | (carry != 0 ? CpuFlags.Carry : 0));
+                    break;
+                case 1: // RRC
+                    carry = (byte)(value & 1);
+                    value = (byte)((value >> 1) | (carry << 7));
+                    _state.Cpu.F = (byte)((value == 0 ? CpuFlags.Zero : 0) | (carry != 0 ? CpuFlags.Carry : 0));
+                    break;
+                case 2: // RL
+                {
+                    var oldCarry = Flag(CpuFlags.Carry) ? 1 : 0;
+                    value = (byte)((value << 1) | oldCarry);
+                    _state.Cpu.F = (byte)((value == 0 ? CpuFlags.Zero : 0) | (carry != 0 ? CpuFlags.Carry : 0));
+                    break;
+                }
+                case 3: // RR
+                {
+                    var oldCarry = Flag(CpuFlags.Carry) ? 0x80 : 0;
+                    carry = (byte)(value & 1);
+                    value = (byte)((value >> 1) | oldCarry);
+                    _state.Cpu.F = (byte)((value == 0 ? CpuFlags.Zero : 0) | (carry != 0 ? CpuFlags.Carry : 0));
+                    break;
+                }
+                case 4: // SLA
+                    value = (byte)(value << 1);
+                    _state.Cpu.F = (byte)((value == 0 ? CpuFlags.Zero : 0) | (carry != 0 ? CpuFlags.Carry : 0));
+                    break;
+                case 5: // SRA
+                    carry = (byte)(value & 1);
+                    value = (byte)((value >> 1) | (value & 0x80));
+                    _state.Cpu.F = (byte)((value == 0 ? CpuFlags.Zero : 0) | (carry != 0 ? CpuFlags.Carry : 0));
+                    break;
+                case 6: // SWAP
+                    value = (byte)((value << 4) | (value >> 4));
+                    _state.Cpu.F = (byte)(value == 0 ? CpuFlags.Zero : 0);
+                    break;
+                case 7: // SRL
+                    carry = (byte)(value & 1);
+                    value >>= 1;
+                    _state.Cpu.F = (byte)((value == 0 ? CpuFlags.Zero : 0) | (carry != 0 ? CpuFlags.Carry : 0));
+                    break;
+            }
+        }
+
+        WriteRegister(register, value);
+        return memory ? 16 : 8;
+    }
+
+    private int PredictCbCycles(byte opcode) => (opcode & 7) == 6
+        ? ((opcode >> 6) == 1 ? 12 : 16)
+        : 8;
+
+    private void WriteRegister(int index, byte value)
+    {
+        switch (index)
+        {
+            case 0: _state.Cpu.B = value; break;
+            case 1: _state.Cpu.C = value; break;
+            case 2: _state.Cpu.D = value; break;
+            case 3: _state.Cpu.E = value; break;
+            case 4: _state.Cpu.H = value; break;
+            case 5: _state.Cpu.L = value; break;
+            case 6: Write(_state.Cpu.HL, value); break;
+            case 7: _state.Cpu.A = value; break;
+            default: throw new InvalidOperationException("Invalid SM83 register index.");
+        }
     }
 
     private int Load8(Action<byte> setter) { setter(Read(_state.Cpu.PC++)); return 8; }
