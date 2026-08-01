@@ -419,6 +419,33 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuPulseFrequencyAdvancesDutyPhase()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var lowFrequency = NewEmulator(rom);
+        var highFrequency = NewEmulator(rom);
+        foreach (var emulator in new[] { lowFrequency, highFrequency })
+        {
+            emulator.WriteMemory(0xFF26, 0x80);
+            emulator.WriteMemory(0xFF11, 0x00); // duty 0
+            emulator.WriteMemory(0xFF12, 0xF0); // DAC and volume
+        }
+        lowFrequency.WriteMemory(0xFF13, 0x00);
+        lowFrequency.WriteMemory(0xFF14, 0x80);
+        highFrequency.WriteMemory(0xFF13, 0x00);
+        highFrequency.WriteMemory(0xFF14, 0x87);
+
+        lowFrequency.RunCycles(95 * 2);
+        highFrequency.RunCycles(95 * 2);
+        var lowSamples = new short[2];
+        var highSamples = new short[2];
+        Assert.Equal(2, lowFrequency.CopyAudioSamples(lowSamples));
+        Assert.Equal(2, highFrequency.CopyAudioSamples(highSamples));
+        Assert.NotEqual(lowSamples[1], highSamples[1]);
+    }
+
+    [Fact]
     public void ApuChannelTwoTriggerReportsStatusAndExpiresByLength()
     {
         var rom = MakeRom();
