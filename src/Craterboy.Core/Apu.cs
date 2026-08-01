@@ -10,6 +10,9 @@ internal sealed class ApuDevice : ICycleParticipant
     private bool _channel1Enabled;
     private int _channel1Volume;
     private int _envelopeTimer;
+    private int _sweepTicks;
+    private int _channel1Frequency;
+    private bool _sweepEnabled;
 
     public ApuDevice(byte[] io) => _io = io;
 
@@ -22,6 +25,9 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel1Enabled = false;
         _channel1Volume = 0;
         _envelopeTimer = 0;
+        _sweepTicks = 0;
+        _channel1Frequency = 0;
+        _sweepEnabled = false;
         Array.Clear(_io, 0x10, 0x16);
         _io[0x26] = 0;
     }
@@ -42,6 +48,9 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel1Enabled = false;
                 _channel1Volume = 0;
                 _envelopeTimer = 0;
+                _sweepTicks = 0;
+                _channel1Frequency = 0;
+                _sweepEnabled = false;
             }
             _powered = powered;
             _io[0x26] = (byte)(powered ? 0x80 : 0);
@@ -55,11 +64,17 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF11:
                 _channel1Length = 64 - (value & 0x3F);
                 break;
+            case 0xFF13:
+                _channel1Frequency = (_channel1Frequency & 0x700) | value;
+                break;
             case 0xFF14 when (value & 0x80) != 0:
                 if (_channel1Length == 0) _channel1Length = 64;
+                _channel1Frequency = (_channel1Frequency & 0x0FF) | ((value & 0x07) << 8);
                 _channel1Enabled = (_io[0x12] & 0xF8) != 0;
                 _channel1Volume = _io[0x12] >> 4;
                 _envelopeTimer = (_io[0x12] & 0x07) == 0 ? 8 : (_io[0x12] & 0x07);
+                _sweepTicks = 0;
+                _sweepEnabled = (_io[0x10] & 0x70) != 0;
                 UpdateStatus();
                 break;
         }
@@ -82,6 +97,27 @@ internal sealed class ApuDevice : ICycleParticipant
             else if ((_io[0x12] & 0x08) == 0 && _channel1Volume > 0) _channel1Volume--;
             _io[0x12] = (byte)((_io[0x12] & 0x0F) | (_channel1Volume << 4));
             _envelopeTimer = _io[0x12] & 0x07;
+        }
+        if (_channel1Enabled && _sweepEnabled && ++_sweepTicks >= 4)
+        {
+            _sweepTicks = 0;
+            var period = (_io[0x10] >> 4) & 0x07;
+            var shift = _io[0x10] & 0x07;
+            var delta = _channel1Frequency >> shift;
+            var next = (_io[0x10] & 0x08) != 0
+                ? _channel1Frequency - delta
+                : _channel1Frequency + delta;
+            if (next > 2047 || next < 0)
+            {
+                _channel1Enabled = false;
+                UpdateStatus();
+            }
+            else if (period != 0)
+            {
+                _channel1Frequency = next;
+                _io[0x13] = (byte)next;
+                _io[0x14] = (byte)((_io[0x14] & 0xF8) | (next >> 8));
+            }
         }
     }
 
