@@ -133,6 +133,8 @@ internal sealed class PpuDevice : ICycleParticipant
         {
             _line = 0;
             _lineCycles = 0;
+            _windowLine = 0;
+            Array.Clear(_frame);
             _io[0x44] = 0;
             SetMode(0);
             UpdateCoincidence();
