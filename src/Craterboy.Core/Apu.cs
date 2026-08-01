@@ -24,6 +24,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _channel4Length;
     private bool _channel4Enabled;
     private int _channel4Volume;
+    private int _channel4EnvelopeTimer;
     private ushort _noiseLfsr;
     private bool _mixerConfigured;
     private int _sampleCycles;
@@ -57,6 +58,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel4Length = 0;
         _channel4Enabled = false;
         _channel4Volume = 0;
+        _channel4EnvelopeTimer = 0;
         _noiseLfsr = 0x7FFF;
         _mixerConfigured = false;
         _sampleCycles = 0;
@@ -98,6 +100,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel4Length = 0;
                 _channel4Enabled = false;
                 _channel4Volume = 0;
+                _channel4EnvelopeTimer = 0;
                 _noiseLfsr = 0x7FFF;
                 _mixerConfigured = false;
                 Array.Clear(_io, 0x30, 0x10);
@@ -148,6 +151,7 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF23 when (value & 0x80) != 0:
                 if (_channel4Length == 0) _channel4Length = 64;
                 _channel4Volume = _io[0x21] >> 4;
+                _channel4EnvelopeTimer = (_io[0x21] & 0x07) == 0 ? 8 : (_io[0x21] & 0x07);
                 _channel4Enabled = (_io[0x21] & 0xF8) != 0;
                 _noiseLfsr = 0x7FFF;
                 UpdateStatus();
@@ -209,6 +213,13 @@ internal sealed class ApuDevice : ICycleParticipant
             else if ((_io[0x17] & 0x08) == 0 && _channel2Volume > 0) _channel2Volume--;
             _io[0x17] = (byte)((_io[0x17] & 0x0F) | (_channel2Volume << 4));
             _channel2EnvelopeTimer = _io[0x17] & 0x07;
+        }
+        if (_frameStep == 0 && _channel4Enabled && (_io[0x21] & 0x07) != 0 && --_channel4EnvelopeTimer == 0)
+        {
+            if ((_io[0x21] & 0x08) != 0 && _channel4Volume < 15) _channel4Volume++;
+            else if ((_io[0x21] & 0x08) == 0 && _channel4Volume > 0) _channel4Volume--;
+            _io[0x21] = (byte)((_io[0x21] & 0x0F) | (_channel4Volume << 4));
+            _channel4EnvelopeTimer = _io[0x21] & 0x07;
         }
         if (_channel1Enabled && _sweepEnabled && ++_sweepTicks >= 4)
         {
