@@ -133,6 +133,18 @@ internal sealed class ApuDevice : ICycleParticipant
         if (address is 0xFF24 or 0xFF25) _mixerConfigured = true;
         switch (address)
         {
+            case 0xFF10:
+                _sweepEnabled = (value & 0x70) != 0;
+                if (_channel1Enabled)
+                {
+                    _sweepTimer = SweepPeriodTicks();
+                    if (_sweepEnabled && (value & 0x07) != 0 && SweepFrequency() > 2047)
+                    {
+                        _channel1Enabled = false;
+                        UpdateStatus();
+                    }
+                }
+                break;
             case 0xFF11:
                 _channel1Length = 64 - (value & 0x3F);
                 break;
