@@ -31,6 +31,10 @@ restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
 Disabling the LCD resets LY/timing state and blanks the raw frame buffer.
 
+The APU is now a scheduler-owned register and power-control device. NR52
+gates access to the channel registers; channel sequencing and sample emission
+remain deferred to later APU slices.
+
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
 transactional. `PeekMemory` is intended to remain side-effect free while

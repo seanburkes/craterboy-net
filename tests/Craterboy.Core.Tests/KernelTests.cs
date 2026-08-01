@@ -234,6 +234,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuPowerGateControlsRegisterVisibilityAndReset()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF12, 0xF3);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFF12));
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFF26));
+
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF12, 0xF3);
+        Assert.Equal((byte)0xF3, emulator.PeekMemory(0xFF12));
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+
+        emulator.WriteMemory(0xFF26, 0);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFF12));
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
