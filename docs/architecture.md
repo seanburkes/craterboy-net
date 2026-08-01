@@ -27,7 +27,8 @@ renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
 overlap priority; FIFO behavior remains separate.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
-restored during HBlank/VBlank.
+restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
+enabling an already-active source raises the interrupt once.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
