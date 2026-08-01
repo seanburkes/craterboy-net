@@ -3,6 +3,7 @@ namespace Craterboy;
 public sealed class Emulator
 {
     private const int CyclesPerFrame = 70_224;
+    private const byte InterruptMask = 0x1F;
     private readonly GameBoyModel _model;
     private readonly EmulatorOptions _options;
     private readonly EmulatorState _state = new();
@@ -721,7 +722,7 @@ public sealed class Emulator
         return 4;
     }
 
-    private byte PendingInterrupts() => (byte)(_io[0x0F] & _io[0x7F] & 0x1F);
+    private byte PendingInterrupts() => (byte)(_io[0x0F] & _io[0x7F] & InterruptMask);
 
     private bool TryServiceInterrupt()
     {
@@ -961,7 +962,7 @@ public sealed class Emulator
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
-            0xFF0F => (byte)(0xE0 | (_io[0x0F] & 0x1F)),
+            0xFF0F => (byte)(0xE0 | (_io[0x0F] & InterruptMask)),
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 => _ppu.Read(address),
             >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
@@ -1006,7 +1007,7 @@ public sealed class Emulator
                 _dma.Start(value);
                 break;
             case 0xFF0F:
-                _io[0x0F] = (byte)(value & 0x1F);
+                _io[0x0F] = (byte)(value & InterruptMask);
                 break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;

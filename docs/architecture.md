@@ -117,7 +117,8 @@ CPU resumes instruction execution without servicing the request.
 
 The DMG interrupt bus exposes IF (`FF0F`) with fixed high bits (`111`) and only
 stores its low five request bits. IE (`FFFF`) is retained as the raw enable
-register value; interrupt arbitration uses its low five bits.
+register value; interrupt arbitration uses its low five bits, so fixed or
+unmapped high bits cannot wake HALT or dispatch an interrupt.
 
 Signed SP-relative operations use the unsigned low-nibble and low-byte views
 of the offset for H/C, as required by the SM83, while applying the offset as a
