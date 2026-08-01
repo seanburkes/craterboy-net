@@ -198,6 +198,18 @@ public sealed class Emulator
         0xFE => CompareImmediate(),
         0x34 => IncrementHl(),
         0x35 => DecrementHl(),
+        0x03 => IncrementPair(() => _state.Cpu.BC, value => _state.Cpu.BC = value),
+        0x13 => IncrementPair(() => _state.Cpu.DE, value => _state.Cpu.DE = value),
+        0x23 => IncrementPair(() => _state.Cpu.HL, value => _state.Cpu.HL = value),
+        0x33 => IncrementPair(() => _state.Cpu.SP, value => _state.Cpu.SP = value),
+        0x0B => DecrementPair(() => _state.Cpu.BC, value => _state.Cpu.BC = value),
+        0x1B => DecrementPair(() => _state.Cpu.DE, value => _state.Cpu.DE = value),
+        0x2B => DecrementPair(() => _state.Cpu.HL, value => _state.Cpu.HL = value),
+        0x3B => DecrementPair(() => _state.Cpu.SP, value => _state.Cpu.SP = value),
+        0x09 => AddHl(_state.Cpu.BC),
+        0x19 => AddHl(_state.Cpu.DE),
+        0x29 => AddHl(_state.Cpu.HL),
+        0x39 => AddHl(_state.Cpu.SP),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -270,6 +282,8 @@ public sealed class Emulator
                 (opcode & 7) == 6 || ((opcode >> 3) & 7) == 6 ? 8 : 4,
             0xC6 or 0xCE or 0xD6 or 0xDE or 0xE6 or 0xEE or 0xF6 or 0xFE => 8,
             0x34 or 0x35 => 12,
+            0x03 or 0x13 or 0x23 or 0x33 or 0x0B or 0x1B or 0x2B or 0x3B or
+            0x09 or 0x19 or 0x29 or 0x39 => 8,
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -390,6 +404,29 @@ public sealed class Emulator
     {
         var low = Read(_state.Cpu.PC++); var high = Read(_state.Cpu.PC++);
         setter((ushort)(low | high << 8)); return 12;
+    }
+
+    private int IncrementPair(Func<ushort> getter, Action<ushort> setter)
+    {
+        setter(unchecked((ushort)(getter() + 1)));
+        return 8;
+    }
+
+    private int DecrementPair(Func<ushort> getter, Action<ushort> setter)
+    {
+        setter(unchecked((ushort)(getter() - 1)));
+        return 8;
+    }
+
+    private int AddHl(ushort value)
+    {
+        var hl = _state.Cpu.HL;
+        var result = hl + value;
+        _state.Cpu.HL = (ushort)result;
+        _state.Cpu.F = (byte)((_state.Cpu.F & (byte)CpuFlags.Zero) |
+            (((hl & 0x0FFF) + (value & 0x0FFF)) > 0x0FFF ? (byte)CpuFlags.HalfCarry : 0) |
+            (result > 0xFFFF ? (byte)CpuFlags.Carry : 0));
+        return 8;
     }
     private int WriteHl() { Write(_state.Cpu.HL, _state.Cpu.A); return 8; }
     private int ReadHl() { _state.Cpu.A = Read(_state.Cpu.HL); return 8; }
