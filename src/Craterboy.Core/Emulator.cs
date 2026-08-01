@@ -188,6 +188,14 @@ public sealed class Emulator
         0x00 => 4,
         0xCB => ExecuteCb(Read(_state.Cpu.PC++)),
         >= 0x40 and <= 0x7F when opcode != 0x76 => LoadRegister(opcode),
+        0xC6 => AddImmediate(),
+        0xCE => AddCarryImmediate(),
+        0xD6 => SubImmediate(),
+        0xDE => SubCarryImmediate(),
+        0xE6 => AndImmediate(),
+        0xEE => XorImmediate(),
+        0xF6 => OrImmediate(),
+        0xFE => CompareImmediate(),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -258,6 +266,7 @@ public sealed class Emulator
             0xCB => PredictCbCycles(Read((ushort)(_state.Cpu.PC + 1))),
             >= 0x40 and <= 0x7F when opcode != 0x76 =>
                 (opcode & 7) == 6 || ((opcode >> 3) & 7) == 6 ? 8 : 4,
+            0xC6 or 0xCE or 0xD6 or 0xDE or 0xE6 or 0xEE or 0xF6 or 0xFE => 8,
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -422,6 +431,21 @@ public sealed class Emulator
         if (result > 0xFF) _state.Cpu.F |= (byte)CpuFlags.Carry;
         return memory ? 16 : 4;
     }
+
+    private int AddImmediate() { AddA(Read(_state.Cpu.PC++), false); return 8; }
+
+    private int AddCarryImmediate()
+    {
+        var value = Read(_state.Cpu.PC++);
+        var carry = Flag(CpuFlags.Carry) ? 1 : 0;
+        var a = _state.Cpu.A;
+        var result = a + value + carry;
+        _state.Cpu.A = (byte)result;
+        _state.Cpu.F = (byte)((result & 0xFF) == 0 ? CpuFlags.Zero : 0);
+        if (((a & 0x0F) + (value & 0x0F) + carry) > 0x0F) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
+        if (result > 0xFF) _state.Cpu.F |= (byte)CpuFlags.Carry;
+        return 8;
+    }
     private int SubA(byte value, bool memory)
     {
         var a = _state.Cpu.A;
@@ -431,6 +455,21 @@ public sealed class Emulator
         if ((a & 0x0F) < (value & 0x0F)) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
         if (a < value) _state.Cpu.F |= (byte)CpuFlags.Carry;
         return memory ? 16 : 4;
+    }
+
+    private int SubImmediate() { SubA(Read(_state.Cpu.PC++), false); return 8; }
+
+    private int SubCarryImmediate()
+    {
+        var value = Read(_state.Cpu.PC++);
+        var carry = Flag(CpuFlags.Carry) ? 1 : 0;
+        var a = _state.Cpu.A;
+        var result = a - value - carry;
+        _state.Cpu.A = (byte)result;
+        _state.Cpu.F = (byte)(CpuFlags.Subtract | ((result & 0xFF) == 0 ? CpuFlags.Zero : 0));
+        if ((a & 0x0F) < (value & 0x0F) + carry) _state.Cpu.F |= (byte)CpuFlags.HalfCarry;
+        if (a < value + carry) _state.Cpu.F |= (byte)CpuFlags.Carry;
+        return 8;
     }
     private int AndA(byte value, bool memory) { _state.Cpu.A &= value; _state.Cpu.F = (byte)(CpuFlags.HalfCarry | (_state.Cpu.A == 0 ? CpuFlags.Zero : 0)); return memory ? 16 : 4; }
     private int OrA(byte value, bool memory) { _state.Cpu.A |= value; _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0); return memory ? 16 : 4; }
@@ -443,6 +482,16 @@ public sealed class Emulator
         if (a < value) _state.Cpu.F |= (byte)CpuFlags.Carry;
         return memory ? 16 : 4;
     }
+
+    private int AndImmediate() { AndA(Read(_state.Cpu.PC++), false); return 8; }
+    private int XorImmediate()
+    {
+        _state.Cpu.A ^= Read(_state.Cpu.PC++);
+        _state.Cpu.F = (byte)(_state.Cpu.A == 0 ? CpuFlags.Zero : 0);
+        return 8;
+    }
+    private int OrImmediate() { OrA(Read(_state.Cpu.PC++), false); return 8; }
+    private int CompareImmediate() { CompareA(Read(_state.Cpu.PC++), false); return 8; }
     private bool Flag(CpuFlags flag) => (_state.Cpu.F & (byte)flag) != 0;
     private int RelativeJump(bool condition)
     {
