@@ -99,6 +99,7 @@ public sealed class Emulator
         _joypad.SetButtonState(button, pressed, player);
 
     public void CopyFrame(Span<byte> destination) => _ppu.CopyFrame(destination);
+    public int CopyAudioSamples(Span<short> destination) => _apu.CopySamples(destination);
 
     public int StepInstruction()
     {

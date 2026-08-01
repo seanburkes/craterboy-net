@@ -36,7 +36,8 @@ gates access to the channel registers; channel sequencing and sample emission
 remain deferred to later APU slices. Channel 1 has basic trigger, length, and
 NR52 status timing plus the envelope frame step.
 Channel 1 frequency sweep updates are also clocked at the four-step sweep
-cadence.
+cadence. The core emits channel samples into a bounded managed ring and exposes
+caller-owned buffer draining; host playback remains outside the core.
 
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. Serialization will be field-by-field and
