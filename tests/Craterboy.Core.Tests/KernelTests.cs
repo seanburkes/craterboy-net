@@ -405,6 +405,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelTwoEnvelopeUpdatesOnTheEnvelopeFrameStep()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF17, 0x59); // volume 5, increase every envelope tick
+        emulator.WriteMemory(0xFF19, 0x80);
+
+        emulator.RunCycles(7 * 8192);
+        Assert.Equal((byte)0x59, emulator.PeekMemory(0xFF17));
+        emulator.RunCycles(8192);
+        Assert.Equal((byte)0x69, emulator.PeekMemory(0xFF17));
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
