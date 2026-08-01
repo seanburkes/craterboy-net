@@ -210,6 +210,10 @@ public sealed class Emulator
         0x19 => AddHl(_state.Cpu.DE),
         0x29 => AddHl(_state.Cpu.HL),
         0x39 => AddHl(_state.Cpu.SP),
+        0x07 => RotateLeftCircularA(),
+        0x0F => RotateRightCircularA(),
+        0x17 => RotateLeftA(),
+        0x1F => RotateRightA(),
         0x01 => Load16(v => _state.Cpu.BC = v),
         0x11 => Load16(v => _state.Cpu.DE = v),
         0x21 => Load16(v => _state.Cpu.HL = v),
@@ -284,6 +288,7 @@ public sealed class Emulator
             0x34 or 0x35 => 12,
             0x03 or 0x13 or 0x23 or 0x33 or 0x0B or 0x1B or 0x2B or 0x3B or
             0x09 or 0x19 or 0x29 or 0x39 => 8,
+            0x07 or 0x0F or 0x17 or 0x1F => 4,
             0x01 or 0x11 or 0x21 or 0x31 => 12,
             0xCD => 24,
             0xC3 or 0xC2 or 0xCA or 0xD2 or 0xDA => 16,
@@ -431,6 +436,37 @@ public sealed class Emulator
     private int WriteHl() { Write(_state.Cpu.HL, _state.Cpu.A); return 8; }
     private int ReadHl() { _state.Cpu.A = Read(_state.Cpu.HL); return 8; }
     private int XorA() { _state.Cpu.A = 0; _state.Cpu.F = (byte)CpuFlags.Zero; return 4; }
+    private int RotateLeftCircularA()
+    {
+        var carry = (byte)(_state.Cpu.A >> 7);
+        _state.Cpu.A = (byte)((_state.Cpu.A << 1) | carry);
+        _state.Cpu.F = (byte)(carry != 0 ? CpuFlags.Carry : 0);
+        return 4;
+    }
+
+    private int RotateRightCircularA()
+    {
+        var carry = (byte)(_state.Cpu.A & 1);
+        _state.Cpu.A = (byte)((_state.Cpu.A >> 1) | (carry << 7));
+        _state.Cpu.F = (byte)(carry != 0 ? CpuFlags.Carry : 0);
+        return 4;
+    }
+
+    private int RotateLeftA()
+    {
+        var carry = (byte)(_state.Cpu.A >> 7);
+        _state.Cpu.A = (byte)((_state.Cpu.A << 1) | (Flag(CpuFlags.Carry) ? 1 : 0));
+        _state.Cpu.F = (byte)(carry != 0 ? CpuFlags.Carry : 0);
+        return 4;
+    }
+
+    private int RotateRightA()
+    {
+        var carry = (byte)(_state.Cpu.A & 1);
+        _state.Cpu.A = (byte)((_state.Cpu.A >> 1) | (Flag(CpuFlags.Carry) ? 0x80 : 0));
+        _state.Cpu.F = (byte)(carry != 0 ? CpuFlags.Carry : 0);
+        return 4;
+    }
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
     private int Halt() { _state.Cpu.Halted = true; return 4; }
     private int WritePair(ushort address) { Write(address, _state.Cpu.A); return 8; }
