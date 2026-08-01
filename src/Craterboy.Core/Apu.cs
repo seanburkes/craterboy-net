@@ -17,6 +17,9 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _channel2Length;
     private bool _channel2Enabled;
     private int _channel2Volume;
+    private int _channel3Length;
+    private bool _channel3Enabled;
+    private int _wave3Phase;
     private int _sampleCycles;
     private int _wavePhase;
     private readonly short[] _samples = new short[4096];
@@ -41,12 +44,16 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel2Length = 0;
         _channel2Enabled = false;
         _channel2Volume = 0;
+        _channel3Length = 0;
+        _channel3Enabled = false;
+        _wave3Phase = 0;
         _sampleCycles = 0;
         _wavePhase = 0;
         _sampleRead = 0;
         _sampleWrite = 0;
         _sampleCount = 0;
         Array.Clear(_io, 0x10, 0x16);
+        Array.Clear(_io, 0x30, 0x10);
         _io[0x26] = 0;
     }
 
@@ -72,13 +79,22 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel2Length = 0;
                 _channel2Enabled = false;
                 _channel2Volume = 0;
+                _channel3Length = 0;
+                _channel3Enabled = false;
+                _wave3Phase = 0;
+                Array.Clear(_io, 0x30, 0x10);
             }
             _powered = powered;
             _io[0x26] = (byte)(powered ? 0x80 : 0);
             return;
         }
 
-        if (!_powered || address is < 0xFF10 or > 0xFF25) return;
+        if (!_powered || address is < 0xFF10 or > 0xFF3F) return;
+        if (address >= 0xFF30)
+        {
+            _io[address - 0xFF00] = value;
+            return;
+        }
         _io[address - 0xFF00] = value;
         switch (address)
         {
@@ -95,6 +111,15 @@ internal sealed class ApuDevice : ICycleParticipant
                 if (_channel2Length == 0) _channel2Length = 64;
                 _channel2Volume = _io[0x17] >> 4;
                 _channel2Enabled = (_io[0x17] & 0xF8) != 0;
+                UpdateStatus();
+                break;
+            case 0xFF1B:
+                _channel3Length = 256 - value;
+                break;
+            case 0xFF1E when (value & 0x80) != 0:
+                if (_channel3Length == 0) _channel3Length = 256;
+                _channel3Enabled = (_io[0x1A] & 0x80) != 0;
+                _wave3Phase = 0;
                 UpdateStatus();
                 break;
             case 0xFF14 when (value & 0x80) != 0:
@@ -129,6 +154,11 @@ internal sealed class ApuDevice : ICycleParticipant
         if ((_io[0x19] & 0x40) != 0 && _channel2Enabled && _channel2Length > 0 && --_channel2Length == 0)
         {
             _channel2Enabled = false;
+            UpdateStatus();
+        }
+        if ((_io[0x1E] & 0x40) != 0 && _channel3Enabled && _channel3Length > 0 && --_channel3Length == 0)
+        {
+            _channel3Enabled = false;
             UpdateStatus();
         }
         if (_frameStep == 0 && _channel1Enabled && (_io[0x12] & 0x07) != 0 && --_envelopeTimer == 0)
@@ -188,6 +218,15 @@ internal sealed class ApuDevice : ICycleParticipant
             var high = ((DutyPatterns[duty] >> (7 - _wavePhase)) & 1) != 0;
             sample += (short)(high ? _channel2Volume * 2048 : -_channel2Volume * 2048);
         }
+        if (_channel3Enabled)
+        {
+            var packed = _io[0x30 + (_wave3Phase >> 1)];
+            var nibble = (_wave3Phase & 1) == 0 ? packed >> 4 : packed & 0x0F;
+            var volumeCode = (_io[0x1C] >> 5) & 0x03;
+            var waveSample = volumeCode switch { 0 => 0, 1 => nibble, 2 => nibble >> 1, _ => nibble >> 2 };
+            sample += (short)((waveSample - 4) * 2048);
+            _wave3Phase = (_wave3Phase + 1) & 31;
+        }
         _wavePhase = (_wavePhase + 1) & 7;
         sample = Math.Clamp(sample, short.MinValue, short.MaxValue);
         if (_sampleCount == _samples.Length)
@@ -200,5 +239,5 @@ internal sealed class ApuDevice : ICycleParticipant
         _sampleCount++;
     }
 
-    private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0) | (_channel2Enabled ? 0x02 : 0));
+    private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0) | (_channel2Enabled ? 0x02 : 0) | (_channel3Enabled ? 0x04 : 0));
 }

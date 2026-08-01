@@ -344,7 +344,7 @@ public sealed class Emulator
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
-            >= 0xFF10 and <= 0xFF26 => _apu.Read(address),
+            >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 => _ppu.Read(address),
             >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
             < 0xFF80 => _io[address - 0xFF00],
@@ -377,7 +377,7 @@ public sealed class Emulator
             case 0xFF00:
                 _joypad.Write(value);
                 break;
-            case >= 0xFF10 and <= 0xFF26:
+            case >= 0xFF10 and <= 0xFF3F:
                 _apu.Write(address, value);
                 break;
             case >= 0xFF40 and <= 0xFF45:
