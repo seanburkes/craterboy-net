@@ -19,6 +19,7 @@ public sealed class Emulator
     private ushort _cgbDmaSource;
     private ushort _cgbDmaDestination;
     private byte _cgbDmaStatus = 0xFF;
+    private bool _cgbDmaHblankActive;
     private TimerDevice _timer = null!;
     private OamDmaDevice _dma = null!;
     private SerialDevice _serial = null!;
@@ -37,7 +38,7 @@ public sealed class Emulator
         _dma = new OamDmaDevice(address => Read(address, true), (index, value) => _oam[index] = value);
         _serial = new SerialDevice(_io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_model, _io);
-        _ppu = new PpuDevice(_model, _io, _vram, _oam);
+        _ppu = new PpuDevice(_model, _io, _vram, _oam, TransferCgbHblankBlock);
         _apu = new ApuDevice(_model, _io);
         _state.Scheduler.Register(_timer);
         _state.Scheduler.Register(_dma);
@@ -91,6 +92,7 @@ public sealed class Emulator
         _cgbDmaSource = 0;
         _cgbDmaDestination = 0x8000;
         _cgbDmaStatus = 0xFF;
+        _cgbDmaHblankActive = false;
         _timer.Reset();
         _dma.Reset();
         _serial.Reset();
@@ -128,6 +130,8 @@ public sealed class Emulator
             writer.Write(_vram); writer.Write(_wram); writer.Write(_oam);
             writer.Write(_vramBank); writer.Write(_wramBank);
             writer.Write(_doubleSpeed); writer.Write(_speedSwitchPrepared);
+            writer.Write(_cgbDmaSource); writer.Write(_cgbDmaDestination);
+            writer.Write(_cgbDmaStatus); writer.Write(_cgbDmaHblankActive);
             writer.Write(_io); writer.Write(_hram);
             writer.Write(_cartridge?.SaveBattery() ?? Array.Empty<byte>());
         }
@@ -1122,8 +1126,16 @@ public sealed class Emulator
 
     private void StartCgbDma(byte value)
     {
+        if (_cgbDmaHblankActive && (value & 0x80) == 0)
+        {
+            _cgbDmaHblankActive = false;
+            _cgbDmaStatus = 0xFF;
+            return;
+        }
+
         if ((value & 0x80) != 0)
         {
+            _cgbDmaHblankActive = true;
             _cgbDmaStatus = (byte)(value & 0x7F);
             return;
         }
@@ -1143,6 +1155,30 @@ public sealed class Emulator
         }
 
         _cgbDmaStatus = 0xFF;
+    }
+
+    private void TransferCgbHblankBlock()
+    {
+        if (!_cgbDmaHblankActive) return;
+
+        for (var offset = 0; offset < 0x10; offset++)
+        {
+            var source = (ushort)(_cgbDmaSource + offset);
+            var destination = (ushort)(_cgbDmaDestination + offset);
+            _vram[(_vramBank * 0x2000) + destination - 0x8000] = ReadCgbDmaSource(source);
+        }
+
+        _cgbDmaSource = (ushort)(_cgbDmaSource + 0x10);
+        _cgbDmaDestination = (ushort)(_cgbDmaDestination + 0x10);
+        if (_cgbDmaStatus == 0)
+        {
+            _cgbDmaHblankActive = false;
+            _cgbDmaStatus = 0xFF;
+        }
+        else
+        {
+            _cgbDmaStatus--;
+        }
     }
 
     private byte ReadCgbDmaSource(ushort address) => address switch
