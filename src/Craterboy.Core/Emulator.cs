@@ -140,16 +140,23 @@ public sealed class Emulator
     {
         EnsureRom();
         var cpu = _state.Cpu;
-        if (TryServiceInterrupt()) return 20;
+        if (TryServiceInterrupt()) return ScaledCycles(20, _doubleSpeed);
         if (cpu.Halted && PendingInterrupts() != 0) cpu.Halted = false;
-        if (cpu.Halted) { Advance(4); return 4; }
+        if (cpu.Halted)
+        {
+            var haltedCycles = ScaledCycles(4, _doubleSpeed);
+            Advance(haltedCycles);
+            return haltedCycles;
+        }
+        var wasDoubleSpeed = _doubleSpeed;
         var opcode = Read(cpu.PC++);
         var enableImeAfterInstruction = cpu.ImeEnablePending;
         cpu.ImeEnablePending = false;
         var cycles = Execute(opcode);
-        Advance(cycles);
+        var elapsedCycles = ScaledCycles(cycles, wasDoubleSpeed);
+        Advance(elapsedCycles);
         if (enableImeAfterInstruction && opcode != 0xF3) cpu.Ime = true;
-        return cycles;
+        return elapsedCycles;
     }
 
     public void RunCycles(int cycles)
@@ -338,10 +345,11 @@ public sealed class Emulator
 
     private int PredictNextInstructionCycles()
     {
-        if (_state.Cpu.Halted) return 4;
+        if (_state.Cpu.Halted) return ScaledCycles(4, _doubleSpeed);
         var opcode = Read(_state.Cpu.PC);
-        return opcode switch
+        var cycles = opcode switch
         {
+            0x00 or 0x10 or 0x76 => 4,
             0xCB => PredictCbCycles(Read((ushort)(_state.Cpu.PC + 1))),
             >= 0x40 and <= 0x7F when opcode != 0x76 =>
                 (opcode & 7) == 6 || ((opcode >> 3) & 7) == 6 ? 8 : 4,
@@ -385,6 +393,7 @@ public sealed class Emulator
             0x18 or 0x20 or 0x28 or 0x30 or 0x38 => 12,
             _ => 8,
         };
+        return ScaledCycles(cycles, _doubleSpeed);
     }
 
     private int ExecuteCb(byte opcode)
@@ -763,9 +772,12 @@ public sealed class Emulator
         cpu.ImeEnablePending = false;
         Push(cpu.PC);
         cpu.PC = vector;
-        Advance(20);
+        Advance(ScaledCycles(20, _doubleSpeed));
         return true;
     }
+
+    private static int ScaledCycles(int cycles, bool doubleSpeed) =>
+        doubleSpeed ? Math.Max(1, cycles / 2) : cycles;
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
     private int Halt() { _state.Cpu.Halted = true; return 4; }
     private int WritePair(ushort address) { Write(address, _state.Cpu.A); return 8; }
