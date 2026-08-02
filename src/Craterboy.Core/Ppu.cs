@@ -11,6 +11,8 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly byte[] _oam;
     private readonly byte[] _frame = new byte[Width * Height];
     private readonly byte[] _backgroundColors = new byte[Width];
+    private readonly byte[] _backgroundPaletteRam = new byte[0x40];
+    private readonly byte[] _objectPaletteRam = new byte[0x40];
     private bool _enabled;
     private int _lineCycles;
     private byte _line;
@@ -43,6 +45,8 @@ internal sealed class PpuDevice : ICycleParticipant
         _coincidence = false;
         _statLine = false;
         Array.Clear(_frame);
+        Array.Clear(_backgroundPaletteRam);
+        Array.Clear(_objectPaletteRam);
         _io[0x40] = 0;
         _io[0x41] = 0x80;
         _io[0x44] = 0;
@@ -54,6 +58,10 @@ internal sealed class PpuDevice : ICycleParticipant
         0xFF40 => _io[0x40],
         0xFF41 => (byte)(0x80 | (_io[0x41] & 0x78) | (_coincidence ? 0x04 : 0) | _mode),
         0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49 => _io[address - 0xFF00],
+        0xFF68 => ReadPaletteIndex(_io[0x68]),
+        0xFF69 => ReadPaletteData(_backgroundPaletteRam, _io[0x68]),
+        0xFF6A => ReadPaletteIndex(_io[0x6A]),
+        0xFF6B => ReadPaletteData(_objectPaletteRam, _io[0x6A]),
         0xFF44 => _line,
         0xFF45 => _io[0x45],
         _ => 0xFF,
@@ -72,6 +80,18 @@ internal sealed class PpuDevice : ICycleParticipant
                 break;
             case 0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49:
                 _io[address - 0xFF00] = value;
+                break;
+            case 0xFF68 when _model.IsColor():
+                _io[0x68] = value;
+                break;
+            case 0xFF69 when _model.IsColor():
+                WritePaletteData(_backgroundPaletteRam, 0x68, value);
+                break;
+            case 0xFF6A when _model.IsColor():
+                _io[0x6A] = value;
+                break;
+            case 0xFF6B when _model.IsColor():
+                WritePaletteData(_objectPaletteRam, 0x6A, value);
                 break;
             case 0xFF44:
                 _line = 0;
@@ -183,6 +203,24 @@ internal sealed class PpuDevice : ICycleParticipant
                      (modeMask != 0 && (_io[0x41] & modeMask) != 0);
         if (active && !_statLine) _io[0x0F] |= 0x02;
         _statLine = active;
+    }
+
+    private byte ReadPaletteIndex(byte register) => _model.IsColor()
+        ? (byte)(0x40 | (register & 0xBF))
+        : (byte)0xFF;
+
+    private byte ReadPaletteData(byte[] paletteRam, byte indexRegister)
+    {
+        if (!_model.IsColor()) return 0xFF;
+        return paletteRam[indexRegister & 0x3F];
+    }
+
+    private void WritePaletteData(byte[] paletteRam, int indexOffset, byte value)
+    {
+        var indexRegister = _io[indexOffset];
+        paletteRam[indexRegister & 0x3F] = value;
+        if ((indexRegister & 0x80) != 0)
+            _io[indexOffset] = (byte)(0x80 | ((indexRegister + 1) & 0x3F));
     }
 
     private void RenderBackgroundLine(byte line)

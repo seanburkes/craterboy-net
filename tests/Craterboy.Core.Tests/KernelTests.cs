@@ -448,6 +448,40 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbPpuPaletteRegistersAutoIncrementIndexedPaletteRam()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF68, 0x80); // BG palette index 0, auto-increment
+        emulator.WriteMemory(0xFF69, 0x12);
+        emulator.WriteMemory(0xFF69, 0x34);
+
+        Assert.Equal((byte)0xC2, emulator.PeekMemory(0xFF68));
+        emulator.WriteMemory(0xFF68, 0x00);
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0xFF69));
+        emulator.WriteMemory(0xFF68, 0x01);
+        Assert.Equal((byte)0x34, emulator.PeekMemory(0xFF69));
+
+        emulator.WriteMemory(0xFF6A, 0x3F);
+        emulator.WriteMemory(0xFF6B, 0xA5);
+        Assert.Equal((byte)0xA5, emulator.PeekMemory(0xFF6B));
+
+        emulator.WriteMemory(0xFF68, 0xBF); // final byte with auto-increment
+        emulator.WriteMemory(0xFF69, 0x5A);
+        Assert.Equal((byte)0xC0, emulator.PeekMemory(0xFF68));
+    }
+
+    [Fact]
+    public void DmgDoesNotExposeCgbPaletteRam()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF68, 0x80);
+        emulator.WriteMemory(0xFF69, 0xA5);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF68));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF69));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
