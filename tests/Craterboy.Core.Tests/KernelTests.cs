@@ -376,7 +376,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF14, 0x80);
         Assert.Equal((byte)0x59, emulator.PeekMemory(0xFF12));
 
-        emulator.RunCycles(7 * 8192);
+        emulator.RunCycles(6 * 8192);
         Assert.Equal((byte)0x59, emulator.PeekMemory(0xFF12));
         emulator.RunCycles(8192);
         Assert.Equal((byte)0x69, emulator.PeekMemory(0xFF12));
@@ -648,7 +648,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF17, 0x59); // volume 5, increase every envelope tick
         emulator.WriteMemory(0xFF19, 0x80);
 
-        emulator.RunCycles(7 * 8192);
+        emulator.RunCycles(6 * 8192);
         Assert.Equal((byte)0x59, emulator.PeekMemory(0xFF17));
         emulator.RunCycles(8192);
         Assert.Equal((byte)0x69, emulator.PeekMemory(0xFF17));
@@ -664,7 +664,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF21, 0x59); // volume 5, increase every envelope tick
         emulator.WriteMemory(0xFF23, 0x80);
 
-        emulator.RunCycles(7 * 8192);
+        emulator.RunCycles(6 * 8192);
         Assert.Equal((byte)0x59, emulator.PeekMemory(0xFF21));
         emulator.RunCycles(8192);
         Assert.Equal((byte)0x69, emulator.PeekMemory(0xFF21));

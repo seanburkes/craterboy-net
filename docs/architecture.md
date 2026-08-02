@@ -51,8 +51,7 @@ Channel 1 and channel 2 pulse phases reset on trigger and advance from their
 frequency registers, keeping their duty waveforms independent. Active channels
 also apply high-frequency register writes without requiring a retrigger.
 NR50 master volume and NR51 per-channel routing now shape the emitted PCM.
-Channel 2 envelope timing now mirrors channel 1’s frame-step behavior.
-Channel 4 envelope timing is covered by the same deterministic cadence.
+Channel 1, channel 2, and channel 4 envelopes clock on frame-sequencer step 7.
 Channel 3 frequency registers now drive its managed wave phase progression.
 Channel 4 NR43 divisor and shift fields control the deterministic LFSR cadence.
 Channel 3 NR32 volume code 0 correctly mutes its PCM contribution.
