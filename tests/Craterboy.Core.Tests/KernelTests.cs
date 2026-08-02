@@ -1488,6 +1488,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesTimerDividerPrecision()
+    {
+        var first = NewEmulator(MakeRom());
+        var second = NewEmulator(MakeRom());
+        first.RunCycles(1000);
+        second.RunCycles(64);
+        second.WriteMemory(0xFF04, 0); // reset divider without changing cycle count
+        second.RunCycles(936);
+
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.Equal(first.PeekMemory(0xFF04), second.PeekMemory(0xFF04));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());

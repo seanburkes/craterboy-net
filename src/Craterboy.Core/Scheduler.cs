@@ -85,6 +85,13 @@ internal sealed class TimerDevice : ICycleParticipant
         }
     }
 
+    public void WriteStateHash(BinaryWriter writer)
+    {
+        writer.Write(_divider);
+        writer.Write(_timaReloadState);
+        writer.Write(_timaReloadCycles);
+    }
+
     public void AdvanceTCycle()
     {
         AdvanceTimaReload();
