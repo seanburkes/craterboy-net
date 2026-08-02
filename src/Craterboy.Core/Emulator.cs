@@ -989,6 +989,7 @@ public sealed class Emulator
             0xFF4D => _model.IsColor()
                 ? (byte)((_doubleSpeed ? 0xFE : 0x7E) | (_speedSwitchPrepared ? 0x01 : 0))
                 : (byte)0xFF,
+            0xFF6C => _model.IsColor() ? (byte)(0xFE | (_io[0x6C] & 0x01)) : (byte)0xFF,
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             0xFF76 or 0xFF77 => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 or >= 0xFF47 and <= 0xFF49 or >= 0xFF68 and <= 0xFF6B => _ppu.Read(address),
@@ -1057,6 +1058,9 @@ public sealed class Emulator
                 break;
             case 0xFF4D:
                 if (_model.IsColor()) _speedSwitchPrepared = (value & 0x01) != 0;
+                break;
+            case 0xFF6C:
+                if (_model.IsColor()) _io[0x6C] = (byte)(value & 0x01);
                 break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;

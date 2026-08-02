@@ -577,6 +577,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbObjectPriorityRegisterStoresOnlyItsModeBit()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+
+        Assert.Equal((byte)0xFE, emulator.PeekMemory(0xFF6C));
+        emulator.WriteMemory(0xFF6C, 0xFF);
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF6C));
+        emulator.WriteMemory(0xFF6C, 0x00);
+        Assert.Equal((byte)0xFE, emulator.PeekMemory(0xFF6C));
+    }
+
+    [Fact]
+    public void DmgDoesNotExposeCgbObjectPriorityRegister()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF6C, 0x01);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF6C));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
