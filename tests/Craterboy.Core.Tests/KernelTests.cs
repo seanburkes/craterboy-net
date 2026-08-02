@@ -508,6 +508,36 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbWramBankRegisterSelectsD000AndEchoBank()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xD000, 0x12); // default bank 1
+        emulator.WriteMemory(0xFF70, 0x02);
+        emulator.WriteMemory(0xD000, 0x34);
+
+        Assert.Equal((byte)0xFA, emulator.PeekMemory(0xFF70));
+        Assert.Equal((byte)0x34, emulator.PeekMemory(0xD000));
+        emulator.WriteMemory(0xF000, 0x56); // echo of the selected bank
+        Assert.Equal((byte)0x56, emulator.PeekMemory(0xD000));
+
+        emulator.WriteMemory(0xFF70, 0x00); // bank zero selects bank 1
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0xD000));
+        Assert.Equal((byte)0xF9, emulator.PeekMemory(0xFF70));
+    }
+
+    [Fact]
+    public void DmgIgnoresWramBankSelection()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xD000, 0x12);
+        emulator.WriteMemory(0xFF70, 0x07);
+        emulator.WriteMemory(0xD000, 0x34);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF70));
+        Assert.Equal((byte)0x34, emulator.PeekMemory(0xD000));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
