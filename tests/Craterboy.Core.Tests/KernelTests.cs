@@ -801,6 +801,25 @@ public sealed class KernelTests
         Assert.Equal((ushort)0x5678, frame[0]);
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyModelsExposeIndexedColorFrames(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0x8000, 0x80); // background tile 0, color 1
+        emulator.WriteMemory(0xFF68, 2); // background palette 0, color 1
+        emulator.WriteMemory(0xFF69, 0xBC);
+        emulator.WriteMemory(0xFF68, 3);
+        emulator.WriteMemory(0xFF69, 0x0A);
+        emulator.WriteMemory(0xFF40, 0x91); // LCD, BG, unsigned tiles
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x0ABC, frame[0]);
+    }
+
     [Fact]
     public void CgbColorFrameUsesBackgroundPaletteIndexAndRgb15Data()
     {
