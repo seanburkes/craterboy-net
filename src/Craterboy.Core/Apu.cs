@@ -3,6 +3,16 @@ namespace Craterboy;
 internal sealed class ApuDevice : ICycleParticipant
 {
     private static readonly byte[] DutyPatterns = [0b00000001, 0b10000001, 0b10000111, 0b01111110];
+    private static readonly byte[] RegisterReadMasks =
+    [
+        0x80, 0x3F, 0x00, 0xFF, 0xBF,
+        0xFF, 0x3F, 0x00, 0xFF, 0xBF,
+        0x7F, 0xFF, 0x9F, 0xFF, 0xBF,
+        0xFF, 0xFF, 0x00, 0x00, 0xBF,
+        0x00, 0x00, 0x70, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF
+    ];
     private readonly byte[] _io;
     private bool _powered;
     private int _frameCycles;
@@ -81,9 +91,16 @@ internal sealed class ApuDevice : ICycleParticipant
         _io[0x26] = 0;
     }
 
-    public byte Read(ushort address) => address == 0xFF26
-        ? (byte)((_powered ? 0x80 : 0) | (_io[0x26] & 0x0F))
-        : _io[address - 0xFF00];
+    public byte Read(ushort address)
+    {
+        if (address == 0xFF26) return (byte)((_powered ? 0x80 : 0) | 0x70 | (_io[0x26] & 0x0F));
+        if (address is >= 0xFF10 and <= 0xFF2F)
+        {
+            var offset = address - 0xFF10;
+            return (byte)(_io[address - 0xFF00] | RegisterReadMasks[offset]);
+        }
+        return _io[address - 0xFF00];
+    }
 
     public void Write(ushort address, byte value)
     {
