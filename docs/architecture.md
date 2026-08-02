@@ -41,6 +41,8 @@ work-RAM state is included in deterministic hashes.
 CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation;
 double-speed scheduler cadence remains a later timing slice.
+CGB OPRI exposes the object-priority mode bit; CGB sprite composition remains
+deferred with the rest of the color renderer.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
