@@ -325,6 +325,29 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void SerialEndpointCompletesExternalClockTransfer()
+    {
+        var endpoint = new TestSerialEndpoint { Response = 0x3C };
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { SerialEndpoint = endpoint });
+        emulator.LoadRom(MakeRom());
+        emulator.WriteMemory(0xFF01, 0xA5);
+        emulator.WriteMemory(0xFF02, 0x80); // transfer start, external clock
+
+        for (var bit = 0; bit < 7; bit++)
+        {
+            emulator.ClockSerialBit();
+            Assert.Equal((byte)0xA5, emulator.PeekMemory(0xFF01));
+            Assert.Equal((byte)0x80, (byte)(emulator.PeekMemory(0xFF02) & 0x80));
+        }
+
+        emulator.ClockSerialBit();
+        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF01));
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF02) & 0x80));
+        Assert.Equal((byte)0x08, (byte)(emulator.PeekMemory(0xFF0F) & 0x08));
+        Assert.Equal((byte)0xA5, endpoint.Outgoing);
+    }
+
+    [Fact]
     public void JoypadSelectionAndButtonPressUseActiveLowLines()
     {
         var emulator = NewEmulator(MakeRom());

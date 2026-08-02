@@ -120,6 +120,8 @@ public sealed class Emulator
     public void SetButtonState(GameBoyButton button, bool pressed, int player = 0) =>
         _joypad.SetButtonState(button, pressed, player);
 
+    public void ClockSerialBit() => _serial.ClockExternalBit();
+
     public void CopyFrame(Span<byte> destination) => _ppu.CopyFrame(destination);
     public int CopyAudioSamples(Span<short> destination) => _apu.CopySamples(destination);
 

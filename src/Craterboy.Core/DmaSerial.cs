@@ -45,6 +45,7 @@ internal sealed class SerialDevice : ICycleParticipant
     private readonly byte[] _io;
     private readonly ISerialEndpoint? _endpoint;
     private int _cycles;
+    private int _externalBits;
 
     public SerialDevice(byte[] io, ISerialEndpoint? endpoint)
     {
@@ -52,12 +53,27 @@ internal sealed class SerialDevice : ICycleParticipant
         _endpoint = endpoint;
     }
 
-    public void Reset() => _cycles = 0;
+    public void Reset()
+    {
+        _cycles = 0;
+        _externalBits = 0;
+    }
 
     public void WriteControl(byte value)
     {
         _io[0x02] = (byte)(value & 0x83);
         if ((_io[0x02] & 0x81) == 0x81) _cycles = 0;
+        if ((_io[0x02] & 0x80) != 0 && (_io[0x02] & 1) == 0) _externalBits = 0;
+    }
+
+    public void ClockExternalBit()
+    {
+        if ((_io[0x02] & 0x81) != 0x80) return;
+        if (++_externalBits < 8) return;
+        _externalBits = 0;
+        _io[0x01] = _endpoint?.Exchange(_io[0x01]) ?? 0xFF;
+        _io[0x02] &= 0x7F;
+        _io[0x0F] |= 0x08;
     }
 
     public void AdvanceTCycle()
