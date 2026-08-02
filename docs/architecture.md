@@ -16,7 +16,8 @@ OAM DMA and serial transfer devices are also scheduler participants. DMA copies
 one byte per four T-cycles for 160 bytes, while the serial endpoint completes an
 internal-clock transfer after eight 512-T-cycle bit periods. During OAM DMA,
 CPU accesses are blocked outside HRAM and IE while the DMA source bus remains
-active. External serial clocks and CGB HDMA remain deferred.
+active. `Emulator.ClockSerialBit()` supplies external serial clock edges for
+link endpoints. CGB HDMA remains deferred.
 
 The joypad is an active-low bus device with explicit button state injection.
 FF00 selection changes and button presses request the joypad interrupt on a
