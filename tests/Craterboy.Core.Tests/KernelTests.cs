@@ -754,6 +754,43 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbGeneralDmaCopiesMaskedBlocksIntoSelectedVramBank()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        for (var index = 0; index < 0x10; index++)
+            emulator.WriteMemory((ushort)(0xC000 + index), (byte)(index + 1));
+
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x03);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x07);
+        emulator.WriteMemory(0xFF55, 0x00); // one immediate 16-byte block
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
+        for (var index = 0; index < 0x10; index++)
+            Assert.Equal((byte)(index + 1), emulator.PeekMemory((ushort)(0x8000 + index)));
+        Assert.Equal((byte)0xC0, emulator.PeekMemory(0xFF51));
+        Assert.Equal((byte)0x10, emulator.PeekMemory(0xFF52));
+        Assert.Equal((byte)0xE0, emulator.PeekMemory(0xFF53));
+        Assert.Equal((byte)0x10, emulator.PeekMemory(0xFF54));
+    }
+
+    [Fact]
+    public void CgbHblankDmaRequestIsReportedAsDeferred()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x00);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF55, 0x80);
+
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF55));
+        Assert.Equal((byte)0xE0, emulator.PeekMemory(0xFF53));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
