@@ -26,8 +26,8 @@ a high-to-low line transition. Opposing direction inputs are filtered to the
 hardware-compatible single-direction result; SGB multiplayer input is deferred.
 
 The PPU timing kernel is also scheduler-owned. It models DMG mode 2/3/0
-transitions, including the fine-scroll penalty from SCX, VBlank lines, LY/LYC
-coincidence, and STAT interrupts. The first
+transitions, including the SCX fine-scroll and WX=0 window-fetch penalties,
+VBlank lines, LY/LYC coincidence, and STAT interrupts. The first
 renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 160×144 pixels. Window positioning and its independent tile-map line counter
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG

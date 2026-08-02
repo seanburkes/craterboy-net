@@ -30,7 +30,7 @@ public sealed class Emulator
         _dma = new OamDmaDevice(address => Read(address, true), (index, value) => _oam[index] = value);
         _serial = new SerialDevice(_io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_model, _io);
-        _ppu = new PpuDevice(_io, _vram, _oam);
+        _ppu = new PpuDevice(_model, _io, _vram, _oam);
         _apu = new ApuDevice(_model, _io);
         _state.Scheduler.Register(_timer);
         _state.Scheduler.Register(_dma);

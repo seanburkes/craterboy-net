@@ -435,6 +435,19 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuWindowAtZeroAddsDmgFineScrollFetchCycle()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF43, 1); // nonzero fine scroll
+        emulator.WriteMemory(0xFF4A, 0); // WY
+        emulator.WriteMemory(0xFF4B, 0); // WX = 0
+        emulator.WriteMemory(0xFF40, 0xB1); // LCD, window, BG, unsigned tile data
+
+        emulator.RunCycles(80 + 173);
+        Assert.Equal((byte)3, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
