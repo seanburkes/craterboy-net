@@ -194,6 +194,30 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void TimerTacWriteCausesFallingEdgeIncrement()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF05, 0x10);
+        emulator.RunCycles(8); // divider bit 3 is high
+        emulator.WriteMemory(0xFF07, 0x05); // enable, select divider bit 3
+        emulator.WriteMemory(0xFF07, 0x00); // disabling the timer creates a falling edge
+
+        Assert.Equal((byte)0x11, emulator.PeekMemory(0xFF05));
+    }
+
+    [Fact]
+    public void TimerTacWriteDoesNotIncrementWhenTheSelectedBitWasLow()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF05, 0x10);
+        emulator.RunCycles(4); // divider bit 3 is low
+        emulator.WriteMemory(0xFF07, 0x05);
+        emulator.WriteMemory(0xFF07, 0x00);
+
+        Assert.Equal((byte)0x10, emulator.PeekMemory(0xFF05));
+    }
+
+    [Fact]
     public void OamDmaCopiesOneHundredSixtyBytesInSixHundredFortyTCycles()
     {
         var rom = MakeRom();
