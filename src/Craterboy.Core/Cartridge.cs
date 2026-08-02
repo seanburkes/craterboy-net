@@ -16,7 +16,11 @@ internal abstract class Cartridge
     public abstract byte Read(ushort address);
     public abstract void Write(ushort address, byte value);
     protected void Dirty() => _batteryDirty = true;
-    public virtual void WriteStateHash(BinaryWriter writer) => writer.Write(_batteryDirty);
+    public virtual void WriteStateHash(BinaryWriter writer)
+    {
+        writer.Write(System.Security.Cryptography.SHA256.HashData(Rom));
+        writer.Write(_batteryDirty);
+    }
 
     public virtual void LoadBattery(ReadOnlySpan<byte> data)
     {

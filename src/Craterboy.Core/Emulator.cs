@@ -120,6 +120,8 @@ public sealed class Emulator
         {
             writer.Write((byte)_model);
             writer.Write(CycleCount);
+            writer.Write(_bootRom is not null);
+            if (_bootRom is not null) writer.Write(System.Security.Cryptography.SHA256.HashData(_bootRom));
             writer.Write(_bootMapped);
             writer.Write(_state.Cpu.A); writer.Write(_state.Cpu.F);
             writer.Write(_state.Cpu.B); writer.Write(_state.Cpu.C);

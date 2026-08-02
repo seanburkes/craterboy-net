@@ -1584,6 +1584,36 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesRomIdentity()
+    {
+        var firstRom = MakeRom();
+        var secondRom = MakeRom();
+        secondRom[0x200] = 0xA5;
+        FixChecksum(secondRom);
+
+        var first = NewEmulator(firstRom);
+        var second = NewEmulator(secondRom);
+
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
+    public void StateHashIncludesBootRomIdentity()
+    {
+        var first = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { SkipBootRom = false });
+        var second = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { SkipBootRom = false });
+        var rom = MakeRom();
+        first.LoadRom(rom);
+        second.LoadRom(rom);
+        first.LoadBootRom(new byte[0x100]);
+        var bootRom = new byte[0x100];
+        bootRom[0xFF] = 0xA5;
+        second.LoadBootRom(bootRom);
+
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
