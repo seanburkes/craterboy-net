@@ -70,7 +70,10 @@ internal sealed class TimerDevice : ICycleParticipant
                 _io[0x06] = value;
                 break;
             case 0xFF07:
-                _io[0x07] = (byte)(value & 0x07);
+                var control = (byte)(value & 0x07);
+                if (TimerSignal(_divider, _io[0x07]) && !TimerSignal(_divider, control))
+                    IncrementTima();
+                _io[0x07] = control;
                 break;
         }
     }
@@ -82,16 +85,19 @@ internal sealed class TimerDevice : ICycleParticipant
         _io[0x04] = (byte)(_divider >> 8);
         var newSignal = TimerSignal(_divider, _io[0x07]);
         if (oldSignal && !newSignal)
+            IncrementTima();
+    }
+
+    private void IncrementTima()
+    {
+        if (_io[0x05] == 0xFF)
         {
-            if (_io[0x05] == 0xFF)
-            {
-                _io[0x05] = _io[0x06];
-                _io[0x0F] |= 0x04;
-            }
-            else
-            {
-                _io[0x05]++;
-            }
+            _io[0x05] = _io[0x06];
+            _io[0x0F] |= 0x04;
+        }
+        else
+        {
+            _io[0x05]++;
         }
     }
 
