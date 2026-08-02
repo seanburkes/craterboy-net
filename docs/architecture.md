@@ -19,9 +19,10 @@ CPU accesses are blocked outside HRAM and IE while the DMA source bus remains
 active. `Emulator.ClockSerialBit()` supplies external serial clock edges for
 link endpoints. CGB HDMA remains deferred.
 
-The joypad is an active-low bus device with explicit button state injection.
-FF00 selection changes and button presses request the joypad interrupt on a
-high-to-low line transition; SGB multiplayer input is deferred.
+The joypad is an active-low, scheduler-owned bus device with explicit button
+state injection. DMG/MGB FF00 selection changes model their hardware switching
+delay, and selection changes or button presses request the joypad interrupt on
+a high-to-low line transition; SGB multiplayer input is deferred.
 
 The PPU timing kernel is also scheduler-owned. It models DMG mode 2/3/0
 transitions, VBlank lines, LY/LYC coincidence, and STAT interrupts. The first
