@@ -639,6 +639,31 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbBackgroundUsesTileAttributesForBankAndFlip()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        emulator.WriteMemory(0x9800, 0x00); // tile 0 from bank 0
+        emulator.WriteMemory(0x9801, 0x00); // tile 0 from bank 0
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x9800, 0x08); // tile 0 uses bank 1 data
+        emulator.WriteMemory(0x9801, 0x20); // X-flip tile 0 at x=8
+        emulator.WriteMemory(0x8000, 0x01); // bank 1 pixel 7
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0x8000, 0x01); // bank 0 pixel 7
+        emulator.WriteMemory(0xFF47, 0xE4);
+        emulator.WriteMemory(0xFF40, 0x91); // LCD, BG, unsigned tile data
+        emulator.RunCycles(252);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)0, frame[0]);
+        Assert.Equal((byte)1, frame[7]);
+        Assert.Equal((byte)1, frame[8]); // flipped bank-0 tile pixel 0 at screen x=8
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();

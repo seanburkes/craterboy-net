@@ -249,14 +249,16 @@ internal sealed class PpuDevice : ICycleParticipant
             var selectedMap = useWindow && (_io[0x40] & 0x40) != 0 ? 0x1C00 : mapBase;
             if (useWindow && (_io[0x40] & 0x40) == 0) selectedMap = 0x1800;
             var selectedTileRow = pixelY >> 3;
-            var tile = _vram[selectedMap + selectedTileRow * 32 + tileColumn];
-            var tileAddress = unsignedTiles
-                ? tile * 16
-                : 0x1000 + (sbyte)tile * 16;
+            var mapAddress = selectedMap + selectedTileRow * 32 + tileColumn;
+            var tile = _vram[mapAddress];
+            var attributes = _model.IsColor() ? _vram[0x2000 + mapAddress] : (byte)0;
+            var tileAddress = (_model.IsColor() && (attributes & 0x08) != 0 ? 0x2000 : 0) +
+                (unsignedTiles ? tile * 16 : 0x1000 + (sbyte)tile * 16);
             var selectedRow = pixelY & 7;
+            if ((attributes & 0x40) != 0) selectedRow = 7 - selectedRow;
             var low = _vram[tileAddress + selectedRow * 2];
             var high = _vram[tileAddress + selectedRow * 2 + 1];
-            var bit = 7 - (worldX & 7);
+            var bit = (attributes & 0x20) != 0 ? worldX & 7 : 7 - (worldX & 7);
             var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
             _backgroundColors[x] = (byte)color;
             _frame[output + x] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
