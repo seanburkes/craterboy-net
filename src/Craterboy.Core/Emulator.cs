@@ -971,7 +971,7 @@ public sealed class Emulator
             0xFF0F => (byte)(0xE0 | (_io[0x0F] & InterruptMask)),
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             0xFF76 or 0xFF77 => _apu.Read(address),
-            >= 0xFF40 and <= 0xFF45 => _ppu.Read(address),
+            >= 0xFF40 and <= 0xFF45 or >= 0xFF47 and <= 0xFF49 => _ppu.Read(address),
             >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
             < 0xFF80 => _io[address - 0xFF00],
             < 0xFFFF => _hram[address - 0xFF80],
@@ -1011,6 +1011,9 @@ public sealed class Emulator
                 _apu.Write(address, value);
                 break;
             case >= 0xFF40 and <= 0xFF45:
+                _ppu.Write(address, value);
+                break;
+            case >= 0xFF47 and <= 0xFF49:
                 _ppu.Write(address, value);
                 break;
             case 0xFF46:

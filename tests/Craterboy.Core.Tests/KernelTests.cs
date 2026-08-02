@@ -422,6 +422,19 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuFineScrollExtendsDmgModeThree()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF43, 3); // SCX fine-scroll penalty
+        emulator.WriteMemory(0xFF40, 0x80);
+
+        emulator.RunCycles(80 + 174);
+        Assert.Equal((byte)3, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
