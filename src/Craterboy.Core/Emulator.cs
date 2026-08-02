@@ -16,6 +16,9 @@ public sealed class Emulator
     private byte _wramBank;
     private bool _doubleSpeed;
     private bool _speedSwitchPrepared;
+    private ushort _cgbDmaSource;
+    private ushort _cgbDmaDestination;
+    private byte _cgbDmaStatus = 0xFF;
     private TimerDevice _timer = null!;
     private OamDmaDevice _dma = null!;
     private SerialDevice _serial = null!;
@@ -85,6 +88,9 @@ public sealed class Emulator
         _wramBank = 1;
         _doubleSpeed = false;
         _speedSwitchPrepared = false;
+        _cgbDmaSource = 0;
+        _cgbDmaDestination = 0x8000;
+        _cgbDmaStatus = 0xFF;
         _timer.Reset();
         _dma.Reset();
         _serial.Reset();
@@ -1003,6 +1009,11 @@ public sealed class Emulator
                 ? (byte)((_doubleSpeed ? 0xFE : 0x7E) | (_speedSwitchPrepared ? 0x01 : 0))
                 : (byte)0xFF,
             0xFF6C => _model.IsColor() ? (byte)(0xFE | (_io[0x6C] & 0x01)) : (byte)0xFF,
+            0xFF51 => _model.IsColor() ? (byte)(_cgbDmaSource >> 8) : (byte)0xFF,
+            0xFF52 => _model.IsColor() ? (byte)(_cgbDmaSource & 0xF0) : (byte)0xFF,
+            0xFF53 => _model.IsColor() ? (byte)(0xE0 | ((_cgbDmaDestination >> 8) & 0x1F)) : (byte)0xFF,
+            0xFF54 => _model.IsColor() ? (byte)(_cgbDmaDestination & 0xF0) : (byte)0xFF,
+            0xFF55 => _model.IsColor() ? _cgbDmaStatus : (byte)0xFF,
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             0xFF76 or 0xFF77 => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 or >= 0xFF47 and <= 0xFF49 or >= 0xFF68 and <= 0xFF6B => _ppu.Read(address),
@@ -1075,6 +1086,21 @@ public sealed class Emulator
             case 0xFF6C:
                 if (_model.IsColor()) _io[0x6C] = (byte)(value & 0x01);
                 break;
+            case 0xFF51:
+                if (_model.IsColor()) _cgbDmaSource = (ushort)((value << 8) | (_cgbDmaSource & 0x00F0));
+                break;
+            case 0xFF52:
+                if (_model.IsColor()) _cgbDmaSource = (ushort)((_cgbDmaSource & 0xFF00) | (value & 0xF0));
+                break;
+            case 0xFF53:
+                if (_model.IsColor()) _cgbDmaDestination = (ushort)(0x8000 | ((value & 0x1F) << 8) | (_cgbDmaDestination & 0x00F0));
+                break;
+            case 0xFF54:
+                if (_model.IsColor()) _cgbDmaDestination = (ushort)((_cgbDmaDestination & 0xFF00) | (value & 0xF0));
+                break;
+            case 0xFF55:
+                if (_model.IsColor()) StartCgbDma(value);
+                break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;
                 if (address == 0xFF50 && value != 0) _bootMapped = false;
@@ -1093,4 +1119,38 @@ public sealed class Emulator
         var banked = (address & 0x1000) != 0;
         return banked ? 0x1000 + (_wramBank - 1) * 0x1000 + (address & 0x0FFF) : address & 0x0FFF;
     }
+
+    private void StartCgbDma(byte value)
+    {
+        if ((value & 0x80) != 0)
+        {
+            _cgbDmaStatus = (byte)(value & 0x7F);
+            return;
+        }
+
+        var blocks = (value & 0x7F) + 1;
+        for (var block = 0; block < blocks; block++)
+        {
+            for (var offset = 0; offset < 0x10; offset++)
+            {
+                var source = (ushort)(_cgbDmaSource + offset);
+                var destination = (ushort)(_cgbDmaDestination + offset);
+                _vram[(_vramBank * 0x2000) + destination - 0x8000] = ReadCgbDmaSource(source);
+            }
+
+            _cgbDmaSource = (ushort)(_cgbDmaSource + 0x10);
+            _cgbDmaDestination = (ushort)(_cgbDmaDestination + 0x10);
+        }
+
+        _cgbDmaStatus = 0xFF;
+    }
+
+    private byte ReadCgbDmaSource(ushort address) => address switch
+    {
+        < 0x8000 => _cartridge?.Read(address) ?? 0xFF,
+        < 0xA000 => _vram[(_vramBank * 0x2000) + address - 0x8000],
+        < 0xC000 => _cartridge?.Read(address) ?? 0xFF,
+        < 0xFE00 => _wram[WramOffset(address)],
+        _ => 0xFF,
+    };
 }
