@@ -129,6 +129,13 @@ internal sealed class PpuDevice : ICycleParticipant
 
     public void WriteStateHash(BinaryWriter writer)
     {
+        writer.Write(_enabled);
+        writer.Write(_lineCycles);
+        writer.Write(_line);
+        writer.Write(_windowLine);
+        writer.Write(_mode);
+        writer.Write(_coincidence);
+        writer.Write(_statLine);
         writer.Write(_backgroundPaletteRam);
         writer.Write(_objectPaletteRam);
     }

@@ -1472,6 +1472,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesPpuWindowProgress()
+    {
+        var first = NewEmulator(MakeRom());
+        var second = NewEmulator(MakeRom());
+        first.WriteMemory(0xFF40, 0xB1); // LCD, BG, and window enabled
+        first.RunCycles(456);
+        first.WriteMemory(0xFF40, 0x91); // match second's final LCD control
+        second.WriteMemory(0xFF40, 0x91);
+        second.RunCycles(456);
+
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.Equal(first.PeekMemory(0xFF40), second.PeekMemory(0xFF40));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
