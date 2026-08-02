@@ -160,6 +160,10 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF11:
                 _channel1Length = 64 - (value & 0x3F);
                 break;
+            case 0xFF12 when (value & 0xF8) == 0:
+                _channel1Enabled = false;
+                UpdateStatus();
+                break;
             case 0xFF13:
                 _channel1Frequency = (_channel1Frequency & 0x700) | value;
                 break;
@@ -168,6 +172,10 @@ internal sealed class ApuDevice : ICycleParticipant
                 break;
             case 0xFF16:
                 _channel2Length = 64 - (value & 0x3F);
+                break;
+            case 0xFF17 when (value & 0xF8) == 0:
+                _channel2Enabled = false;
+                UpdateStatus();
                 break;
             case 0xFF19:
                 _channel2Frequency = (_channel2Frequency & 0x0FF) | ((value & 0x07) << 8);
@@ -184,6 +192,10 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF1B:
                 _channel3Length = 256 - value;
                 break;
+            case 0xFF1A when (value & 0x80) == 0:
+                _channel3Enabled = false;
+                UpdateStatus();
+                break;
             case 0xFF1D:
                 _channel3Frequency = (_channel3Frequency & 0x700) | value;
                 break;
@@ -196,6 +208,10 @@ internal sealed class ApuDevice : ICycleParticipant
                 break;
             case 0xFF20:
                 _channel4Length = 64 - (value & 0x3F);
+                break;
+            case 0xFF21 when (value & 0xF8) == 0:
+                _channel4Enabled = false;
+                UpdateStatus();
                 break;
             case 0xFF23 when (value & 0x80) != 0:
                 if (_channel4Length == 0) _channel4Length = 64;

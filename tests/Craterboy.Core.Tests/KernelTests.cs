@@ -369,6 +369,32 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuDisablesChannelsWhenTheirDacsAreCleared()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF14, 0x80);
+        emulator.WriteMemory(0xFF17, 0xF0);
+        emulator.WriteMemory(0xFF19, 0x80);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1E, 0x80);
+        emulator.WriteMemory(0xFF21, 0xF0);
+        emulator.WriteMemory(0xFF23, 0x80);
+        Assert.Equal((byte)0x8F, emulator.PeekMemory(0xFF26));
+
+        emulator.WriteMemory(0xFF12, 0x00);
+        emulator.WriteMemory(0xFF17, 0x00);
+        emulator.WriteMemory(0xFF1A, 0x00);
+        emulator.WriteMemory(0xFF21, 0x00);
+
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void ApuChannelOneTriggerReportsStatusUntilLengthExpires()
     {
         var rom = MakeRom();
