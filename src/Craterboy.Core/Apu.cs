@@ -370,6 +370,29 @@ internal sealed class ApuDevice : ICycleParticipant
         return copied;
     }
 
+    public void WriteStateHash(BinaryWriter writer)
+    {
+        writer.Write(_powered);
+        writer.Write(_frameCycles);
+        writer.Write(_frameStep);
+        writer.Write(_channel1Length); writer.Write(_channel1Enabled);
+        writer.Write(_channel1Volume); writer.Write(_envelopeTimer);
+        writer.Write(_sweepTimer); writer.Write(_channel1Frequency);
+        writer.Write(_channel1SweepFrequency); writer.Write(_sweepEnabled);
+        writer.Write(_wave1Phase);
+        writer.Write(_channel2Length); writer.Write(_channel2Enabled);
+        writer.Write(_channel2Volume); writer.Write(_channel2EnvelopeTimer);
+        writer.Write(_channel2Frequency); writer.Write(_wave2Phase);
+        writer.Write(_channel3Length); writer.Write(_channel3Enabled);
+        writer.Write(_wave3Phase); writer.Write(_channel3Frequency);
+        writer.Write(_channel4Length); writer.Write(_channel4Enabled);
+        writer.Write(_channel4Volume); writer.Write(_channel4EnvelopeTimer);
+        writer.Write(_noiseLfsr); writer.Write(_noiseTimer);
+        writer.Write(_mixerConfigured); writer.Write(_sampleCycles);
+        writer.Write(_sampleRead); writer.Write(_sampleWrite); writer.Write(_sampleCount);
+        foreach (var sample in _samples) writer.Write(sample);
+    }
+
     private void EmitSample()
     {
         Span<int> channels = stackalloc int[4];
