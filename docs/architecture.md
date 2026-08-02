@@ -45,6 +45,7 @@ CGB BG/OBJ palette RAM is also included in deterministic hashes so color state
 changes are visible to replay checkpoints.
 PPU timing, LCD mode, coincidence, and window-line state are included alongside
 the palette state.
+Timer divider precision and delayed reload state are included as well.
 CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation;
 following CPU instructions consume half as many scheduler T-cycles while PPU

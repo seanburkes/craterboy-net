@@ -134,6 +134,7 @@ public sealed class Emulator
             writer.Write(_cgbDmaStatus); writer.Write(_cgbDmaHblankActive);
             writer.Write(_io); writer.Write(_hram);
             _ppu.WriteStateHash(writer);
+            _timer.WriteStateHash(writer);
             writer.Write(_cartridge?.SaveBattery() ?? Array.Empty<byte>());
         }
         return System.Security.Cryptography.SHA256.HashData(stream.GetBuffer().AsSpan(0, checked((int)stream.Length)));
