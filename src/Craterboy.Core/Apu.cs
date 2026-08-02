@@ -13,6 +13,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _envelopeTimer;
     private int _sweepTimer;
     private int _channel1Frequency;
+    private int _channel1SweepFrequency;
     private bool _sweepEnabled;
     private int _wave1Phase;
     private int _channel2Length;
@@ -51,6 +52,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _envelopeTimer = 0;
         _sweepTimer = 0;
         _channel1Frequency = 0;
+        _channel1SweepFrequency = 0;
         _sweepEnabled = false;
         _wave1Phase = 0;
         _channel2Length = 0;
@@ -97,6 +99,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _envelopeTimer = 0;
                 _sweepTimer = 0;
                 _channel1Frequency = 0;
+                _channel1SweepFrequency = 0;
                 _sweepEnabled = false;
                 _wave1Phase = 0;
                 _channel2Length = 0;
@@ -191,6 +194,7 @@ internal sealed class ApuDevice : ICycleParticipant
                     _channel1Volume = _io[0x12] >> 4;
                     _envelopeTimer = (_io[0x12] & 0x07) == 0 ? 8 : (_io[0x12] & 0x07);
                     _sweepEnabled = (_io[0x10] & 0x70) != 0;
+                    _channel1SweepFrequency = _channel1Frequency;
                     _sweepTimer = SweepPeriodTicks();
                     if ((_io[0x10] & 0x07) != 0 && SweepFrequency() > 2047)
                     {
@@ -267,6 +271,7 @@ internal sealed class ApuDevice : ICycleParticipant
             else if ((_io[0x10] & 0x07) != 0)
             {
                 _channel1Frequency = next;
+                _channel1SweepFrequency = next;
                 _io[0x13] = (byte)next;
                 _io[0x14] = (byte)((_io[0x14] & 0xF8) | (next >> 8));
             }
@@ -277,10 +282,10 @@ internal sealed class ApuDevice : ICycleParticipant
 
     private int SweepFrequency()
     {
-        var delta = _channel1Frequency >> (_io[0x10] & 0x07);
+        var delta = _channel1SweepFrequency >> (_io[0x10] & 0x07);
         return (_io[0x10] & 0x08) != 0
-            ? _channel1Frequency - delta
-            : _channel1Frequency + delta;
+            ? _channel1SweepFrequency - delta
+            : _channel1SweepFrequency + delta;
     }
 
     public int CopySamples(Span<short> destination)
