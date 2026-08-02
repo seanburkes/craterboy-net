@@ -964,6 +964,7 @@ public sealed class Emulator
             0xFF00 => _joypad.Read(),
             0xFF0F => (byte)(0xE0 | (_io[0x0F] & InterruptMask)),
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
+            0xFF76 or 0xFF77 => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 => _ppu.Read(address),
             >= 0xFF04 and <= 0xFF07 => _timer.Read(address),
             < 0xFF80 => _io[address - 0xFF00],
@@ -997,6 +998,9 @@ public sealed class Emulator
                 _joypad.Write(value);
                 break;
             case >= 0xFF10 and <= 0xFF3F:
+                _apu.Write(address, value);
+                break;
+            case 0xFF76 or 0xFF77:
                 _apu.Write(address, value);
                 break;
             case >= 0xFF40 and <= 0xFF45:

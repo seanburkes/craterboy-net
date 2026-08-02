@@ -99,6 +99,7 @@ internal sealed class ApuDevice : ICycleParticipant
     public byte Read(ushort address)
     {
         if (address == 0xFF26) return (byte)((_powered ? 0x80 : 0) | 0x70 | (_io[0x26] & 0x0F));
+        if (address is 0xFF76 or 0xFF77) return ReadPcm(address);
         if (address is >= 0xFF30 and <= 0xFF3F && _channel3Enabled)
         {
             if (!AllowsActiveWaveRamAccess()) return 0xFF;
@@ -431,6 +432,34 @@ internal sealed class ApuDevice : ICycleParticipant
     }
 
     private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0) | (_channel2Enabled ? 0x02 : 0) | (_channel3Enabled ? 0x04 : 0) | (_channel4Enabled ? 0x08 : 0));
+
+    private byte ReadPcm(ushort address)
+    {
+        if (!_model.IsColor()) return 0xFF;
+        var channel1 = CurrentPulseSample(_wave1Phase, _io[0x11], _channel1Volume, _channel1Enabled);
+        var channel2 = CurrentPulseSample(_wave2Phase, _io[0x16], _channel2Volume, _channel2Enabled);
+        var channel3 = CurrentWaveSample();
+        var channel4 = _channel4Enabled && (_noiseLfsr & 1) == 0 ? _channel4Volume : 0;
+        return address == 0xFF76
+            ? (byte)((channel2 << 4) | channel1)
+            : (byte)((channel4 << 4) | channel3);
+    }
+
+    private static int CurrentPulseSample(int phase, byte register, int volume, bool enabled)
+    {
+        if (!enabled) return 0;
+        var duty = (register >> 6) & 0x03;
+        return ((DutyPatterns[duty] >> (7 - phase)) & 1) != 0 ? volume : 0;
+    }
+
+    private int CurrentWaveSample()
+    {
+        if (!_channel3Enabled) return 0;
+        var packed = _io[0x30 + (_wave3Phase >> 1)];
+        var nibble = (_wave3Phase & 1) == 0 ? packed >> 4 : packed & 0x0F;
+        var volumeCode = (_io[0x1C] >> 5) & 0x03;
+        return volumeCode switch { 0 => 0, 1 => nibble, 2 => nibble >> 1, _ => nibble >> 2 };
+    }
 
     private bool AllowsActiveWaveRamAccess() => _model is >= GameBoyModel.Cgb0 and <= GameBoyModel.CgbE;
 
