@@ -16,6 +16,7 @@ internal abstract class Cartridge
     public abstract byte Read(ushort address);
     public abstract void Write(ushort address, byte value);
     protected void Dirty() => _batteryDirty = true;
+    public virtual void WriteStateHash(BinaryWriter writer) => writer.Write(_batteryDirty);
 
     public virtual void LoadBattery(ReadOnlySpan<byte> data)
     {
@@ -137,6 +138,17 @@ internal sealed class Mbc3Cartridge(byte[] rom, int ramSize, ITimeProvider timeP
         _rtc[3] = (byte)total;
         _rtc[4] = (byte)((_rtc[4] & 0xC0) | (total >= 256 ? 1 : 0));
     }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_rtc);
+        writer.Write(_latchedRtc);
+        writer.Write(_ramEnabled);
+        writer.Write(_romBank);
+        writer.Write(_select);
+        writer.Write(_latchValue);
+    }
 }
 
 internal sealed class RomOnlyCartridge(byte[] rom, int ramSize) : Cartridge(rom, ramSize)
@@ -181,6 +193,15 @@ internal sealed class Mbc1Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ra
                 break;
         }
     }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_ramEnabled);
+        writer.Write(_lowBank);
+        writer.Write(_highBank);
+        writer.Write(_ramMode);
+    }
 }
 
 internal sealed class Mbc2Cartridge(byte[] rom) : Cartridge(rom, 512)
@@ -203,6 +224,13 @@ internal sealed class Mbc2Cartridge(byte[] rom) : Cartridge(rom, 512)
         }
         else if (address is >= 0xA000 and < 0xC000 && _ramEnabled)
             WriteRam(address & 0x1FF, (byte)(value & 0x0F));
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_ramEnabled);
+        writer.Write(_bank);
     }
 }
 
@@ -228,5 +256,13 @@ internal sealed class Mbc5Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ra
             case >= 0xA000 and < 0xC000 when _ramEnabled:
                 WriteRam(_ramBank * 0x2000 + address - 0xA000, value); break;
         }
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_ramEnabled);
+        writer.Write(_romBank);
+        writer.Write(_ramBank);
     }
 }
