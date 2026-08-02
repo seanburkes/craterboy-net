@@ -11,6 +11,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly byte[] _oam;
     private readonly byte[] _frame = new byte[Width * Height];
     private readonly byte[] _backgroundColors = new byte[Width];
+    private readonly bool[] _backgroundPriority = new bool[Width];
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
     private readonly byte[] _objectPaletteRam = new byte[0x40];
     private bool _enabled;
@@ -228,6 +229,7 @@ internal sealed class PpuDevice : ICycleParticipant
         if ((_io[0x40] & 0x01) == 0)
         {
             Array.Clear(_backgroundColors);
+            Array.Clear(_backgroundPriority);
             RenderSprites(line, line * Width);
             return;
         }
@@ -261,6 +263,7 @@ internal sealed class PpuDevice : ICycleParticipant
             var bit = (attributes & 0x20) != 0 ? worldX & 7 : 7 - (worldX & 7);
             var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
             _backgroundColors[x] = (byte)color;
+            _backgroundPriority[x] = _model.IsColor() && (attributes & 0x80) != 0;
             _frame[output + x] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
             windowUsed |= useWindow;
         }
@@ -331,6 +334,7 @@ internal sealed class PpuDevice : ICycleParticipant
                 var bit = (attributes & 0x20) != 0 ? pixel : 7 - pixel;
                 var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
                 if (color == 0) continue;
+                if (_model.IsColor() && _backgroundColors[screenX] != 0 && _backgroundPriority[screenX]) continue;
                 if ((attributes & 0x80) != 0 && _backgroundColors[screenX] != 0) continue;
                 _frame[output + screenX] = (byte)((palette >> (color * 2)) & 0x03);
                 written[screenX] = true;
