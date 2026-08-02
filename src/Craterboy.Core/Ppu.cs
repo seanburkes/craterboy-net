@@ -5,6 +5,7 @@ internal sealed class PpuDevice : ICycleParticipant
     public const int Width = 160;
     public const int Height = 144;
 
+    private readonly GameBoyModel _model;
     private readonly byte[] _io;
     private readonly byte[] _vram;
     private readonly byte[] _oam;
@@ -20,8 +21,9 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
-    public PpuDevice(byte[] io, byte[] vram, byte[] oam)
+    public PpuDevice(GameBoyModel model, byte[] io, byte[] vram, byte[] oam)
     {
+        _model = model;
         _io = io;
         _vram = vram;
         _oam = oam;
@@ -97,7 +99,7 @@ internal sealed class PpuDevice : ICycleParticipant
         if (_line < 144)
         {
             if (_lineCycles == 80) SetMode(3);
-            else if (_lineCycles == 252 + (_io[0x43] & 0x07))
+            else if (_lineCycles == Mode3End())
             {
                 RenderBackgroundLine(_line);
                 SetMode(0);
@@ -117,6 +119,17 @@ internal sealed class PpuDevice : ICycleParticipant
         else if (_line < 144) SetMode(2);
         _io[0x44] = _line;
         UpdateCoincidence();
+    }
+
+    private int Mode3End()
+    {
+        var end = 252 + (_io[0x43] & 0x07);
+        if (!_model.IsColor() && !_model.IsSuperGameBoy() && (_io[0x40] & 0x20) != 0 &&
+            _io[0x4B] == 0 && _io[0x43] != 0 && _line >= _io[0x4A] && _io[0x4A] < 144)
+        {
+            end++;
+        }
+        return end;
     }
 
     private void WriteLcdc(byte value)
