@@ -14,6 +14,8 @@ public sealed class Emulator
     private readonly byte[] _hram = new byte[0x7F];
     private byte _vramBank;
     private byte _wramBank;
+    private bool _doubleSpeed;
+    private bool _speedSwitchPrepared;
     private TimerDevice _timer = null!;
     private OamDmaDevice _dma = null!;
     private SerialDevice _serial = null!;
@@ -81,6 +83,8 @@ public sealed class Emulator
         Array.Clear(_vram); Array.Clear(_wram); Array.Clear(_oam); Array.Clear(_io); Array.Clear(_hram);
         _vramBank = 0;
         _wramBank = 1;
+        _doubleSpeed = false;
+        _speedSwitchPrepared = false;
         _timer.Reset();
         _dma.Reset();
         _serial.Reset();
@@ -117,6 +121,7 @@ public sealed class Emulator
             writer.Write(_state.Cpu.Ime); writer.Write(_state.Cpu.ImeEnablePending); writer.Write(_state.Cpu.Halted);
             writer.Write(_vram); writer.Write(_wram); writer.Write(_oam);
             writer.Write(_vramBank); writer.Write(_wramBank);
+            writer.Write(_doubleSpeed); writer.Write(_speedSwitchPrepared);
             writer.Write(_io); writer.Write(_hram);
             writer.Write(_cartridge?.SaveBattery() ?? Array.Empty<byte>());
         }
@@ -975,6 +980,9 @@ public sealed class Emulator
             0xFF0F => (byte)(0xE0 | (_io[0x0F] & InterruptMask)),
             0xFF4F => _model.IsColor() ? (byte)(0xFE | _vramBank) : (byte)0xFF,
             0xFF70 => _model.IsColor() ? (byte)(0xF8 | _wramBank) : (byte)0xFF,
+            0xFF4D => _model.IsColor()
+                ? (byte)((_doubleSpeed ? 0xFE : 0x7E) | (_speedSwitchPrepared ? 0x01 : 0))
+                : (byte)0xFF,
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             0xFF76 or 0xFF77 => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 or >= 0xFF47 and <= 0xFF49 or >= 0xFF68 and <= 0xFF6B => _ppu.Read(address),
@@ -1040,6 +1048,9 @@ public sealed class Emulator
                     var bank = (byte)(value & 0x07);
                     _wramBank = bank == 0 ? (byte)1 : bank;
                 }
+                break;
+            case 0xFF4D:
+                if (_model.IsColor()) _speedSwitchPrepared = (value & 0x01) != 0;
                 break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;

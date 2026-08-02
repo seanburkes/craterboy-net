@@ -538,6 +538,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbKey1ExposesSpeedPreparationWithoutChangingCurrentSpeed()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+
+        Assert.Equal((byte)0x7E, emulator.PeekMemory(0xFF4D));
+        emulator.WriteMemory(0xFF4D, 0x01);
+        Assert.Equal((byte)0x7F, emulator.PeekMemory(0xFF4D));
+        emulator.WriteMemory(0xFF4D, 0x00);
+        Assert.Equal((byte)0x7E, emulator.PeekMemory(0xFF4D));
+    }
+
+    [Fact]
+    public void DmgDoesNotExposeCgbKey1()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF4D, 0x01);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF4D));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
