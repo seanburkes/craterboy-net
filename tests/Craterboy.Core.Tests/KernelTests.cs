@@ -664,6 +664,28 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbSpriteUsesOamTileBankAttribute()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x8000, 0x80); // bank 1 sprite pixel 0
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFF48, 0x04);
+        emulator.WriteMemory(0xFE00, 16); // screen Y = 0
+        emulator.WriteMemory(0xFE01, 8); // screen X = 0
+        emulator.WriteMemory(0xFE02, 0);
+        emulator.WriteMemory(0xFE03, 0x08); // tile data bank 1
+        emulator.WriteMemory(0xFF40, 0x92); // LCD and sprites on, BG off
+        emulator.RunCycles(252);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[0]);
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();

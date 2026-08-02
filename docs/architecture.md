@@ -46,6 +46,8 @@ uses it to select CGB OAM-index versus X-based overlap order; color sprite
 composition remains deferred with the rest of the color renderer.
 CGB background/window fetches consume VRAM-bank and X/Y-flip tile attributes;
 CGB palette-index and BG-priority composition remain deferred.
+CGB sprite fetches consume the OAM tile-bank attribute; CGB sprite palette
+indices remain deferred with color composition.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
