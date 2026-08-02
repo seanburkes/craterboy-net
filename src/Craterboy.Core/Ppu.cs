@@ -15,6 +15,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly bool[] _backgroundPriority = new bool[Width];
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
     private readonly byte[] _objectPaletteRam = new byte[0x40];
+    private readonly Action? _hblankStarted;
     private bool _enabled;
     private int _lineCycles;
     private byte _line;
@@ -25,12 +26,13 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
-    public PpuDevice(GameBoyModel model, byte[] io, byte[] vram, byte[] oam)
+    public PpuDevice(GameBoyModel model, byte[] io, byte[] vram, byte[] oam, Action? hblankStarted = null)
     {
         _model = model;
         _io = io;
         _vram = vram;
         _oam = oam;
+        _hblankStarted = hblankStarted;
     }
 
     public bool CpuCanAccessVram => !_enabled || _mode != 3;
@@ -197,6 +199,7 @@ internal sealed class PpuDevice : ICycleParticipant
             return;
         }
         _mode = mode;
+        if (mode == 0 && _line < 144) _hblankStarted?.Invoke();
         UpdateStatLine();
     }
 
