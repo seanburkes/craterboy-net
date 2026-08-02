@@ -598,6 +598,47 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbObjectPriorityModeControlsOverlappingSpriteOrder()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        emulator.WriteMemory(0x8000, 0xC0); // tile pixels 0 and 1 are color 1
+        emulator.WriteMemory(0xFF48, 0x04); // OAM index 0 maps color 1 to shade 1
+        emulator.WriteMemory(0xFF49, 0x08); // OAM index 1 maps color 1 to shade 2
+        emulator.WriteMemory(0xFE00, 16); // OAM index 0: screen X = 1
+        emulator.WriteMemory(0xFE01, 9);
+        emulator.WriteMemory(0xFE02, 0);
+        emulator.WriteMemory(0xFE04, 16); // OAM index 1: screen X = 0
+        emulator.WriteMemory(0xFE05, 8);
+        emulator.WriteMemory(0xFE06, 0);
+        emulator.WriteMemory(0xFE07, 0x10); // use OBP1
+        emulator.WriteMemory(0xFF40, 0x92); // LCD and sprites on, BG off
+        emulator.RunCycles(252);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[1]); // default CGB OPRI: OAM index priority
+
+        var xPriority = NewEmulator(rom, GameBoyModel.CgbE);
+        xPriority.WriteMemory(0x8000, 0xC0);
+        xPriority.WriteMemory(0xFF48, 0x04);
+        xPriority.WriteMemory(0xFF49, 0x08);
+        xPriority.WriteMemory(0xFE00, 16);
+        xPriority.WriteMemory(0xFE01, 9);
+        xPriority.WriteMemory(0xFE02, 0);
+        xPriority.WriteMemory(0xFE04, 16);
+        xPriority.WriteMemory(0xFE05, 8);
+        xPriority.WriteMemory(0xFE06, 0);
+        xPriority.WriteMemory(0xFE07, 0x10);
+        xPriority.WriteMemory(0xFF6C, 1);
+        xPriority.WriteMemory(0xFF40, 0x92);
+        xPriority.RunCycles(252);
+        xPriority.CopyFrame(frame);
+        Assert.Equal((byte)2, frame[1]);
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();
