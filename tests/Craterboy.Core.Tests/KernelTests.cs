@@ -1572,6 +1572,18 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesCartridgeMapperState()
+    {
+        var rom = MakeRom(type: 0x01, romSizeCode: 1, ramSizeCode: 2);
+        var first = NewEmulator(rom);
+        var second = NewEmulator(rom);
+
+        second.WriteMemory(0x2000, 0x02); // select a different MBC1 ROM bank
+
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
