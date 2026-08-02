@@ -68,6 +68,16 @@ internal sealed class JoypadDevice : ICycleParticipant
         RequestInterruptOnFallingEdge(previous);
     }
 
+    public void WriteStateHash(BinaryWriter writer)
+    {
+        writer.Write(_pressed.Length);
+        foreach (var pressed in _pressed) writer.Write(pressed);
+        writer.Write(_select);
+        writer.Write(_activeSelect);
+        writer.Write(_pendingSelect);
+        writer.Write(_switchingDelay);
+    }
+
     public void AdvanceTCycle()
     {
         if (_switchingDelay == 0) return;
