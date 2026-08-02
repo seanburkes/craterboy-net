@@ -36,6 +36,8 @@ gates access to the channel registers; powering it off resets channel state,
 frame-sequencer timing, and queued samples. Channel sequencing and sample emission
 remain deferred to later APU slices. Channel 1 has basic trigger, length, and
 NR52 status timing plus the envelope frame step.
+Clearing a channel DAC control immediately disables that channel and updates
+NR52 status.
 Channel 1 frequency sweep updates are clocked on frame-sequencer steps 2 and
 6, with the NR10 period selecting the number of sweep events between
 updates; live NR10 writes reconfigure active sweep timing, and trigger-time
