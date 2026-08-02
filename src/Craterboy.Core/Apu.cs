@@ -13,6 +13,7 @@ internal sealed class ApuDevice : ICycleParticipant
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
         0xFF, 0xFF, 0xFF, 0xFF
     ];
+    private readonly GameBoyModel _model;
     private readonly byte[] _io;
     private bool _powered;
     private int _frameCycles;
@@ -49,7 +50,11 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _sampleWrite;
     private int _sampleCount;
 
-    public ApuDevice(byte[] io) => _io = io;
+    public ApuDevice(GameBoyModel model, byte[] io)
+    {
+        _model = model;
+        _io = io;
+    }
 
     public void Reset()
     {
@@ -94,6 +99,11 @@ internal sealed class ApuDevice : ICycleParticipant
     public byte Read(ushort address)
     {
         if (address == 0xFF26) return (byte)((_powered ? 0x80 : 0) | 0x70 | (_io[0x26] & 0x0F));
+        if (address is >= 0xFF30 and <= 0xFF3F && _channel3Enabled)
+        {
+            if (!AllowsActiveWaveRamAccess()) return 0xFF;
+            address = CurrentWaveRamAddress;
+        }
         if (address is >= 0xFF10 and <= 0xFF2F)
         {
             var offset = address - 0xFF10;
@@ -153,6 +163,11 @@ internal sealed class ApuDevice : ICycleParticipant
         if (!_powered || address is < 0xFF10 or > 0xFF3F) return;
         if (address >= 0xFF30)
         {
+            if (_channel3Enabled)
+            {
+                if (!AllowsActiveWaveRamAccess()) return;
+                address = CurrentWaveRamAddress;
+            }
             _io[address - 0xFF00] = value;
             return;
         }
@@ -416,4 +431,8 @@ internal sealed class ApuDevice : ICycleParticipant
     }
 
     private void UpdateStatus() => _io[0x26] = (byte)(0x80 | (_channel1Enabled ? 0x01 : 0) | (_channel2Enabled ? 0x02 : 0) | (_channel3Enabled ? 0x04 : 0) | (_channel4Enabled ? 0x08 : 0));
+
+    private bool AllowsActiveWaveRamAccess() => _model is >= GameBoyModel.Cgb0 and <= GameBoyModel.CgbE;
+
+    private ushort CurrentWaveRamAddress => (ushort)(0xFF30 + ((_wave3Phase & 0x1F) >> 1));
 }

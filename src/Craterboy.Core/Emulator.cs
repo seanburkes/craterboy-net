@@ -31,7 +31,7 @@ public sealed class Emulator
         _serial = new SerialDevice(_io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_io);
         _ppu = new PpuDevice(_io, _vram, _oam);
-        _apu = new ApuDevice(_io);
+        _apu = new ApuDevice(_model, _io);
         _state.Scheduler.Register(_timer);
         _state.Scheduler.Register(_dma);
         _state.Scheduler.Register(_serial);

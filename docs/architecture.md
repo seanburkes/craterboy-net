@@ -50,6 +50,8 @@ caller-owned buffer draining; host playback remains outside the core.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present.
+DMG channel 3 wave-RAM reads and writes are restricted while the channel is
+active, matching SameBoy’s inaccessible active-wave behavior.
 Channel 4 noise LFSR, trigger/length timing, status, and PCM mixing are also
 present.
 Channel 1 and channel 2 pulse phases reset on trigger and advance from their

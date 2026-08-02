@@ -778,6 +778,42 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuActiveWaveRamIsInaccessibleOnDmg()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF30, 0xF0);
+        emulator.WriteMemory(0xFF31, 0x0F);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1E, 0x80);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF30));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF31));
+
+        emulator.WriteMemory(0xFF31, 0xAA);
+        emulator.WriteMemory(0xFF1A, 0x00);
+        Assert.Equal((byte)0x0F, emulator.PeekMemory(0xFF31));
+    }
+
+    [Fact]
+    public void ApuActiveWaveRamUsesCurrentByteOnCgb()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF30, 0xF0);
+        emulator.WriteMemory(0xFF31, 0x0F);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1E, 0x80);
+
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF31));
+        emulator.WriteMemory(0xFF31, 0xAA);
+        Assert.Equal((byte)0xAA, emulator.PeekMemory(0xFF30));
+
+        emulator.WriteMemory(0xFF1A, 0x00);
+        Assert.Equal((byte)0x0F, emulator.PeekMemory(0xFF31));
+    }
+
+    [Fact]
     public void InputRecordingRoundTripsOrderedEventsAndRejectsMalformedData()
     {
         var recording = new InputRecording();
@@ -1030,9 +1066,9 @@ public sealed class KernelTests
         Assert.Equal((byte)5, restored.PeekMemory(0xA000));
     }
 
-    private static Emulator NewEmulator(byte[] rom)
+    private static Emulator NewEmulator(byte[] rom, GameBoyModel model = GameBoyModel.DmgB)
     {
-        var emulator = new Emulator(GameBoyModel.DmgB);
+        var emulator = new Emulator(model);
         emulator.LoadRom(rom);
         return emulator;
     }
