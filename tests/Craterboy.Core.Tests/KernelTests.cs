@@ -371,6 +371,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void JoypadSelectionSwitchIsDelayedOnDmg()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF00, 0x10);
+        emulator.SetButtonState(GameBoyButton.Right, true);
+        emulator.WriteMemory(0xFF00, 0x20); // action to direction row: 24 T-cycles
+
+        Assert.Equal((byte)0x20, (byte)(emulator.PeekMemory(0xFF00) & 0x30));
+        Assert.Equal((byte)0x0F, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+        emulator.RunCycles(23);
+        Assert.Equal((byte)0x0F, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0x0E, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+    }
+
+    [Fact]
     public void PpuCyclesThroughDmgVisibleLineModesAndIncrementsLy()
     {
         var rom = MakeRom();
