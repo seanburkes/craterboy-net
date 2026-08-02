@@ -12,6 +12,7 @@ public sealed class Emulator
     private readonly byte[] _oam = new byte[0xA0];
     private readonly byte[] _io = new byte[0x80];
     private readonly byte[] _hram = new byte[0x7F];
+    private byte _vramBank;
     private TimerDevice _timer = null!;
     private OamDmaDevice _dma = null!;
     private SerialDevice _serial = null!;
@@ -77,6 +78,7 @@ public sealed class Emulator
     {
         _state.Scheduler.Reset();
         Array.Clear(_vram); Array.Clear(_wram); Array.Clear(_oam); Array.Clear(_io); Array.Clear(_hram);
+        _vramBank = 0;
         _timer.Reset();
         _dma.Reset();
         _serial.Reset();
@@ -112,6 +114,7 @@ public sealed class Emulator
             writer.Write(_state.Cpu.SP); writer.Write(_state.Cpu.PC);
             writer.Write(_state.Cpu.Ime); writer.Write(_state.Cpu.ImeEnablePending); writer.Write(_state.Cpu.Halted);
             writer.Write(_vram); writer.Write(_wram); writer.Write(_oam);
+            writer.Write(_vramBank);
             writer.Write(_io); writer.Write(_hram);
             writer.Write(_cartridge?.SaveBattery() ?? Array.Empty<byte>());
         }
@@ -960,7 +963,7 @@ public sealed class Emulator
         return address switch
         {
             < 0x8000 => _cartridge?.Read(address) ?? 0xFF,
-            < 0xA000 => _ppu.CpuCanAccessVram ? _vram[address - 0x8000] : (byte)0xFF,
+            < 0xA000 => _ppu.CpuCanAccessVram ? _vram[(_vramBank * 0x2000) + address - 0x8000] : (byte)0xFF,
             < 0xC000 => _cartridge?.Read(address) ?? 0xFF,
             < 0xE000 => _wram[address - 0xC000],
             < 0xFE00 => _wram[address - 0xE000],
@@ -969,6 +972,7 @@ public sealed class Emulator
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
             0xFF0F => (byte)(0xE0 | (_io[0x0F] & InterruptMask)),
+            0xFF4F => _model.IsColor() ? (byte)(0xFE | _vramBank) : (byte)0xFF,
             >= 0xFF10 and <= 0xFF3F => _apu.Read(address),
             0xFF76 or 0xFF77 => _apu.Read(address),
             >= 0xFF40 and <= 0xFF45 or >= 0xFF47 and <= 0xFF49 or >= 0xFF68 and <= 0xFF6B => _ppu.Read(address),
@@ -986,7 +990,7 @@ public sealed class Emulator
         {
             case < 0x8000: _cartridge?.Write(address, value); break;
             case < 0xA000:
-                if (_ppu.CpuCanAccessVram) _vram[address - 0x8000] = value;
+                if (_ppu.CpuCanAccessVram) _vram[(_vramBank * 0x2000) + address - 0x8000] = value;
                 break;
             case < 0xC000: _cartridge?.Write(address, value); break;
             case < 0xE000: _wram[address - 0xC000] = value; break;
@@ -1025,6 +1029,9 @@ public sealed class Emulator
                 break;
             case 0xFF0F:
                 _io[0x0F] = (byte)(value & InterruptMask);
+                break;
+            case 0xFF4F:
+                if (_model.IsColor()) _vramBank = (byte)(value & 0x01);
                 break;
             case < 0xFF80:
                 _io[address - 0xFF00] = value;

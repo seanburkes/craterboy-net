@@ -482,6 +482,32 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbVramBankRegisterSelectsTheSecondVramBank()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0x8000, 0x12);
+        emulator.WriteMemory(0xFF4F, 0x01);
+        emulator.WriteMemory(0x8000, 0x34);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF4F));
+        Assert.Equal((byte)0x34, emulator.PeekMemory(0x8000));
+        emulator.WriteMemory(0xFF4F, 0x00);
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0x8000));
+    }
+
+    [Fact]
+    public void DmgIgnoresVramBankSelection()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0x8000, 0x12);
+        emulator.WriteMemory(0xFF4F, 0x01);
+        emulator.WriteMemory(0x8000, 0x34);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF4F));
+        Assert.Equal((byte)0x34, emulator.PeekMemory(0x8000));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();

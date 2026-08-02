@@ -34,6 +34,8 @@ are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
 overlap priority; FIFO behavior remains separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
 are modeled at the bus boundary; color pixel composition remains deferred.
+CGB VBK selects the active 8 KiB CPU VRAM bank; bank-aware tile composition
+remains deferred with the rest of the color renderer.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
