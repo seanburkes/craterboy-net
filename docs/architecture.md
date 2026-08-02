@@ -8,9 +8,9 @@ of the core.
 The current state kernel groups CPU registers and the master scheduler in
 `EmulatorState`. The scheduler advances registered participants one T-cycle at
 a time; the timer device is the first participant and owns DIV/TIMA/TMA/TAC
-edge behavior, including TAC write falling-edge increments and the delayed TIMA
-reload window. This keeps device timing deterministic and prevents individual
-devices from advancing themselves or consulting wall-clock time.
+edge behavior, including TAC/DIV write falling-edge increments and the delayed
+TIMA reload window. This keeps device timing deterministic and prevents
+individual devices from advancing themselves or consulting wall-clock time.
 
 OAM DMA and serial transfer devices are also scheduler participants. DMA copies
 one byte per four T-cycles for 160 bytes, while the serial endpoint completes an

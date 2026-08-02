@@ -65,6 +65,8 @@ internal sealed class TimerDevice : ICycleParticipant
         switch (address)
         {
             case 0xFF04:
+                if (TimerSignal(_divider, _io[0x07]))
+                    IncrementTima();
                 _divider = 0;
                 break;
             case 0xFF05:
