@@ -43,6 +43,8 @@ CGB SVBK selects the active 4 KiB D000-DFFF work-RAM bank and its echo; banked
 work-RAM state is included in deterministic hashes.
 CGB BG/OBJ palette RAM is also included in deterministic hashes so color state
 changes are visible to replay checkpoints.
+PPU timing, LCD mode, coincidence, and window-line state are included alongside
+the palette state.
 CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation;
 following CPU instructions consume half as many scheduler T-cycles while PPU
