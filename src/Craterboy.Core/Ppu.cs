@@ -320,7 +320,7 @@ internal sealed class PpuDevice : ICycleParticipant
                     row -= 8;
                 }
             }
-            var tileAddress = tile * 16 + row * 2;
+            var tileAddress = (_model.IsColor() && (attributes & 0x08) != 0 ? 0x2000 : 0) + tile * 16 + row * 2;
             var low = _vram[tileAddress];
             var high = _vram[tileAddress + 1];
             var palette = (attributes & 0x10) != 0 ? _io[0x49] : _io[0x48];
