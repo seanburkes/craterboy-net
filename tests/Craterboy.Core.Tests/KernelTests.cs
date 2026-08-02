@@ -729,6 +729,31 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbColorFrameUsesBackgroundPaletteIndexAndRgb15Data()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        emulator.WriteMemory(0x8000, 0x80); // tile 0, color 1 at pixel 0
+        emulator.WriteMemory(0x9800, 0x00); // tile 0 from bank 0
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x9800, 0x02); // CGB background palette 2
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFF68, 18); // palette 2, color 1 low byte
+        emulator.WriteMemory(0xFF69, 0x34);
+        emulator.WriteMemory(0xFF68, 19);
+        emulator.WriteMemory(0xFF69, 0x12);
+        emulator.WriteMemory(0xFF40, 0x91); // LCD, BG, unsigned tile data
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x1234, frame[0]);
+        Assert.Equal((ushort)0, frame[1]);
+        Assert.Throws<ArgumentException>(() => emulator.CopyColorFrame(new ushort[10]));
+    }
+
+    [Fact]
     public void PpuRaisesStatInterruptsForLyCompareAndVblank()
     {
         var rom = MakeRom();

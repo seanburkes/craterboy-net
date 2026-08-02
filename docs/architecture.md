@@ -33,7 +33,7 @@ renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
 overlap priority; FIFO behavior remains separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
-are modeled at the bus boundary; color pixel composition remains deferred.
+are modeled at the bus boundary and feed a caller-owned raw RGB15 color frame.
 CGB VBK selects the active 8 KiB CPU VRAM bank; bank-aware tile composition
 remains deferred with the rest of the color renderer.
 CGB SVBK selects the active 4 KiB D000-DFFF work-RAM bank and its echo; banked
@@ -46,10 +46,9 @@ CGB OPRI exposes the object-priority mode bit, and the DMG sprite compositor
 uses it to select CGB OAM-index versus X-based overlap order; color sprite
 composition remains deferred with the rest of the color renderer.
 CGB background/window fetches consume VRAM-bank and X/Y-flip tile attributes;
-CGB palette-index composition remains deferred, while nonzero background pixels
-honor the CGB BG-priority attribute against sprites.
-CGB sprite fetches consume the OAM tile-bank attribute; CGB sprite palette
-indices remain deferred with color composition.
+CGB palette-index composition honors background and sprite palette indices, while
+nonzero background pixels honor the CGB BG-priority attribute against sprites.
+CGB sprite fetches consume the OAM tile-bank and palette-index attributes.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.

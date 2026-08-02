@@ -10,6 +10,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly byte[] _vram;
     private readonly byte[] _oam;
     private readonly byte[] _frame = new byte[Width * Height];
+    private readonly ushort[] _colorFrame = new ushort[Width * Height];
     private readonly byte[] _backgroundColors = new byte[Width];
     private readonly bool[] _backgroundPriority = new bool[Width];
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
@@ -46,6 +47,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _coincidence = false;
         _statLine = false;
         Array.Clear(_frame);
+        Array.Clear(_colorFrame);
         Array.Clear(_backgroundPaletteRam);
         Array.Clear(_objectPaletteRam);
         _io[0x40] = 0;
@@ -113,6 +115,13 @@ internal sealed class PpuDevice : ICycleParticipant
         _frame.AsSpan().CopyTo(destination);
     }
 
+    public void CopyColorFrame(Span<ushort> destination)
+    {
+        if (destination.Length < _colorFrame.Length)
+            throw new ArgumentException($"Color frame destination must be at least {_colorFrame.Length} pixels.", nameof(destination));
+        _colorFrame.AsSpan().CopyTo(destination);
+    }
+
     public void AdvanceTCycle()
     {
         if (!_enabled) return;
@@ -173,6 +182,7 @@ internal sealed class PpuDevice : ICycleParticipant
             _lineCycles = 0;
             _windowLine = 0;
             Array.Clear(_frame);
+            Array.Clear(_colorFrame);
             _io[0x44] = 0;
             SetMode(0);
             UpdateCoincidence();
@@ -230,6 +240,7 @@ internal sealed class PpuDevice : ICycleParticipant
         {
             Array.Clear(_backgroundColors);
             Array.Clear(_backgroundPriority);
+            Array.Clear(_colorFrame, line * Width, Width);
             RenderSprites(line, line * Width);
             return;
         }
@@ -265,6 +276,9 @@ internal sealed class PpuDevice : ICycleParticipant
             _backgroundColors[x] = (byte)color;
             _backgroundPriority[x] = _model.IsColor() && (attributes & 0x80) != 0;
             _frame[output + x] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
+            _colorFrame[output + x] = _model.IsColor()
+                ? ReadColor(_backgroundPaletteRam, (attributes & 0x07) * 4 + color)
+                : (ushort)_frame[output + x];
             windowUsed |= useWindow;
         }
         if (windowUsed) _windowLine++;
@@ -337,8 +351,17 @@ internal sealed class PpuDevice : ICycleParticipant
                 if (_model.IsColor() && _backgroundColors[screenX] != 0 && _backgroundPriority[screenX]) continue;
                 if ((attributes & 0x80) != 0 && _backgroundColors[screenX] != 0) continue;
                 _frame[output + screenX] = (byte)((palette >> (color * 2)) & 0x03);
+                _colorFrame[output + screenX] = _model.IsColor()
+                    ? ReadColor(_objectPaletteRam, (attributes & 0x07) * 4 + color)
+                    : (ushort)_frame[output + screenX];
                 written[screenX] = true;
             }
         }
+    }
+
+    private static ushort ReadColor(byte[] paletteRam, int colorIndex)
+    {
+        var address = colorIndex * 2;
+        return (ushort)(paletteRam[address] | (paletteRam[address + 1] << 8));
     }
 }
