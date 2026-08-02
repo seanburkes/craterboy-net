@@ -104,6 +104,8 @@ internal sealed class JoypadDevice : ICycleParticipant
             if (_pressed[(int)GameBoyButton.Left]) result &= ~0x02;
             if (_pressed[(int)GameBoyButton.Up]) result &= ~0x04;
             if (_pressed[(int)GameBoyButton.Down]) result &= ~0x08;
+            if ((result & 0x01) == 0) result |= 0x02;
+            if ((result & 0x04) == 0) result |= 0x08;
         }
         if ((_activeSelect & 0x20) == 0)
         {

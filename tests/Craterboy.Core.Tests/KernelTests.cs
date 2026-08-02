@@ -387,6 +387,23 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void JoypadFiltersOpposingDirectionInputs()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF00, 0x20);
+        emulator.SetButtonState(GameBoyButton.Right, true);
+        emulator.SetButtonState(GameBoyButton.Left, true);
+        Assert.Equal((byte)0x0E, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+
+        emulator.SetButtonState(GameBoyButton.Right, false);
+        emulator.SetButtonState(GameBoyButton.Left, false);
+        Assert.Equal((byte)0x0F, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+        emulator.SetButtonState(GameBoyButton.Up, true);
+        emulator.SetButtonState(GameBoyButton.Down, true);
+        Assert.Equal((byte)0x0B, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+    }
+
+    [Fact]
     public void PpuCyclesThroughDmgVisibleLineModesAndIncrementsLy()
     {
         var rom = MakeRom();
