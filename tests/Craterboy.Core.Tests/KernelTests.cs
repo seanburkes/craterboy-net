@@ -729,6 +729,37 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbColorFrameAppliesBackgroundPriorityToSprites()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        emulator.WriteMemory(0x8000, 0x80); // background tile 0, color 1
+        emulator.WriteMemory(0x8010, 0x80); // sprite tile 1, color 1
+        emulator.WriteMemory(0x9800, 0x00);
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x9800, 0x80); // CGB BG priority attribute
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFF68, 2); // background palette 0, color 1
+        emulator.WriteMemory(0xFF69, 0x11);
+        emulator.WriteMemory(0xFF68, 3);
+        emulator.WriteMemory(0xFF69, 0x11);
+        emulator.WriteMemory(0xFF6A, 10); // object palette 1, color 1
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFF6A, 11);
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, 8);
+        emulator.WriteMemory(0xFE02, 1);
+        emulator.WriteMemory(0xFF40, 0x93); // LCD, BG, and sprites on
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x1111, frame[0]);
+    }
+
+    [Fact]
     public void CgbColorFrameUsesBackgroundPaletteIndexAndRgb15Data()
     {
         var rom = MakeRom();
