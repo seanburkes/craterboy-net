@@ -1503,6 +1503,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesApuPhaseAndSampleState()
+    {
+        var first = NewEmulator(MakeRom());
+        var second = NewEmulator(MakeRom());
+        ConfigurePulseChannel(first);
+        ConfigurePulseChannel(second);
+        first.RunCycles(200);
+        second.RunCycles(100);
+        second.WriteMemory(0xFF14, 0x80); // retrigger at a different phase
+        second.RunCycles(100);
+
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
@@ -1690,6 +1706,15 @@ public sealed class KernelTests
         restored.WriteMemory(0x6000, 0);
         restored.WriteMemory(0x6000, 1);
         Assert.Equal((byte)5, restored.PeekMemory(0xA000));
+    }
+
+    private static void ConfigurePulseChannel(Emulator emulator)
+    {
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF11, 0x80);
+        emulator.WriteMemory(0xFF12, 0xF3);
+        emulator.WriteMemory(0xFF13, 0x40);
+        emulator.WriteMemory(0xFF14, 0x80);
     }
 
     private static Emulator NewEmulator(byte[] rom, GameBoyModel model = GameBoyModel.DmgB)
