@@ -252,21 +252,21 @@ internal sealed class ApuDevice : ICycleParticipant
             _channel4Enabled = false;
             UpdateStatus();
         }
-        if (_frameStep == 0 && _channel1Enabled && (_io[0x12] & 0x07) != 0 && --_envelopeTimer == 0)
+        if (_frameStep == 7 && _channel1Enabled && (_io[0x12] & 0x07) != 0 && --_envelopeTimer == 0)
         {
             if ((_io[0x12] & 0x08) != 0 && _channel1Volume < 15) _channel1Volume++;
             else if ((_io[0x12] & 0x08) == 0 && _channel1Volume > 0) _channel1Volume--;
             _io[0x12] = (byte)((_io[0x12] & 0x0F) | (_channel1Volume << 4));
             _envelopeTimer = _io[0x12] & 0x07;
         }
-        if (_frameStep == 0 && _channel2Enabled && (_io[0x17] & 0x07) != 0 && --_channel2EnvelopeTimer == 0)
+        if (_frameStep == 7 && _channel2Enabled && (_io[0x17] & 0x07) != 0 && --_channel2EnvelopeTimer == 0)
         {
             if ((_io[0x17] & 0x08) != 0 && _channel2Volume < 15) _channel2Volume++;
             else if ((_io[0x17] & 0x08) == 0 && _channel2Volume > 0) _channel2Volume--;
             _io[0x17] = (byte)((_io[0x17] & 0x0F) | (_channel2Volume << 4));
             _channel2EnvelopeTimer = _io[0x17] & 0x07;
         }
-        if (_frameStep == 0 && _channel4Enabled && (_io[0x21] & 0x07) != 0 && --_channel4EnvelopeTimer == 0)
+        if (_frameStep == 7 && _channel4Enabled && (_io[0x21] & 0x07) != 0 && --_channel4EnvelopeTimer == 0)
         {
             if ((_io[0x21] & 0x08) != 0 && _channel4Volume < 15) _channel4Volume++;
             else if ((_io[0x21] & 0x08) == 0 && _channel4Volume > 0) _channel4Volume--;
