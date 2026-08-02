@@ -383,7 +383,7 @@ public sealed class KernelTests
     }
 
     [Fact]
-    public void ApuChannelOneSweepUpdatesFrequencyEveryFourFrameSteps()
+    public void ApuChannelOneSweepUpdatesFrequencyOnFrameSequencerSweepStep()
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
@@ -394,7 +394,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF13, 100);
         emulator.WriteMemory(0xFF14, 0x80); // trigger at frequency 100
 
-        emulator.RunCycles(3 * 8192);
+        emulator.RunCycles(8192);
         Assert.Equal((byte)100, emulator.PeekMemory(0xFF13));
         emulator.RunCycles(8192);
         Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
@@ -412,7 +412,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF13, 100);
         emulator.WriteMemory(0xFF14, 0x80);
 
-        emulator.RunCycles(7 * 8192);
+        emulator.RunCycles(5 * 8192);
         Assert.Equal((byte)100, emulator.PeekMemory(0xFF13));
         emulator.RunCycles(8192);
         Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
@@ -445,9 +445,9 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF13, 100);
         emulator.WriteMemory(0xFF14, 0x80); // trigger at frequency 100
 
-        emulator.RunCycles(2 * 8192);
+        emulator.RunCycles(8192);
         emulator.WriteMemory(0xFF13, 200); // change playback frequency only
-        emulator.RunCycles(2 * 8192);
+        emulator.RunCycles(8192);
 
         Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
     }
@@ -468,7 +468,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF10, 0x00); // disable sweep while active
         emulator.RunCycles(4 * 8192);
 
-        Assert.Equal((byte)100, emulator.PeekMemory(0xFF13));
+        Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
         Assert.Equal((byte)0x81, emulator.PeekMemory(0xFF26));
     }
 

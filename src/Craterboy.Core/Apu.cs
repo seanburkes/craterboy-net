@@ -271,7 +271,7 @@ internal sealed class ApuDevice : ICycleParticipant
             _io[0x21] = (byte)((_io[0x21] & 0x0F) | (_channel4Volume << 4));
             _channel4EnvelopeTimer = _io[0x21] & 0x07;
         }
-        if (_channel1Enabled && _sweepEnabled && --_sweepTimer <= 0)
+        if (_frameStep is 2 or 6 && _channel1Enabled && _sweepEnabled && --_sweepTimer <= 0)
         {
             _sweepTimer = SweepPeriodTicks();
             var next = SweepFrequency();
@@ -290,7 +290,7 @@ internal sealed class ApuDevice : ICycleParticipant
         }
     }
 
-    private int SweepPeriodTicks() => Math.Max(1, (_io[0x10] >> 4) & 0x07) * 4;
+    private int SweepPeriodTicks() => Math.Max(1, (_io[0x10] >> 4) & 0x07);
 
     private int SweepFrequency()
     {
