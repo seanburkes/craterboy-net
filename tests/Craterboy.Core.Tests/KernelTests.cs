@@ -814,6 +814,35 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuPcmRegistersExposeCgbChannelAmplitudes()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF11, 0x40); // duty 1: first sample is high
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF14, 0x80);
+        emulator.WriteMemory(0xFF16, 0x40); // duty 1: first sample is high
+        emulator.WriteMemory(0xFF17, 0xA0);
+        emulator.WriteMemory(0xFF19, 0x80);
+        emulator.WriteMemory(0xFF30, 0xF0);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1C, 0x60);
+        emulator.WriteMemory(0xFF1E, 0x80);
+
+        Assert.Equal((byte)0xAF, emulator.PeekMemory(0xFF76));
+        Assert.Equal((byte)0x03, emulator.PeekMemory(0xFF77));
+    }
+
+    [Fact]
+    public void ApuPcmRegistersReadAsOpenBusOnDmg()
+    {
+        var emulator = NewEmulator(MakeRom());
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF76));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF77));
+    }
+
+    [Fact]
     public void InputRecordingRoundTripsOrderedEventsAndRejectsMalformedData()
     {
         var recording = new InputRecording();
