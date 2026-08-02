@@ -39,7 +39,8 @@ remains deferred with the rest of the color renderer.
 CGB SVBK selects the active 4 KiB D000-DFFF work-RAM bank and its echo; banked
 work-RAM state is included in deterministic hashes.
 CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
-double-speed scheduler switching remains a later timing slice.
+STOP with preparation toggles the modeled speed state and clears preparation;
+double-speed scheduler cadence remains a later timing slice.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.

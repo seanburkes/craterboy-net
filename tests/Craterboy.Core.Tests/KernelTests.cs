@@ -550,6 +550,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbStopWithPreparedKey1TogglesSpeedAndDoesNotHalt()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00, 0x10, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+
+        emulator.WriteMemory(0xFF4D, 0x01);
+        emulator.StepInstruction();
+        Assert.False(emulator.Registers.Halted);
+        Assert.Equal((byte)0xFE, emulator.PeekMemory(0xFF4D));
+
+        emulator.WriteMemory(0xFF4D, 0x01);
+        emulator.StepInstruction();
+        Assert.False(emulator.Registers.Halted);
+        Assert.Equal((byte)0x7E, emulator.PeekMemory(0xFF4D));
+    }
+
+    [Fact]
     public void DmgDoesNotExposeCgbKey1()
     {
         var emulator = NewEmulator(MakeRom());

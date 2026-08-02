@@ -576,6 +576,12 @@ public sealed class Emulator
     private int Stop()
     {
         _ = Read(_state.Cpu.PC++);
+        if (_model.IsColor() && _speedSwitchPrepared)
+        {
+            _doubleSpeed = !_doubleSpeed;
+            _speedSwitchPrepared = false;
+            return 4;
+        }
         _state.Cpu.Halted = true;
         return 4;
     }
