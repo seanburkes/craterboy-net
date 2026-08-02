@@ -92,6 +92,8 @@ internal sealed class ApuDevice : ICycleParticipant
             var powered = (value & 0x80) != 0;
             if (!powered && _powered)
             {
+                _frameCycles = 0;
+                _frameStep = 0;
                 Array.Clear(_io, 0x10, 0x16);
                 _channel1Length = 0;
                 _channel1Enabled = false;
@@ -119,7 +121,12 @@ internal sealed class ApuDevice : ICycleParticipant
                 _noiseLfsr = 0x7FFF;
                 _noiseTimer = 0;
                 _mixerConfigured = false;
+                _sampleCycles = 0;
+                _sampleRead = 0;
+                _sampleWrite = 0;
+                _sampleCount = 0;
                 Array.Clear(_io, 0x30, 0x10);
+                Array.Clear(_samples);
             }
             _powered = powered;
             _io[0x26] = (byte)(powered ? 0x80 : 0);

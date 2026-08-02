@@ -32,7 +32,8 @@ enabling an already-active source raises the interrupt once.
 Disabling the LCD resets LY/timing state and blanks the raw frame buffer.
 
 The APU is now a scheduler-owned register and power-control device. NR52
-gates access to the channel registers; channel sequencing and sample emission
+gates access to the channel registers; powering it off resets channel state,
+frame-sequencer timing, and queued samples. Channel sequencing and sample emission
 remain deferred to later APU slices. Channel 1 has basic trigger, length, and
 NR52 status timing plus the envelope frame step.
 Channel 1 frequency sweep updates are clocked on frame-sequencer steps 2 and
