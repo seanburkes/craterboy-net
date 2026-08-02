@@ -35,8 +35,8 @@ The APU is now a scheduler-owned register and power-control device. NR52
 gates access to the channel registers; channel sequencing and sample emission
 remain deferred to later APU slices. Channel 1 has basic trigger, length, and
 NR52 status timing plus the envelope frame step.
-Channel 1 frequency sweep updates are clocked at the hardware sweep cadence,
-with the NR10 period selecting the number of four-step intervals between
+Channel 1 frequency sweep updates are clocked on frame-sequencer steps 2 and
+6, with the NR10 period selecting the number of sweep events between
 updates; live NR10 writes reconfigure active sweep timing, and trigger-time
 overflow disables the channel. The sweep shadow frequency remains tied to the
 trigger while live NR13/NR14 writes update playback. The core emits channel
