@@ -568,6 +568,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbDoubleSpeedHalvesFollowingCpuInstructionCadence()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00, 0x00, 0x00, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+
+        emulator.WriteMemory(0xFF4D, 0x01);
+        Assert.Equal(4, emulator.StepInstruction()); // speed-switch STOP uses normal cadence
+        Assert.Equal(4, emulator.CycleCount);
+        Assert.Equal(2, emulator.StepInstruction()); // NOP at double speed
+        Assert.Equal(6, emulator.CycleCount);
+
+        emulator.RunCycles(4); // two more NOPs at two hardware T-cycles each
+        Assert.Equal((ushort)0x105, emulator.Registers.ProgramCounter);
+        Assert.Equal(10, emulator.CycleCount);
+    }
+
+    [Fact]
     public void DmgDoesNotExposeCgbKey1()
     {
         var emulator = NewEmulator(MakeRom());

@@ -40,7 +40,8 @@ CGB SVBK selects the active 4 KiB D000-DFFF work-RAM bank and its echo; banked
 work-RAM state is included in deterministic hashes.
 CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation;
-double-speed scheduler cadence remains a later timing slice.
+following CPU instructions consume half as many scheduler T-cycles while PPU
+and timer participants continue at the normal hardware cadence.
 CGB OPRI exposes the object-priority mode bit, and the DMG sprite compositor
 uses it to select CGB OAM-index versus X-based overlap order; color sprite
 composition remains deferred with the rest of the color renderer.
