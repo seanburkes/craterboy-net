@@ -334,16 +334,35 @@ public sealed class KernelTests
         var emulator = NewEmulator(MakeRom());
         emulator.WriteMemory(0xFF12, 0xF3);
         Assert.Equal((byte)0, emulator.PeekMemory(0xFF12));
-        Assert.Equal((byte)0, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0x70, emulator.PeekMemory(0xFF26));
 
         emulator.WriteMemory(0xFF26, 0x80);
         emulator.WriteMemory(0xFF12, 0xF3);
         Assert.Equal((byte)0xF3, emulator.PeekMemory(0xFF12));
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
 
         emulator.WriteMemory(0xFF26, 0);
         Assert.Equal((byte)0, emulator.PeekMemory(0xFF12));
-        Assert.Equal((byte)0, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0x70, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
+    public void ApuRegisterReadsApplyHardwareMasks()
+    {
+        var emulator = NewEmulator(MakeRom());
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF10));
+        Assert.Equal((byte)0x3F, emulator.PeekMemory(0xFF11));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF15));
+        Assert.Equal((byte)0xBF, emulator.PeekMemory(0xFF1E));
+
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF10, 0x7F);
+        emulator.WriteMemory(0xFF11, 0xC0);
+        emulator.WriteMemory(0xFF14, 0x00);
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF10));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF11));
+        Assert.Equal((byte)0xBF, emulator.PeekMemory(0xFF14));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -384,14 +403,14 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1E, 0x80);
         emulator.WriteMemory(0xFF21, 0xF0);
         emulator.WriteMemory(0xFF23, 0x80);
-        Assert.Equal((byte)0x8F, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF26));
 
         emulator.WriteMemory(0xFF12, 0x00);
         emulator.WriteMemory(0xFF17, 0x00);
         emulator.WriteMemory(0xFF1A, 0x00);
         emulator.WriteMemory(0xFF21, 0x00);
 
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -404,14 +423,14 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF12, 0xF0); // DAC enabled
         emulator.WriteMemory(0xFF11, 0x3F); // length = 1 frame-sequencer tick
         emulator.WriteMemory(0xFF14, 0xC0); // length enable + trigger
-        Assert.Equal((byte)0x81, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF1, emulator.PeekMemory(0xFF26));
 
         emulator.RunCycles(8191);
-        Assert.Equal((byte)0x81, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF1, emulator.PeekMemory(0xFF26));
         emulator.RunCycles(1);
-        Assert.Equal((byte)0x81, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF1, emulator.PeekMemory(0xFF26));
         emulator.RunCycles(8192);
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -445,9 +464,9 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF14, 0x80); // trigger at frequency 100
 
         emulator.RunCycles(8192);
-        Assert.Equal((byte)100, emulator.PeekMemory(0xFF13));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF13));
         emulator.RunCycles(8192);
-        Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF13));
     }
 
     [Fact]
@@ -463,9 +482,9 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF14, 0x80);
 
         emulator.RunCycles(5 * 8192);
-        Assert.Equal((byte)100, emulator.PeekMemory(0xFF13));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF13));
         emulator.RunCycles(8192);
-        Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF13));
     }
 
     [Fact]
@@ -480,7 +499,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF13, 0x00);
         emulator.WriteMemory(0xFF14, 0x87); // frequency 1792, trigger overflow
 
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -497,7 +516,7 @@ public sealed class KernelTests
 
         emulator.WriteMemory(0xFF10, 0x10); // switch to addition with shift 0
 
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -516,7 +535,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF13, 200); // change playback frequency only
         emulator.RunCycles(8192);
 
-        Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF13));
     }
 
     [Fact]
@@ -535,8 +554,8 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF10, 0x00); // disable sweep while active
         emulator.RunCycles(4 * 8192);
 
-        Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
-        Assert.Equal((byte)0x81, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF13));
+        Assert.Equal((byte)0xF1, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -594,12 +613,12 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF17, 0xF0);
         emulator.WriteMemory(0xFF16, 0x3F); // length = 1 tick
         emulator.WriteMemory(0xFF19, 0xC0); // length enable + trigger
-        Assert.Equal((byte)0x82, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF2, emulator.PeekMemory(0xFF26));
 
         emulator.RunCycles(8192);
-        Assert.Equal((byte)0x82, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF2, emulator.PeekMemory(0xFF26));
         emulator.RunCycles(8192);
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -621,7 +640,7 @@ public sealed class KernelTests
         var following = new short[2];
         Assert.Equal(2, emulator.CopyAudioSamples(following));
         Assert.NotEqual(first[0], following[1]);
-        Assert.Equal((byte)0x82, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF2, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -636,16 +655,16 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1B, 0xFF); // length = 1 tick
         emulator.WriteMemory(0xFF1C, 0x60); // full wave volume
         emulator.WriteMemory(0xFF1E, 0xC0); // length enable + trigger
-        Assert.Equal((byte)0x84, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF4, emulator.PeekMemory(0xFF26));
 
         emulator.RunCycles(95);
         var samples = new short[1];
         Assert.Equal(1, emulator.CopyAudioSamples(samples));
         Assert.NotEqual((short)0, samples[0]);
         emulator.RunCycles(8192 - 95);
-        Assert.Equal((byte)0x84, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF4, emulator.PeekMemory(0xFF26));
         emulator.RunCycles(8192);
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -659,7 +678,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF20, 0x3F); // length = 1 tick
         emulator.WriteMemory(0xFF22, 0x00);
         emulator.WriteMemory(0xFF23, 0xC0); // length enable + trigger
-        Assert.Equal((byte)0x88, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF8, emulator.PeekMemory(0xFF26));
         Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF22));
 
         emulator.RunCycles(95);
@@ -667,9 +686,9 @@ public sealed class KernelTests
         Assert.Equal(1, emulator.CopyAudioSamples(samples));
         Assert.NotEqual((short)0, samples[0]);
         emulator.RunCycles(8192 - 95);
-        Assert.Equal((byte)0x88, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF8, emulator.PeekMemory(0xFF26));
         emulator.RunCycles(8192);
-        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
@@ -735,9 +754,9 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1D, 0x34);
         emulator.WriteMemory(0xFF1E, 0x85);
 
-        Assert.Equal((byte)0x34, emulator.PeekMemory(0xFF1D));
-        Assert.Equal((byte)0x85, emulator.PeekMemory(0xFF1E));
-        Assert.Equal((byte)0x84, emulator.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF1D));
+        Assert.Equal((byte)0xBF, emulator.PeekMemory(0xFF1E));
+        Assert.Equal((byte)0xF4, emulator.PeekMemory(0xFF26));
     }
 
     [Fact]
