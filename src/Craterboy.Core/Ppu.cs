@@ -286,17 +286,20 @@ internal sealed class PpuDevice : ICycleParticipant
             candidates[selected++] = new SpriteCandidate(sprite, x, row, tile, attributes);
         }
 
-        // DMG resolves overlapping sprites by lower screen X, then OAM order.
-        for (var i = 1; i < selected; i++)
+        // DMG and CGB X-priority mode resolve overlaps by lower screen X, then OAM order.
+        if (!_model.IsColor() || (_io[0x6C] & 0x01) != 0)
         {
-            var candidate = candidates[i];
-            var j = i - 1;
-            while (j >= 0 && (candidates[j].X > candidate.X ||
-                              candidates[j].X == candidate.X && candidates[j].OamIndex > candidate.OamIndex))
+            for (var i = 1; i < selected; i++)
             {
-                candidates[j + 1] = candidates[j--];
+                var candidate = candidates[i];
+                var j = i - 1;
+                while (j >= 0 && (candidates[j].X > candidate.X ||
+                                  candidates[j].X == candidate.X && candidates[j].OamIndex > candidate.OamIndex))
+                {
+                    candidates[j + 1] = candidates[j--];
+                }
+                candidates[j + 1] = candidate;
             }
-            candidates[j + 1] = candidate;
         }
 
         for (var index = 0; index < selected; index++)
