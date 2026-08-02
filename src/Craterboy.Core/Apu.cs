@@ -232,22 +232,22 @@ internal sealed class ApuDevice : ICycleParticipant
         if (++_frameCycles < 8192) return;
         _frameCycles = 0;
         _frameStep = (_frameStep + 1) & 7;
-        if ((_io[0x14] & 0x40) != 0 && _channel1Enabled && _channel1Length > 0 && --_channel1Length == 0)
+        if (_frameStep is 0 or 2 or 4 or 6 && (_io[0x14] & 0x40) != 0 && _channel1Enabled && _channel1Length > 0 && --_channel1Length == 0)
         {
             _channel1Enabled = false;
             UpdateStatus();
         }
-        if ((_io[0x19] & 0x40) != 0 && _channel2Enabled && _channel2Length > 0 && --_channel2Length == 0)
+        if (_frameStep is 0 or 2 or 4 or 6 && (_io[0x19] & 0x40) != 0 && _channel2Enabled && _channel2Length > 0 && --_channel2Length == 0)
         {
             _channel2Enabled = false;
             UpdateStatus();
         }
-        if ((_io[0x1E] & 0x40) != 0 && _channel3Enabled && _channel3Length > 0 && --_channel3Length == 0)
+        if (_frameStep is 0 or 2 or 4 or 6 && (_io[0x1E] & 0x40) != 0 && _channel3Enabled && _channel3Length > 0 && --_channel3Length == 0)
         {
             _channel3Enabled = false;
             UpdateStatus();
         }
-        if ((_io[0x23] & 0x40) != 0 && _channel4Enabled && _channel4Length > 0 && --_channel4Length == 0)
+        if (_frameStep is 0 or 2 or 4 or 6 && (_io[0x23] & 0x40) != 0 && _channel4Enabled && _channel4Length > 0 && --_channel4Length == 0)
         {
             _channel4Enabled = false;
             UpdateStatus();
