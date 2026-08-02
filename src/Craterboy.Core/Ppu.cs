@@ -51,6 +51,7 @@ internal sealed class PpuDevice : ICycleParticipant
     {
         0xFF40 => _io[0x40],
         0xFF41 => (byte)(0x80 | (_io[0x41] & 0x78) | (_coincidence ? 0x04 : 0) | _mode),
+        0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49 => _io[address - 0xFF00],
         0xFF44 => _line,
         0xFF45 => _io[0x45],
         _ => 0xFF,
@@ -66,6 +67,9 @@ internal sealed class PpuDevice : ICycleParticipant
             case 0xFF41:
                 _io[0x41] = (byte)(0x80 | (value & 0x78));
                 UpdateCoincidence();
+                break;
+            case 0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49:
+                _io[address - 0xFF00] = value;
                 break;
             case 0xFF44:
                 _line = 0;
@@ -93,7 +97,7 @@ internal sealed class PpuDevice : ICycleParticipant
         if (_line < 144)
         {
             if (_lineCycles == 80) SetMode(3);
-            else if (_lineCycles == 252)
+            else if (_lineCycles == 252 + (_io[0x43] & 0x07))
             {
                 RenderBackgroundLine(_line);
                 SetMode(0);
