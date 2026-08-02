@@ -1519,6 +1519,23 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesSerialTransferProgress()
+    {
+        var first = NewEmulator(MakeRom());
+        var second = NewEmulator(MakeRom());
+        first.WriteMemory(0xFF02, 0x81); // internal-clock transfer
+        second.WriteMemory(0xFF02, 0x81);
+        first.RunCycles(100);
+        second.RunCycles(50);
+        second.WriteMemory(0xFF02, 0x81); // restart without changing visible registers
+        second.RunCycles(50);
+
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.Equal(first.PeekMemory(0xFF02), second.PeekMemory(0xFF02));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
