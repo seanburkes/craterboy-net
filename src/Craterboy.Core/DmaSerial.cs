@@ -66,6 +66,12 @@ internal sealed class SerialDevice : ICycleParticipant
         if ((_io[0x02] & 0x80) != 0 && (_io[0x02] & 1) == 0) _externalBits = 0;
     }
 
+    public void WriteStateHash(BinaryWriter writer)
+    {
+        writer.Write(_cycles);
+        writer.Write(_externalBits);
+    }
+
     public void ClockExternalBit()
     {
         if ((_io[0x02] & 0x81) != 0x80) return;
