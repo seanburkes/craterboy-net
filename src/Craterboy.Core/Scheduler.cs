@@ -35,12 +35,16 @@ internal sealed class TimerDevice : ICycleParticipant
 {
     private readonly byte[] _io;
     private ushort _divider;
+    private int _timaReloadState;
+    private int _timaReloadCycles;
 
     public TimerDevice(byte[] io) => _io = io;
 
     public void Reset()
     {
         _divider = 0;
+        _timaReloadState = 0;
+        _timaReloadCycles = 0;
         _io[0x04] = 0;
         _io[0x05] = 0;
         _io[0x06] = 0;
@@ -64,10 +68,11 @@ internal sealed class TimerDevice : ICycleParticipant
                 _divider = 0;
                 break;
             case 0xFF05:
-                _io[0x05] = value;
+                if (_timaReloadState != 2) _io[0x05] = value;
                 break;
             case 0xFF06:
                 _io[0x06] = value;
+                if (_timaReloadState != 0) _io[0x05] = value;
                 break;
             case 0xFF07:
                 var control = (byte)(value & 0x07);
@@ -80,6 +85,7 @@ internal sealed class TimerDevice : ICycleParticipant
 
     public void AdvanceTCycle()
     {
+        AdvanceTimaReload();
         var oldSignal = TimerSignal(_divider, _io[0x07]);
         _divider++;
         _io[0x04] = (byte)(_divider >> 8);
@@ -93,11 +99,28 @@ internal sealed class TimerDevice : ICycleParticipant
         if (_io[0x05] == 0xFF)
         {
             _io[0x05] = _io[0x06];
-            _io[0x0F] |= 0x04;
+            _timaReloadState = 1;
+            _timaReloadCycles = 4;
         }
         else
         {
             _io[0x05]++;
+        }
+    }
+
+    private void AdvanceTimaReload()
+    {
+        if (_timaReloadState == 0) return;
+        if (--_timaReloadCycles > 0) return;
+        if (_timaReloadState == 1)
+        {
+            _io[0x0F] |= 0x04;
+            _timaReloadState = 2;
+            _timaReloadCycles = 4;
+        }
+        else
+        {
+            _timaReloadState = 0;
         }
     }
 
