@@ -1536,6 +1536,23 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesOamDmaProgress()
+    {
+        var first = NewEmulator(MakeRom());
+        var second = NewEmulator(MakeRom());
+        first.WriteMemory(0xFF46, 0xC0);
+        second.WriteMemory(0xFF46, 0xC0);
+        first.RunCycles(10);
+        second.RunCycles(5);
+        second.WriteMemory(0xFF46, 0xC0); // restart with zero-filled source/OAM
+        second.RunCycles(5);
+
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.Equal(first.PeekMemory(0xFF46), second.PeekMemory(0xFF46));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());

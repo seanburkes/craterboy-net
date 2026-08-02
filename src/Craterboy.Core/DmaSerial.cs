@@ -30,6 +30,13 @@ internal sealed class OamDmaDevice : ICycleParticipant
         _phase = 0;
     }
 
+    public void WriteStateHash(BinaryWriter writer)
+    {
+        writer.Write(_index);
+        writer.Write(_phase);
+        writer.Write(_source);
+    }
+
     public void AdvanceTCycle()
     {
         if (_index < 0) return;
