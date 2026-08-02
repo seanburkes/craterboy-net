@@ -434,6 +434,25 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelOneSweepUsesTriggerFrequencyAfterLiveFrequencyWrite()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF10, 0x11); // period 1, upward shift 1
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF13, 100);
+        emulator.WriteMemory(0xFF14, 0x80); // trigger at frequency 100
+
+        emulator.RunCycles(2 * 8192);
+        emulator.WriteMemory(0xFF13, 200); // change playback frequency only
+        emulator.RunCycles(2 * 8192);
+
+        Assert.Equal((byte)150, emulator.PeekMemory(0xFF13));
+    }
+
+    [Fact]
     public void ApuChannelOneSweepRegisterWritesReconfigureActiveSweep()
     {
         var rom = MakeRom();

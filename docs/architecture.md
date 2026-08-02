@@ -38,8 +38,9 @@ NR52 status timing plus the envelope frame step.
 Channel 1 frequency sweep updates are clocked at the hardware sweep cadence,
 with the NR10 period selecting the number of four-step intervals between
 updates; live NR10 writes reconfigure active sweep timing, and trigger-time
-overflow disables the channel. The core emits channel samples into a bounded
-managed ring and exposes
+overflow disables the channel. The sweep shadow frequency remains tied to the
+trigger while live NR13/NR14 writes update playback. The core emits channel
+samples into a bounded managed ring and exposes
 caller-owned buffer draining; host playback remains outside the core.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
