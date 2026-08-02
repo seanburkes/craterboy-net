@@ -1460,6 +1460,18 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesCgbPaletteRam()
+    {
+        var first = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var second = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+
+        second.WriteMemory(0xFF68, 0x00);
+        second.WriteMemory(0xFF69, 0x7F);
+
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());

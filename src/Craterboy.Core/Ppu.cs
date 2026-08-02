@@ -127,6 +127,12 @@ internal sealed class PpuDevice : ICycleParticipant
         _colorFrame.AsSpan().CopyTo(destination);
     }
 
+    public void WriteStateHash(BinaryWriter writer)
+    {
+        writer.Write(_backgroundPaletteRam);
+        writer.Write(_objectPaletteRam);
+    }
+
     public void AdvanceTCycle()
     {
         if (!_enabled) return;
