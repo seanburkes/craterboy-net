@@ -132,6 +132,7 @@ internal sealed class ApuDevice : ICycleParticipant
             _io[address - 0xFF00] = value;
             return;
         }
+        var previousValue = _io[address - 0xFF00];
         _io[address - 0xFF00] = value;
         if (address is 0xFF24 or 0xFF25) _mixerConfigured = true;
         switch (address)
@@ -141,7 +142,8 @@ internal sealed class ApuDevice : ICycleParticipant
                 if (_channel1Enabled)
                 {
                     _sweepTimer = SweepPeriodTicks();
-                    if (_sweepEnabled && (value & 0x07) != 0 && SweepFrequency() > 2047)
+                    var negateTransition = (previousValue & 0x08) != 0 && (value & 0x08) == 0;
+                    if (_sweepEnabled && ((value & 0x07) != 0 || negateTransition) && SweepFrequency() > 2047)
                     {
                         _channel1Enabled = false;
                         UpdateStatus();
