@@ -760,6 +760,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbColorFrameClearsWhenLcdIsDisabled()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0x8000, 0x80); // background tile 0, color 1
+        emulator.WriteMemory(0xFF68, 2); // background palette 0, color 1
+        emulator.WriteMemory(0xFF69, 0x34);
+        emulator.WriteMemory(0xFF68, 3);
+        emulator.WriteMemory(0xFF69, 0x12);
+        emulator.WriteMemory(0xFF40, 0x91); // LCD, BG, unsigned tiles
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x1234, frame[0]);
+
+        emulator.WriteMemory(0xFF40, 0x00);
+        emulator.CopyColorFrame(frame);
+        Assert.All(frame, pixel => Assert.Equal((ushort)0, pixel));
+    }
+
+    [Fact]
     public void CgbColorFrameUsesBackgroundPaletteIndexAndRgb15Data()
     {
         var rom = MakeRom();
