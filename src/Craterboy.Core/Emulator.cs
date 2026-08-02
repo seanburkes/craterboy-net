@@ -138,6 +138,7 @@ public sealed class Emulator
             _apu.WriteStateHash(writer);
             _serial.WriteStateHash(writer);
             _dma.WriteStateHash(writer);
+            _joypad.WriteStateHash(writer);
             writer.Write(_cartridge?.SaveBattery() ?? Array.Empty<byte>());
         }
         return System.Security.Cryptography.SHA256.HashData(stream.GetBuffer().AsSpan(0, checked((int)stream.Length)));

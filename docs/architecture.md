@@ -49,6 +49,7 @@ Timer divider precision and delayed reload state are included as well.
 APU channel phases, frame-sequencer state, and queued samples are included too.
 Serial internal-clock and external-bit transfer progress are included as well.
 OAM DMA source, phase, and byte progress are included too.
+Joypad button and delayed-selection state are included as well.
 CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation;
 following CPU instructions consume half as many scheduler T-cycles while PPU

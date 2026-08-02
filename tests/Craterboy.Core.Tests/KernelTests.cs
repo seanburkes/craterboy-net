@@ -1553,6 +1553,25 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesJoypadSelectionProgress()
+    {
+        var first = NewEmulator(MakeRom());
+        var second = NewEmulator(MakeRom());
+        first.WriteMemory(0xFF00, 0x10);
+        second.WriteMemory(0xFF00, 0x10);
+        first.WriteMemory(0xFF00, 0x20);
+        second.WriteMemory(0xFF00, 0x20);
+        first.RunCycles(10);
+        second.RunCycles(5);
+        second.WriteMemory(0xFF00, 0x20); // restart the delayed selection
+        second.RunCycles(5);
+
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.Equal(first.PeekMemory(0xFF00), second.PeekMemory(0xFF00));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
