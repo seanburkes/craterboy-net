@@ -776,6 +776,29 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbColorFrameUsesWindowPaletteAttribute()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0x8000, 0x80); // window tile 0, color 1 at pixel 0
+        emulator.WriteMemory(0x9C00, 0x00); // window map tile 0
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x9C00, 0x04); // window palette 4
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFF4A, 0); // WY=0
+        emulator.WriteMemory(0xFF4B, 7); // WX=7, window starts at x=0
+        emulator.WriteMemory(0xFF68, 34); // palette 4, color 1 low byte
+        emulator.WriteMemory(0xFF69, 0xEF);
+        emulator.WriteMemory(0xFF68, 35);
+        emulator.WriteMemory(0xFF69, 0xBE);
+        emulator.WriteMemory(0xFF40, 0xF1); // LCD, window map 1, window, BG, unsigned tiles
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0xBEEF, frame[0]);
+    }
+
+    [Fact]
     public void CgbGeneralDmaCopiesMaskedBlocksIntoSelectedVramBank()
     {
         var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
