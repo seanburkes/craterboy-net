@@ -27,7 +27,7 @@ public sealed class Emulator
         _model = model;
         _options = options ?? new EmulatorOptions();
         _timer = new TimerDevice(_io);
-        _dma = new OamDmaDevice(Read, (index, value) => _oam[index] = value);
+        _dma = new OamDmaDevice(address => Read(address, true), (index, value) => _oam[index] = value);
         _serial = new SerialDevice(_io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_io);
         _ppu = new PpuDevice(_io, _vram, _oam);
@@ -948,8 +948,11 @@ public sealed class Emulator
     private void Advance(int cycles) => _state.Scheduler.Advance(cycles);
     private void EnsureRom() { if (_cartridge is null) throw new InvalidOperationException("Load a ROM before executing."); }
 
-    private byte Read(ushort address)
+    private byte Read(ushort address) => Read(address, false);
+
+    private byte Read(ushort address, bool dmaTransfer)
     {
+        if (!dmaTransfer && _dma.Active && !DmaCpuCanAccess(address)) return 0xFF;
         if (_bootMapped && _bootRom is not null && address < _bootRom.Length) return _bootRom[address];
         return address switch
         {
@@ -975,6 +978,7 @@ public sealed class Emulator
 
     private void Write(ushort address, byte value)
     {
+        if (_dma.Active && address != 0xFF46 && !DmaCpuCanAccess(address)) return;
         switch (address)
         {
             case < 0x8000: _cartridge?.Write(address, value); break;
@@ -1023,4 +1027,6 @@ public sealed class Emulator
                 break;
         }
     }
+
+    private static bool DmaCpuCanAccess(ushort address) => address >= 0xFF80;
 }

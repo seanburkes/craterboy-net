@@ -274,13 +274,34 @@ public sealed class KernelTests
         for (var i = 0; i < 0xA0; i++) emulator.WriteMemory((ushort)(0xC000 + i), (byte)(i ^ 0x5A));
 
         emulator.WriteMemory(0xFF46, 0xC0);
-        Assert.Equal((byte)0, emulator.PeekMemory(0xFE00));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFE00));
         emulator.RunCycles(639);
-        Assert.Equal((byte)0, emulator.PeekMemory(0xFE9F));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFE9F));
         emulator.RunCycles(1);
 
         for (var i = 0; i < 0xA0; i++)
             Assert.Equal((byte)(i ^ 0x5A), emulator.PeekMemory((ushort)(0xFE00 + i)));
+    }
+
+    [Fact]
+    public void OamDmaBlocksCpuBusExceptHighRamAndInterruptEnable()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xC000, 0xA5);
+        emulator.WriteMemory(0xFF80, 0x5A);
+        emulator.WriteMemory(0xFF46, 0xC0);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xC000));
+        Assert.Equal((byte)0x5A, emulator.PeekMemory(0xFF80));
+        emulator.WriteMemory(0xC000, 0x3C);
+        emulator.WriteMemory(0xFF80, 0xC3);
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xC000));
+        Assert.Equal((byte)0xC3, emulator.PeekMemory(0xFF80));
+
+        emulator.WriteMemory(0xFFFF, 0x1F);
+        Assert.Equal((byte)0x1F, emulator.PeekMemory(0xFFFF));
+        emulator.RunCycles(640);
+        Assert.Equal((byte)0xA5, emulator.PeekMemory(0xC000));
     }
 
     [Fact]
