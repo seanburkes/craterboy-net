@@ -20,6 +20,7 @@ active. `Emulator.ClockSerialBit()` supplies external serial clock edges for
 link endpoints. CGB general DMA transfers immediate 16-byte blocks, while
 HBlank DMA transfers one 16-byte block at each visible-line HBlank, from the
 CPU address space into the selected VRAM bank through FF51-FF55.
+Active HBlank transfers cancel on an FF55 stop request or LCD disable.
 
 The joypad is an active-low, scheduler-owned bus device with explicit button
 state injection. DMG/MGB FF00 selection changes model their hardware switching
