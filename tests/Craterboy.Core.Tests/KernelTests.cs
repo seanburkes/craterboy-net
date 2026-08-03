@@ -1128,10 +1128,13 @@ public sealed class KernelTests
         Assert.Equal((ushort)0x0BCD, frame[0]);
     }
 
-    [Fact]
-    public void CgbGeneralDmaCopiesMaskedBlocksIntoSelectedVramBank()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyGeneralDmaCopiesMaskedBlocksIntoSelectedVramBank(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         for (var index = 0; index < 0x10; index++)
             emulator.WriteMemory((ushort)(0xC000 + index), (byte)(index + 1));
 
