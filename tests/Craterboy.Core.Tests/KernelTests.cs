@@ -890,6 +890,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbColorFrameUsesBackgroundTileFlipAttributes()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x8000 + 14, 0x01); // bank 1 tile 0, source row 7 pixel 7
+        emulator.WriteMemory(0x9800, 0x68); // bank 1, X-flip, and Y-flip
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0x9800, 0x00); // tile 0 from bank 0
+        emulator.WriteMemory(0xFF68, 2); // background palette 0, color 1
+        emulator.WriteMemory(0xFF69, 0x9A);
+        emulator.WriteMemory(0xFF68, 3);
+        emulator.WriteMemory(0xFF69, 0x01);
+        emulator.WriteMemory(0xFF40, 0x91); // LCD, BG, unsigned tile data
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x019A, frame[0]);
+    }
+
+    [Fact]
     public void CgbColorFrameUsesSpritePaletteIndexAndObjectPaletteRam()
     {
         var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
@@ -932,6 +953,29 @@ public sealed class KernelTests
         var frame = new ushort[160 * 144];
         emulator.CopyColorFrame(frame);
         Assert.Equal((ushort)0x5678, frame[0]);
+    }
+
+    [Fact]
+    public void CgbColorFrameUsesSpriteTileFlipAttributes()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x8000 + 14, 0x01); // bank 1 tile 0, source row 7 pixel 7
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFE00, 16); // y=0
+        emulator.WriteMemory(0xFE01, 8); // x=0
+        emulator.WriteMemory(0xFE02, 0);
+        emulator.WriteMemory(0xFE03, 0x68); // tile bank 1, X-flip, and Y-flip
+        emulator.WriteMemory(0xFF6A, 2); // object palette 0, color 1
+        emulator.WriteMemory(0xFF6B, 0xBC);
+        emulator.WriteMemory(0xFF6A, 3);
+        emulator.WriteMemory(0xFF6B, 0x0A);
+        emulator.WriteMemory(0xFF40, 0x92); // LCD and sprites on, BG off
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x0ABC, frame[0]);
     }
 
     [Fact]
