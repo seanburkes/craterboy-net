@@ -61,8 +61,9 @@ to select CGB OAM-index versus X-based overlap order for both indexed and RGB15
 color frames.
 CGB background/window fetches consume VRAM-bank and X/Y-flip tile attributes;
 CGB palette-index composition honors background and sprite palette indices, while
-nonzero background pixels honor the CGB BG-priority attribute against sprites.
-CGB sprite fetches consume the OAM tile-bank and palette-index attributes.
+nonzero background pixels honor both the CGB BG-priority attribute and the sprite
+behind-background attribute against sprites. CGB sprite fetches consume the
+OAM tile-bank and palette-index attributes.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
