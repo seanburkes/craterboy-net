@@ -948,10 +948,13 @@ public sealed class KernelTests
         Assert.Throws<ArgumentException>(() => emulator.CopyColorFrame(new ushort[10]));
     }
 
-    [Fact]
-    public void CgbColorFrameUsesBackgroundTileDataBankAttribute()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesBackgroundTileDataBankAttribute(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF4F, 1);
         emulator.WriteMemory(0x8000, 0x80); // bank 1 tile 0, color 1 at pixel 0
         emulator.WriteMemory(0x9800, 0x08); // tile 0 uses bank 1 data
@@ -969,10 +972,13 @@ public sealed class KernelTests
         Assert.Equal((ushort)0x3456, frame[0]);
     }
 
-    [Fact]
-    public void CgbColorFrameUsesBackgroundTileFlipAttributes()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesBackgroundTileFlipAttributes(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF4F, 1);
         emulator.WriteMemory(0x8000 + 14, 0x01); // bank 1 tile 0, source row 7 pixel 7
         emulator.WriteMemory(0x9800, 0x68); // bank 1, X-flip, and Y-flip
