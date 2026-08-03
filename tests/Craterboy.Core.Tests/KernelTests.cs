@@ -999,10 +999,13 @@ public sealed class KernelTests
         Assert.Equal((ushort)0x019A, frame[0]);
     }
 
-    [Fact]
-    public void CgbColorFrameUsesSpritePaletteIndexAndObjectPaletteRam()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesSpritePaletteIndexAndObjectPaletteRam(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0x8000, 0x80); // sprite tile 0, color 1 at pixel 0
         emulator.WriteMemory(0xFE00, 16); // y=0
         emulator.WriteMemory(0xFE01, 8); // x=0
