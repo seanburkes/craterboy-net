@@ -923,12 +923,15 @@ public sealed class KernelTests
         Assert.Equal((ushort)0x015A, frame[0]);
     }
 
-    [Fact]
-    public void CgbColorFrameUsesBackgroundPaletteIndexAndRgb15Data()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesBackgroundPaletteIndexAndRgb15Data(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        var emulator = NewEmulator(rom, model);
         emulator.WriteMemory(0x8000, 0x80); // tile 0, color 1 at pixel 0
         emulator.WriteMemory(0x9800, 0x00); // tile 0 from bank 0
         emulator.WriteMemory(0xFF4F, 1);
