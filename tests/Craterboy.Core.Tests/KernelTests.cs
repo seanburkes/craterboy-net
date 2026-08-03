@@ -1076,10 +1076,13 @@ public sealed class KernelTests
         Assert.Equal((ushort)0x0ABC, frame[0]);
     }
 
-    [Fact]
-    public void CgbColorFrameUsesWindowPaletteAttribute()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesWindowPaletteAttribute(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0x8000, 0x80); // window tile 0, color 1 at pixel 0
         emulator.WriteMemory(0x9C00, 0x00); // window map tile 0
         emulator.WriteMemory(0xFF4F, 1);
