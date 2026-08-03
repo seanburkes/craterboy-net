@@ -657,6 +657,57 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbColorFrameObjectPriorityModeControlsOverlappingSpriteOrder()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0x8000, 0xC0); // tile pixels 0 and 1 are color 1
+        emulator.WriteMemory(0xFF6A, 2); // object palette 0, color 1
+        emulator.WriteMemory(0xFF6B, 0x11);
+        emulator.WriteMemory(0xFF6A, 3);
+        emulator.WriteMemory(0xFF6B, 0x11);
+        emulator.WriteMemory(0xFF6A, 10); // object palette 1, color 1
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFF6A, 11);
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFE00, 16); // OAM index 0: screen X = 1
+        emulator.WriteMemory(0xFE01, 9);
+        emulator.WriteMemory(0xFE02, 0);
+        emulator.WriteMemory(0xFE04, 16); // OAM index 1: screen X = 0
+        emulator.WriteMemory(0xFE05, 8);
+        emulator.WriteMemory(0xFE06, 0);
+        emulator.WriteMemory(0xFE07, 0x01); // CGB object palette 1
+        emulator.WriteMemory(0xFF40, 0x92); // LCD and sprites on, BG off
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x1111, frame[1]); // default CGB OPRI: OAM index priority
+
+        var xPriority = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        xPriority.WriteMemory(0x8000, 0xC0);
+        xPriority.WriteMemory(0xFF6A, 2);
+        xPriority.WriteMemory(0xFF6B, 0x11);
+        xPriority.WriteMemory(0xFF6A, 3);
+        xPriority.WriteMemory(0xFF6B, 0x11);
+        xPriority.WriteMemory(0xFF6A, 10);
+        xPriority.WriteMemory(0xFF6B, 0x22);
+        xPriority.WriteMemory(0xFF6A, 11);
+        xPriority.WriteMemory(0xFF6B, 0x22);
+        xPriority.WriteMemory(0xFE00, 16);
+        xPriority.WriteMemory(0xFE01, 9);
+        xPriority.WriteMemory(0xFE02, 0);
+        xPriority.WriteMemory(0xFE04, 16);
+        xPriority.WriteMemory(0xFE05, 8);
+        xPriority.WriteMemory(0xFE06, 0);
+        xPriority.WriteMemory(0xFE07, 0x01);
+        xPriority.WriteMemory(0xFF6C, 1);
+        xPriority.WriteMemory(0xFF40, 0x92);
+        xPriority.RunCycles(252);
+        xPriority.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x2222, frame[1]);
+    }
+
+    [Fact]
     public void CgbBackgroundUsesTileAttributesForBankAndFlip()
     {
         var rom = MakeRom();
