@@ -17,7 +17,7 @@ one byte per four T-cycles for 160 bytes, while the serial endpoint completes an
 internal-clock transfer after eight 512-T-cycle bit periods. During OAM DMA,
 CPU accesses are blocked outside HRAM and IE while the DMA source bus remains
 active. `Emulator.ClockSerialBit()` supplies external serial clock edges for
-link endpoints. CGB general DMA transfers immediate 16-byte blocks, while
+link endpoints. CGB-family general DMA transfers immediate 16-byte blocks, while
 HBlank DMA transfers one 16-byte block at each visible-line HBlank, from the
 CPU address space into the selected VRAM bank through FF51-FF55.
 Active HBlank transfers cancel on an FF55 stop request or LCD disable.
