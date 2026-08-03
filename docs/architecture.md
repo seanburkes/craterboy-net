@@ -56,9 +56,9 @@ CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation;
 following CPU instructions consume half as many scheduler T-cycles while PPU
 and timer participants continue at the normal hardware cadence.
-CGB OPRI exposes the object-priority mode bit, and the DMG sprite compositor
-uses it to select CGB OAM-index versus X-based overlap order; color sprite
-composition remains deferred with the rest of the color renderer.
+CGB OPRI exposes the object-priority mode bit, and the sprite compositor uses it
+to select CGB OAM-index versus X-based overlap order for both indexed and RGB15
+color frames.
 CGB background/window fetches consume VRAM-bank and X/Y-flip tile attributes;
 CGB palette-index composition honors background and sprite palette indices, while
 nonzero background pixels honor the CGB BG-priority attribute against sprites.
