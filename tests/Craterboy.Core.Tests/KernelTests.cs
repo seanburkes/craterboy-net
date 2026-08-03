@@ -1081,10 +1081,13 @@ public sealed class KernelTests
         Assert.Equal((ushort)0xBEEF, frame[0]);
     }
 
-    [Fact]
-    public void CgbColorFrameUsesWindowTileBankAndFlipAttributes()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesWindowTileBankAndFlipAttributes(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF4F, 1);
         emulator.WriteMemory(0x8000 + 14, 0x01); // bank 1 tile 0, source row 7 pixel 7
         emulator.WriteMemory(0x9C00, 0x68); // bank 1, X-flip, and Y-flip
