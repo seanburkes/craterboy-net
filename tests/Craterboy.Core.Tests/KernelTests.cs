@@ -636,12 +636,15 @@ public sealed class KernelTests
         Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF6C));
     }
 
-    [Fact]
-    public void CgbObjectPriorityModeControlsOverlappingSpriteOrder()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyObjectPriorityModeControlsOverlappingSpriteOrder(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        var emulator = NewEmulator(rom, model);
         emulator.WriteMemory(0x8000, 0xC0); // tile pixels 0 and 1 are color 1
         emulator.WriteMemory(0xFF48, 0x04); // OAM index 0 maps color 1 to shade 1
         emulator.WriteMemory(0xFF49, 0x08); // OAM index 1 maps color 1 to shade 2
@@ -659,7 +662,7 @@ public sealed class KernelTests
         emulator.CopyFrame(frame);
         Assert.Equal((byte)1, frame[1]); // default CGB OPRI: OAM index priority
 
-        var xPriority = NewEmulator(rom, GameBoyModel.CgbE);
+        var xPriority = NewEmulator(rom, model);
         xPriority.WriteMemory(0x8000, 0xC0);
         xPriority.WriteMemory(0xFF48, 0x04);
         xPriority.WriteMemory(0xFF49, 0x08);
