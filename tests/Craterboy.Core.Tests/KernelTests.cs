@@ -537,10 +537,13 @@ public sealed class KernelTests
         Assert.Equal((byte)0x34, emulator.PeekMemory(0xD000));
     }
 
-    [Fact]
-    public void CgbKey1ExposesSpeedPreparationWithoutChangingCurrentSpeed()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyKey1ExposesSpeedPreparationWithoutChangingCurrentSpeed(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
 
         Assert.Equal((byte)0x7E, emulator.PeekMemory(0xFF4D));
         emulator.WriteMemory(0xFF4D, 0x01);

@@ -53,7 +53,7 @@ OAM DMA source, phase, and byte progress are included too.
 Joypad button and delayed-selection state are included as well.
 Cartridge mapper bank, enable, latch, and RTC control state are included too.
 Cartridge ROM and configured boot-ROM identities are included in the hash input.
-CGB KEY1 exposes the current-speed and speed-switch preparation bits; actual
+CGB-family KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation;
 following CPU instructions consume half as many scheduler T-cycles while PPU
 and timer participants continue at the normal hardware cadence.
