@@ -552,12 +552,15 @@ public sealed class KernelTests
         Assert.Equal((byte)0x7E, emulator.PeekMemory(0xFF4D));
     }
 
-    [Fact]
-    public void CgbStopWithPreparedKey1TogglesSpeedAndDoesNotHalt()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyStopWithPreparedKey1TogglesSpeedAndDoesNotHalt(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0x10, 0x00, 0x10, 0x00 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        var emulator = NewEmulator(rom, model);
 
         emulator.WriteMemory(0xFF4D, 0x01);
         emulator.StepInstruction();
