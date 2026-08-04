@@ -665,10 +665,13 @@ public sealed class KernelTests
         Assert.Equal((byte)2, frame[1]);
     }
 
-    [Fact]
-    public void CgbColorFrameObjectPriorityModeControlsOverlappingSpriteOrder()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameObjectPriorityModeControlsOverlappingSpriteOrder(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0x8000, 0xC0); // tile pixels 0 and 1 are color 1
         emulator.WriteMemory(0xFF6A, 2); // object palette 0, color 1
         emulator.WriteMemory(0xFF6B, 0x11);
@@ -692,7 +695,7 @@ public sealed class KernelTests
         emulator.CopyColorFrame(frame);
         Assert.Equal((ushort)0x1111, frame[1]); // default CGB OPRI: OAM index priority
 
-        var xPriority = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var xPriority = NewEmulator(MakeRom(), model);
         xPriority.WriteMemory(0x8000, 0xC0);
         xPriority.WriteMemory(0xFF6A, 2);
         xPriority.WriteMemory(0xFF6B, 0x11);
