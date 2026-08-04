@@ -731,12 +731,15 @@ public sealed class KernelTests
         Assert.Equal((ushort)0x2222, frame[1]);
     }
 
-    [Fact]
-    public void CgbBackgroundUsesTileAttributesForBankAndFlip()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbBackgroundUsesTileAttributesForBankAndFlip(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        var emulator = NewEmulator(rom, model);
         emulator.WriteMemory(0x9800, 0x00); // tile 0 from bank 0
         emulator.WriteMemory(0x9801, 0x00); // tile 0 from bank 0
         emulator.WriteMemory(0xFF4F, 1);
