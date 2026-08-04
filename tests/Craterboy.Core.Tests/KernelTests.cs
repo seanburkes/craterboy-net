@@ -484,10 +484,13 @@ public sealed class KernelTests
         Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF69));
     }
 
-    [Fact]
-    public void CgbVramBankRegisterSelectsTheSecondVramBank()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyVramBankRegisterSelectsTheSecondVramBank(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0x8000, 0x12);
         emulator.WriteMemory(0xFF4F, 0x01);
         emulator.WriteMemory(0x8000, 0x34);
