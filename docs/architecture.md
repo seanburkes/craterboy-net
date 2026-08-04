@@ -54,7 +54,8 @@ Joypad button and delayed-selection state are included as well.
 Cartridge mapper bank, enable, latch, and RTC control state are included too.
 Cartridge ROM and configured boot-ROM identities are included in the hash input.
 CGB-family KEY1 exposes the current-speed and speed-switch preparation bits; actual
-STOP with preparation toggles the modeled speed state and clears preparation;
+STOP with preparation toggles the modeled speed state and clears preparation on
+CGB, AGB, and GBP models;
 following CPU instructions consume half as many scheduler T-cycles while PPU
 and timer participants continue at the normal hardware cadence.
 CGB OPRI exposes the object-priority mode bit, and the sprite compositor uses it
