@@ -447,10 +447,13 @@ public sealed class KernelTests
         Assert.Equal((byte)3, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
     }
 
-    [Fact]
-    public void CgbPpuPaletteRegistersAutoIncrementIndexedPaletteRam()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyPpuPaletteRegistersAutoIncrementIndexedPaletteRam(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF68, 0x80); // BG palette index 0, auto-increment
         emulator.WriteMemory(0xFF69, 0x12);
         emulator.WriteMemory(0xFF69, 0x34);
