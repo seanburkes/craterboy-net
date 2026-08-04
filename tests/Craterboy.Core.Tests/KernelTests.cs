@@ -1778,19 +1778,24 @@ public sealed class KernelTests
         Assert.Equal((byte)0x0F, emulator.PeekMemory(0xFF31));
     }
 
-    [Fact]
-    public void ApuActiveWaveRamUsesCurrentByteOnCgb()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void ApuActiveWaveRamUsesModelSpecificAccessRules(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF26, 0x80);
         emulator.WriteMemory(0xFF30, 0xF0);
         emulator.WriteMemory(0xFF31, 0x0F);
         emulator.WriteMemory(0xFF1A, 0x80);
         emulator.WriteMemory(0xFF1E, 0x80);
 
-        Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF31));
+        var expectedActiveRead = model == GameBoyModel.CgbE ? (byte)0xF0 : (byte)0xFF;
+        var expectedActiveWriteRead = model == GameBoyModel.CgbE ? (byte)0xAA : (byte)0xFF;
+        Assert.Equal(expectedActiveRead, emulator.PeekMemory(0xFF31));
         emulator.WriteMemory(0xFF31, 0xAA);
-        Assert.Equal((byte)0xAA, emulator.PeekMemory(0xFF30));
+        Assert.Equal(expectedActiveWriteRead, emulator.PeekMemory(0xFF30));
 
         emulator.WriteMemory(0xFF1A, 0x00);
         Assert.Equal((byte)0x0F, emulator.PeekMemory(0xFF31));
