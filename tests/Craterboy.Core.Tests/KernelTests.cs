@@ -1801,10 +1801,13 @@ public sealed class KernelTests
         Assert.Equal((byte)0x0F, emulator.PeekMemory(0xFF31));
     }
 
-    [Fact]
-    public void ApuPcmRegistersExposeCgbChannelAmplitudes()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void ApuPcmRegistersExposeCgbFamilyChannelAmplitudes(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF26, 0x80);
         emulator.WriteMemory(0xFF11, 0x40); // duty 1: first sample is high
         emulator.WriteMemory(0xFF12, 0xF0);
