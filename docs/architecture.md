@@ -59,9 +59,9 @@ CGB, AGB, and GBP models;
 following CPU instructions consume half as many scheduler T-cycles on CGB, AGB,
 and GBP models while PPU and timer participants continue at the normal hardware
 cadence.
-CGB OPRI exposes the object-priority mode bit, and the sprite compositor uses it
-to select CGB OAM-index versus X-based overlap order for both indexed and RGB15
-color frames.
+CGB-family OPRI exposes the object-priority mode bit, and the sprite compositor
+uses it to select OAM-index versus X-based overlap order for both indexed and
+RGB15 color frames.
 CGB, AGB, and GBP background/window fetches consume VRAM-bank and X/Y-flip tile attributes;
 CGB, AGB, and GBP palette-index composition honors background and sprite palette indices, while
 nonzero background pixels honor both the CGB BG-priority attribute and the sprite
