@@ -759,12 +759,15 @@ public sealed class KernelTests
         Assert.Equal((byte)1, frame[8]); // flipped bank-0 tile pixel 0 at screen x=8
     }
 
-    [Fact]
-    public void CgbSpriteUsesOamTileBankAttribute()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilySpriteUsesOamTileBankAttribute(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        var emulator = NewEmulator(rom, model);
         emulator.WriteMemory(0xFF4F, 1);
         emulator.WriteMemory(0x8000, 0x80); // bank 1 sprite pixel 0
         emulator.WriteMemory(0xFF4F, 0);
