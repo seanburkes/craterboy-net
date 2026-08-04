@@ -1931,11 +1931,15 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesTimerDividerPrecision()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesTimerDividerPrecision(GameBoyModel model)
     {
-        var first = NewEmulator(MakeRom());
-        var second = NewEmulator(MakeRom());
+        var first = NewEmulator(MakeRom(), model);
+        var second = NewEmulator(MakeRom(), model);
         first.RunCycles(1000);
         second.RunCycles(64);
         second.WriteMemory(0xFF04, 0); // reset divider without changing cycle count
