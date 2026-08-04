@@ -812,12 +812,15 @@ public sealed class KernelTests
         Assert.Equal((byte)1, frame[0]);
     }
 
-    [Fact]
-    public void CgbColorFrameAppliesBackgroundPriorityToSprites()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameAppliesBackgroundPriorityToSprites(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        var emulator = NewEmulator(rom, model);
         emulator.WriteMemory(0x8000, 0x80); // background tile 0, color 1
         emulator.WriteMemory(0x8010, 0x80); // sprite tile 1, color 1
         emulator.WriteMemory(0x9800, 0x00);
