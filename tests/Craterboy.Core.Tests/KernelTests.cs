@@ -573,12 +573,15 @@ public sealed class KernelTests
         Assert.Equal((byte)0x7E, emulator.PeekMemory(0xFF4D));
     }
 
-    [Fact]
-    public void CgbDoubleSpeedHalvesFollowingCpuInstructionCadence()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyDoubleSpeedHalvesFollowingCpuInstructionCadence(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0x10, 0x00, 0x00, 0x00, 0x00 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+        var emulator = NewEmulator(rom, model);
 
         emulator.WriteMemory(0xFF4D, 0x01);
         Assert.Equal(4, emulator.StepInstruction()); // speed-switch STOP uses normal cadence
