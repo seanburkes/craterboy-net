@@ -1183,10 +1183,13 @@ public sealed class KernelTests
         Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
     }
 
-    [Fact]
-    public void CgbHblankDmaCancelsOnRequestOrLcdDisable()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyHblankDmaCancelsOnRequestOrLcdDisable(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         for (var index = 0; index < 0x10; index++)
             emulator.WriteMemory((ushort)(0xC000 + index), (byte)(index + 1));
         emulator.WriteMemory(0xFF51, 0xC0);
