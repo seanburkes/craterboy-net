@@ -603,10 +603,13 @@ public sealed class KernelTests
         Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF4D));
     }
 
-    [Fact]
-    public void CgbObjectPriorityRegisterStoresOnlyItsModeBit()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyObjectPriorityRegisterStoresOnlyItsModeBit(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
 
         Assert.Equal((byte)0xFE, emulator.PeekMemory(0xFF6C));
         emulator.WriteMemory(0xFF6C, 0xFF);
