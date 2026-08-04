@@ -1911,11 +1911,15 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesPpuWindowProgress()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesPpuWindowProgress(GameBoyModel model)
     {
-        var first = NewEmulator(MakeRom());
-        var second = NewEmulator(MakeRom());
+        var first = NewEmulator(MakeRom(), model);
+        var second = NewEmulator(MakeRom(), model);
         first.WriteMemory(0xFF40, 0xB1); // LCD, BG, and window enabled
         first.RunCycles(456);
         first.WriteMemory(0xFF40, 0x91); // match second's final LCD control
