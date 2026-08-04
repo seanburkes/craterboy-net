@@ -899,10 +899,13 @@ public sealed class KernelTests
         Assert.All(frame, pixel => Assert.Equal((ushort)0, pixel));
     }
 
-    [Fact]
-    public void CgbColorFramePreservesBackgroundThroughTransparentSprite()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFramePreservesBackgroundThroughTransparentSprite(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0x8000, 0x80); // background tile 0, color 1
         emulator.WriteMemory(0x8010, 0x00); // sprite tile 1, transparent color 0
         emulator.WriteMemory(0xFF68, 2); // background palette 0, color 1
