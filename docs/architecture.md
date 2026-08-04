@@ -42,7 +42,7 @@ CGB VBK selects the active 8 KiB CPU VRAM bank; bank-aware tile composition
 remains deferred with the rest of the color renderer.
 CGB SVBK selects the active 4 KiB D000-DFFF work-RAM bank and its echo; banked
 work-RAM state is included in deterministic hashes.
-CGB BG/OBJ palette RAM is also included in deterministic hashes so color state
+CGB-family BG/OBJ palette RAM is also included in deterministic hashes so color state
 changes are visible to replay checkpoints.
 PPU timing, LCD mode, coincidence, and window-line state are included alongside
 the palette state.

@@ -1896,11 +1896,14 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesCgbPaletteRam()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesCgbFamilyPaletteRam(GameBoyModel model)
     {
-        var first = NewEmulator(MakeRom(), GameBoyModel.CgbE);
-        var second = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var first = NewEmulator(MakeRom(), model);
+        var second = NewEmulator(MakeRom(), model);
 
         second.WriteMemory(0xFF68, 0x00);
         second.WriteMemory(0xFF69, 0x7F);
