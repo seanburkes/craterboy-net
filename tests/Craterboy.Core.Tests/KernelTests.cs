@@ -513,10 +513,13 @@ public sealed class KernelTests
         Assert.Equal((byte)0x34, emulator.PeekMemory(0x8000));
     }
 
-    [Fact]
-    public void CgbWramBankRegisterSelectsD000AndEchoBank()
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyWramBankRegisterSelectsD000AndEchoBank(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xD000, 0x12); // default bank 1
         emulator.WriteMemory(0xFF70, 0x02);
         emulator.WriteMemory(0xD000, 0x34);
