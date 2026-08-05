@@ -1950,11 +1950,15 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesApuPhaseAndSampleState()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesApuPhaseAndSampleState(GameBoyModel model)
     {
-        var first = NewEmulator(MakeRom());
-        var second = NewEmulator(MakeRom());
+        var first = NewEmulator(MakeRom(), model);
+        var second = NewEmulator(MakeRom(), model);
         ConfigurePulseChannel(first);
         ConfigurePulseChannel(second);
         first.RunCycles(200);
