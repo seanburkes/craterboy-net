@@ -1970,11 +1970,15 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesSerialTransferProgress()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesSerialTransferProgress(GameBoyModel model)
     {
-        var first = NewEmulator(MakeRom());
-        var second = NewEmulator(MakeRom());
+        var first = NewEmulator(MakeRom(), model);
+        var second = NewEmulator(MakeRom(), model);
         first.WriteMemory(0xFF02, 0x81); // internal-clock transfer
         second.WriteMemory(0xFF02, 0x81);
         first.RunCycles(100);
