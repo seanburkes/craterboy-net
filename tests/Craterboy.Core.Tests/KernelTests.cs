@@ -2038,12 +2038,16 @@ public sealed class KernelTests
             Assert.Equal(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesCartridgeMapperState()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesCartridgeMapperState(GameBoyModel model)
     {
         var rom = MakeRom(type: 0x01, romSizeCode: 1, ramSizeCode: 2);
-        var first = NewEmulator(rom);
-        var second = NewEmulator(rom);
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
 
         second.WriteMemory(0x2000, 0x02); // select a different MBC1 ROM bank
 
