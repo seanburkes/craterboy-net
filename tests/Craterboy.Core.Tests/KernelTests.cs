@@ -2012,11 +2012,15 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesJoypadSelectionProgress()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB, true)]
+    [InlineData(GameBoyModel.CgbE, false)]
+    [InlineData(GameBoyModel.AgbA, false)]
+    [InlineData(GameBoyModel.GbpA, false)]
+    public void StateHashTracksModelSpecificJoypadSelectionProgress(GameBoyModel model, bool expectPendingState)
     {
-        var first = NewEmulator(MakeRom());
-        var second = NewEmulator(MakeRom());
+        var first = NewEmulator(MakeRom(), model);
+        var second = NewEmulator(MakeRom(), model);
         first.WriteMemory(0xFF00, 0x10);
         second.WriteMemory(0xFF00, 0x10);
         first.WriteMemory(0xFF00, 0x20);
@@ -2028,7 +2032,10 @@ public sealed class KernelTests
 
         Assert.Equal(first.CycleCount, second.CycleCount);
         Assert.Equal(first.PeekMemory(0xFF00), second.PeekMemory(0xFF00));
-        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+        if (expectPendingState)
+            Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+        else
+            Assert.Equal(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
     [Fact]
