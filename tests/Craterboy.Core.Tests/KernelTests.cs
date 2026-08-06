@@ -2072,11 +2072,15 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
-    [Fact]
-    public void StateHashIncludesBootRomIdentity()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesBootRomIdentity(GameBoyModel model)
     {
-        var first = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { SkipBootRom = false });
-        var second = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { SkipBootRom = false });
+        var first = new Emulator(model, new EmulatorOptions { SkipBootRom = false });
+        var second = new Emulator(model, new EmulatorOptions { SkipBootRom = false });
         var rom = MakeRom();
         first.LoadRom(rom);
         second.LoadRom(rom);
