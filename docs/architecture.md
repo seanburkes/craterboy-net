@@ -55,8 +55,9 @@ DMG-B/MGB selection switching is delayed, while CGB-family selection changes are
 immediate.
 Cartridge mapper bank, enable, latch, and RTC control state are included too.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
-the hash input. The selected hardware model identity is included as well, so
-CGB, AGB, and GBP checkpoints remain distinct.
+the hash input, along with whether the boot ROM is currently mapped. The
+selected hardware model identity is included as well, so CGB, AGB, and GBP
+checkpoints remain distinct.
 CGB-family KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation on
 CGB, AGB, and GBP models;

@@ -2093,6 +2093,28 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesBootRomMappingState(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        var mapped = new Emulator(model, new EmulatorOptions { SkipBootRom = false });
+        var skipped = new Emulator(model, new EmulatorOptions { SkipBootRom = true });
+        var bootRom = new byte[0x100];
+        bootRom[0] = 0xA5;
+        mapped.LoadRom(rom);
+        skipped.LoadRom(rom);
+        mapped.LoadBootRom(bootRom);
+        skipped.LoadBootRom(bootRom);
+
+        Assert.Equal((byte)0xA5, mapped.PeekMemory(0));
+        Assert.Equal(rom[0], skipped.PeekMemory(0));
+        Assert.NotEqual(mapped.ComputeStateHash(), skipped.ComputeStateHash());
+    }
+
+    [Theory]
     [InlineData(GameBoyModel.CgbE, GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.CgbE, GameBoyModel.GbpA)]
     [InlineData(GameBoyModel.AgbA, GameBoyModel.GbpA)]
