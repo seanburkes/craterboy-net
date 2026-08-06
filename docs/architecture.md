@@ -39,7 +39,8 @@ overlap priority; FIFO behavior remains separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
 are modeled at the bus boundary and feed a caller-owned raw RGB15 color frame.
 CGB VBK selects the active 8 KiB CPU VRAM bank; bank-aware tile composition
-remains deferred with the rest of the color renderer.
+remains deferred with the rest of the color renderer, and its selection is
+included in deterministic hashes.
 CGB SVBK selects the active 4 KiB D000-DFFF work-RAM bank and its echo; banked
 work-RAM state is included in deterministic hashes.
 CGB-family BG/OBJ palette RAM is also included in deterministic hashes so color state
