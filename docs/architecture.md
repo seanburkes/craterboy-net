@@ -54,7 +54,8 @@ Joypad button and model-specific delayed-selection state are included as well;
 DMG-B/MGB selection switching is delayed, while CGB-family selection changes are
 immediate.
 Cartridge mapper bank, enable, latch, and RTC control state are included too.
-Cartridge ROM and configured boot-ROM identities are included in the hash input.
+Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
+the hash input.
 CGB-family KEY1 exposes the current-speed and speed-switch preparation bits; actual
 STOP with preparation toggles the modeled speed state and clears preparation on
 CGB, AGB, and GBP models;
