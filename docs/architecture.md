@@ -50,7 +50,9 @@ Timer divider precision and delayed reload state are included as well.
 APU channel phases, frame-sequencer state, and queued samples are included too.
 Serial internal-clock and external-bit transfer progress are included as well.
 OAM DMA source, phase, and byte progress are included too.
-Joypad button and delayed-selection state are included as well.
+Joypad button and model-specific delayed-selection state are included as well;
+DMG-B/MGB selection switching is delayed, while CGB-family selection changes are
+immediate.
 Cartridge mapper bank, enable, latch, and RTC control state are included too.
 Cartridge ROM and configured boot-ROM identities are included in the hash input.
 CGB-family KEY1 exposes the current-speed and speed-switch preparation bits; actual
