@@ -50,6 +50,7 @@ CGB-family BG/OBJ palette RAM is also included in deterministic hashes so color 
 changes are visible to replay checkpoints.
 PPU timing, LCD mode, coincidence, and window-line state are included alongside
 the palette state.
+DMG BGP palette-register state is included in deterministic hashes as well.
 Timer divider precision and delayed reload state are included as well.
 APU channel phases, frame-sequencer state, and queued samples are included too.
 Serial internal-clock and external-bit transfer progress are included as well.
