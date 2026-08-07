@@ -2334,6 +2334,22 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesCgbObjectPriorityMode(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
+        second.WriteMemory(0xFF6C, 0x01); // select X-coordinate priority
+
+        Assert.Equal((byte)0xFE, first.PeekMemory(0xFF6C));
+        Assert.Equal((byte)0xFF, second.PeekMemory(0xFF6C));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
     [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
