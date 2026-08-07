@@ -2272,6 +2272,23 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesPpuLcdState(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
+        first.WriteMemory(0xFF40, 0x80); // enable LCD timing
+
+        Assert.Equal((byte)0x80, first.PeekMemory(0xFF40));
+        Assert.Equal((byte)0x00, second.PeekMemory(0xFF40));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
     [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
