@@ -2243,6 +2243,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesDelayedImeBoundary()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xFB, 0x00 }.CopyTo(rom, 0x100); // EI, then NOP
+        var first = NewEmulator(rom);
+        var second = NewEmulator(rom);
+        first.StepInstruction();
+        second.StepInstruction();
+        second.StepInstruction();
+
+        Assert.False(first.Registers.InterruptMasterEnable);
+        Assert.True(second.Registers.InterruptMasterEnable);
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
