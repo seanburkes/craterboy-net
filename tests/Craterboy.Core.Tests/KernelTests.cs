@@ -1912,6 +1912,21 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesCgbObjectPaletteRam(GameBoyModel model)
+    {
+        var first = NewEmulator(MakeRom(), model);
+        var second = NewEmulator(MakeRom(), model);
+
+        second.WriteMemory(0xFF6A, 0x00);
+        second.WriteMemory(0xFF6B, 0x7F);
+
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Theory]
     [InlineData(GameBoyModel.DmgB)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
