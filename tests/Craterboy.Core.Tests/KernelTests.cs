@@ -2162,6 +2162,26 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesCgbCurrentSpeed(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100); // STOP
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
+        second.WriteMemory(0xFF4D, 0x01);
+        first.StepInstruction();
+        second.StepInstruction();
+
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.Equal((byte)0x7E, first.PeekMemory(0xFF4D));
+        Assert.Equal((byte)0xFE, second.PeekMemory(0xFF4D));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
     [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
