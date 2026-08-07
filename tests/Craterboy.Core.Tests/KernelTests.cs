@@ -2222,6 +2222,26 @@ public sealed class KernelTests
         Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesInterruptRegisters(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
+        second.WriteMemory(0xFFFF, 0x1F); // enable all maskable interrupts
+        second.WriteMemory(0xFF0F, 0x1F); // request all maskable interrupts
+
+        Assert.Equal((byte)0, first.PeekMemory(0xFFFF));
+        Assert.Equal((byte)0x1F, second.PeekMemory(0xFFFF));
+        Assert.Equal((byte)0xE0, first.PeekMemory(0xFF0F));
+        Assert.Equal((byte)0xFF, second.PeekMemory(0xFF0F));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
     [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
