@@ -2259,6 +2259,20 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StateHashIncludesHaltState()
+    {
+        var rom = MakeRom();
+        rom[0x100] = 0x76; // HALT
+        var first = NewEmulator(rom);
+        var second = NewEmulator(rom);
+        first.StepInstruction();
+
+        Assert.True(first.Registers.Halted);
+        Assert.False(second.Registers.Halted);
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Fact]
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
