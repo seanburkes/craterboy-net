@@ -2020,6 +2020,79 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessReaderReadsRequiredBlocksAndSkipsUnknownBlocks()
+    {
+        using var source = new MemoryStream();
+        source.Write("native"u8);
+        var blockOffset = source.Position;
+        WriteBessBlock(source, "NAME", "SameBoy"u8.ToArray());
+        WriteBessBlock(source, "FUTR", new byte[] { 1, 2, 3 });
+        WriteBessBlock(source, "CORE", new byte[] { 1, 0, 0, 0 });
+        WriteBessBlock(source, "END ", Array.Empty<byte>());
+        WriteBessFooter(source, checked((uint)blockOffset));
+        source.Position = 0;
+
+        var blocks = BessReader.Read(source);
+
+        Assert.Equal(new[] { "NAME", "FUTR", "CORE", "END " }, blocks.Select(block => block.Identifier));
+        Assert.Equal(new byte[] { 1, 2, 3 }, blocks[1].Payload.ToArray());
+        Assert.True(source.CanRead);
+    }
+
+    [Fact]
+    public void BessReaderRejectsMalformedStructure()
+    {
+        using var missingFooter = new MemoryStream("CORE"u8.ToArray());
+        Assert.Throws<InvalidDataException>(() => BessReader.Read(missingFooter));
+
+        using var duplicateCore = CreateBess((stream, offset) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Throws<InvalidDataException>(() => BessReader.Read(duplicateCore));
+
+        using var blockBeforeCore = CreateBess((stream, offset) =>
+        {
+            WriteBessBlock(stream, "MBC ", new byte[3]);
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Throws<InvalidDataException>(() => BessReader.Read(blockBeforeCore));
+
+        using var nonEmptyEnd = CreateBess((stream, offset) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", new byte[] { 1 });
+        });
+        Assert.Throws<InvalidDataException>(() => BessReader.Read(nonEmptyEnd));
+    }
+
+    private static MemoryStream CreateBess(Action<MemoryStream, long> writeBlocks)
+    {
+        var stream = new MemoryStream();
+        var offset = stream.Position;
+        writeBlocks(stream, offset);
+        WriteBessFooter(stream, checked((uint)offset));
+        stream.Position = 0;
+        return stream;
+    }
+
+    private static void WriteBessBlock(Stream stream, string identifier, byte[] payload)
+    {
+        stream.Write(System.Text.Encoding.ASCII.GetBytes(identifier));
+        stream.Write(BitConverter.GetBytes(payload.Length));
+        stream.Write(payload);
+    }
+
+    private static void WriteBessFooter(Stream stream, uint blockOffset)
+    {
+        stream.Write(BitConverter.GetBytes(blockOffset));
+        stream.Write("BESS"u8);
+    }
+
+    [Fact]
     public void EmulatorReplaysInputEventsAtTheirRecordedCycles()
     {
         var rom = MakeRom();
