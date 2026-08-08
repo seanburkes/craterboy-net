@@ -53,6 +53,7 @@ the palette state.
 DMG BGP palette-register state is included in deterministic hashes as well.
 Timer divider precision and delayed reload state are included as well.
 APU channel phases, frame-sequencer state, and queued samples are included too.
+APU mixer volumes and channel routing are included in deterministic hashes too.
 Serial internal-clock and external-bit transfer progress are included as well.
 OAM DMA source, phase, and byte progress are included too.
 Joypad button and model-specific delayed-selection state are included as well;
@@ -89,6 +90,8 @@ deterministic hashes. Powering it off resets channel state, frame-sequencer
 timing, and queued samples. Channel sequencing and sample emission
 remain deferred to later APU slices. Channel 1 has basic trigger, length, and
 NR52 status timing plus the envelope frame step.
+NR50/NR51 mixer volumes and channel routing are included in deterministic
+hashes as well.
 Clearing a channel DAC control immediately disables that channel and updates
 NR52 status.
 APU register reads apply SameBoy’s fixed high-bit and write-only masks, including

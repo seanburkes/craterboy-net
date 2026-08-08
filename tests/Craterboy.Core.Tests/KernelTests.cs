@@ -1990,6 +1990,26 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesApuMixerState(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
+        first.WriteMemory(0xFF26, 0x80);
+        second.WriteMemory(0xFF26, 0x80);
+        second.WriteMemory(0xFF24, 0x77); // NR50 mixer volumes
+        second.WriteMemory(0xFF25, 0xF0); // NR51 channel routing
+
+        Assert.Equal((byte)0x77, second.PeekMemory(0xFF24));
+        Assert.Equal((byte)0xF0, second.PeekMemory(0xFF25));
+        Assert.NotEqual(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void StateHashIncludesSerialTransferProgress(GameBoyModel model)
     {
         var first = NewEmulator(MakeRom(), model);
