@@ -1932,6 +1932,23 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void InputRecordingRejectsInvalidEventCounts()
+    {
+        foreach (var count in new[] { -1, 1_000_001 })
+        {
+            using var stream = new MemoryStream();
+            using (var writer = new BinaryWriter(stream, System.Text.Encoding.UTF8, leaveOpen: true))
+            {
+                writer.Write("CBIN"u8.ToArray());
+                writer.Write((ushort)1);
+                writer.Write(count);
+            }
+            stream.Position = 0;
+            Assert.Throws<InvalidDataException>(() => InputRecording.Read(stream));
+        }
+    }
+
+    [Fact]
     public void EmulatorReplaysInputEventsAtTheirRecordedCycles()
     {
         var rom = MakeRom();
