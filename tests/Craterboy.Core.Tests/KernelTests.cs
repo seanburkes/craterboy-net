@@ -1947,6 +1947,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void InputRecordingReadsFromNonSeekableStream()
+    {
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(8, GameBoyButton.A, true));
+        recording.Add(new InputEvent(16, GameBoyButton.A, false));
+        using var encoded = new MemoryStream();
+        recording.Write(encoded);
+
+        using var source = new NonSeekableReadStream(encoded.ToArray());
+        var restored = InputRecording.Read(source);
+
+        Assert.Equal(recording.Events, restored.Events);
+        Assert.False(source.CanSeek);
+    }
+
+    [Fact]
     public void InputRecordingRejectsInvalidEventCounts()
     {
         foreach (var count in new[] { -1, 1_000_001 })
@@ -2786,5 +2802,31 @@ public sealed class KernelTests
         public byte Response { get; init; }
         public byte Outgoing { get; private set; }
         public byte Exchange(byte outgoing) { Outgoing = outgoing; return Response; }
+    }
+
+    private sealed class NonSeekableReadStream(byte[] data) : Stream
+    {
+        private readonly MemoryStream _inner = new(data, writable: false);
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => _inner.Length;
+        public override long Position
+        {
+            get => _inner.Position;
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush() { }
+        public override int Read(byte[] buffer, int offset, int count) => _inner.Read(buffer, offset, count);
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _inner.Dispose();
+            base.Dispose(disposing);
+        }
     }
 }

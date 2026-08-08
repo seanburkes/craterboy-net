@@ -215,6 +215,8 @@ the source stream. `Emulator.ReplayInputRecording` applies events at exact
 emulated cycles. Replay tests compare complete `ComputeStateHash` checkpoints
 across DMG, MGB, and CGB.
 Recording reads and writes leave caller-owned streams open.
+Reads do not require seekable sources, so recordings can be consumed from
+forward-only adapters.
 Recordings currently accept only the primary player; SGB multiplayer input is
 deferred with the rest of the SGB host bridge.
 `ComputeStateHash` provides a stable SHA-256 digest for replay/conformance
