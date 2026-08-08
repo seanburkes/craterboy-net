@@ -387,6 +387,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void JoypadSelectionSwitchUsesShorterMgbDelay()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.Mgb);
+        emulator.WriteMemory(0xFF00, 0x10);
+        emulator.SetButtonState(GameBoyButton.Right, true);
+        emulator.WriteMemory(0xFF00, 0x20); // action to direction row: 8 T-cycles on MGB
+
+        Assert.Equal((byte)0x0F, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+        emulator.RunCycles(7);
+        Assert.Equal((byte)0x0F, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0x0E, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+    }
+
+    [Fact]
     public void JoypadFiltersOpposingDirectionInputs()
     {
         var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
@@ -2049,6 +2064,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB, true)]
+    [InlineData(GameBoyModel.Mgb, true)]
     [InlineData(GameBoyModel.CgbE, false)]
     [InlineData(GameBoyModel.AgbA, false)]
     [InlineData(GameBoyModel.GbpA, false)]

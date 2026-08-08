@@ -28,9 +28,10 @@ FF80-FFFE scratch range.
 
 The joypad is an active-low, scheduler-owned bus device with explicit button
 state injection. DMG/MGB FF00 selection changes model their hardware switching
-delay, and selection changes or button presses request the joypad interrupt on
-a high-to-low line transition. Opposing direction inputs are filtered to the
-hardware-compatible single-direction result; SGB multiplayer input is deferred.
+delay; MGB uses the shorter model-specific delay. Selection changes or button
+presses request the joypad interrupt on a high-to-low line transition.
+Opposing direction inputs are filtered to the hardware-compatible
+single-direction result; SGB multiplayer input is deferred.
 
 The PPU timing kernel is also scheduler-owned. It models DMG mode 2/3/0
 transitions, including the SCX fine-scroll and WX=0 window-fetch penalties,
