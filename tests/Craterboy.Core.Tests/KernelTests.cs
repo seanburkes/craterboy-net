@@ -2086,10 +2086,10 @@ public sealed class KernelTests
         core[0x15] = 0x1F;
         core[0x16] = 1;
         core[0x18] = 0x80;
-        WriteUInt32(core, 0x98, 0x2000);
-        WriteUInt32(core, 0x9C, 0x400);
-        WriteUInt32(core, 0xA0, 0x4000);
-        WriteUInt32(core, 0xA4, 0x2400);
+        WriteUInt32(core, 0x98, 0x20);
+        WriteUInt32(core, 0x9C, 0x10);
+        WriteUInt32(core, 0xA0, 0x40);
+        WriteUInt32(core, 0xA4, 0x30);
 
         using var source = CreateBess((stream, _) =>
         {
@@ -2108,8 +2108,8 @@ public sealed class KernelTests
         Assert.Equal((byte)0x1F, parsed.Ie);
         Assert.Equal((byte)1, parsed.ExecutionMode);
         Assert.Equal((byte)0x80, parsed.IoRegisters.Span[0]);
-        Assert.Equal(new BessBufferDescriptor(0x2000, 0x400), parsed.Ram);
-        Assert.Equal(new BessBufferDescriptor(0x4000, 0x2400), parsed.Vram);
+        Assert.Equal(new BessBufferDescriptor(0x20, 0x10), parsed.Ram);
+        Assert.Equal(new BessBufferDescriptor(0x40, 0x30), parsed.Vram);
     }
 
     [Fact]
@@ -2122,6 +2122,12 @@ public sealed class KernelTests
             core => core[7] = (byte)'X',
             core => core[0x16] = 3,
             core => core[0x17] = 1,
+            core => WriteUInt32(core, 0x9C, uint.MaxValue),
+            core =>
+            {
+                WriteUInt32(core, 0x98, 1);
+                WriteUInt32(core, 0x9C, uint.MaxValue);
+            },
         })
         {
             var core = new byte[0xD0];

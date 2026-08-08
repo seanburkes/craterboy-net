@@ -102,10 +102,22 @@ public static class BessReader
 
     public static BessCore ReadCore(Stream source)
     {
-        var core = Read(source).FirstOrDefault(block => block.Identifier == "CORE");
+        ArgumentNullException.ThrowIfNull(source);
+        using var buffer = new MemoryStream();
+        source.CopyTo(buffer);
+        var data = buffer.ToArray();
+        var core = Read(new MemoryStream(data)).FirstOrDefault(block => block.Identifier == "CORE");
         if (core.Identifier is null)
             throw new InvalidDataException("BESS CORE block is missing.");
-        return ParseCore(core.Payload.Span);
+        var parsed = ParseCore(core.Payload.Span);
+        ValidateDescriptor(parsed.Ram, data.Length, "RAM");
+        ValidateDescriptor(parsed.Vram, data.Length, "VRAM");
+        ValidateDescriptor(parsed.MbcRam, data.Length, "MBC RAM");
+        ValidateDescriptor(parsed.Oam, data.Length, "OAM");
+        ValidateDescriptor(parsed.Hram, data.Length, "HRAM");
+        ValidateDescriptor(parsed.BackgroundPalettes, data.Length, "background palettes");
+        ValidateDescriptor(parsed.ObjectPalettes, data.Length, "object palettes");
+        return parsed;
     }
 
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
@@ -156,4 +168,17 @@ public static class BessReader
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
         new(BinaryPrimitives.ReadUInt32LittleEndian(payload[offset..]),
             BinaryPrimitives.ReadUInt32LittleEndian(payload[(offset + 4)..]));
+
+    private static void ValidateDescriptor(BessBufferDescriptor descriptor, int fileLength, string name)
+    {
+        if (descriptor.Size == 0)
+        {
+            if (descriptor.Offset != 0)
+                throw new InvalidDataException($"BESS {name} buffer has an offset without data.");
+            return;
+        }
+
+        if (descriptor.Offset > (uint)fileLength || descriptor.Size > (ulong)fileLength - descriptor.Offset)
+            throw new InvalidDataException($"BESS {name} buffer extends outside the file.");
+    }
 }
