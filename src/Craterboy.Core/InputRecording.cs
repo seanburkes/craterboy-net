@@ -39,10 +39,7 @@ public sealed class InputRecording
     public static InputRecording Read(Stream source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        using var memory = new MemoryStream();
-        source.CopyTo(memory);
-        memory.Position = 0;
-        using var reader = new BinaryReader(memory, System.Text.Encoding.UTF8, leaveOpen: false);
+        using var reader = new BinaryReader(source, System.Text.Encoding.UTF8, leaveOpen: true);
         if (reader.ReadBytes(4) is not { Length: 4 } magic || !magic.AsSpan().SequenceEqual("CBIN"u8))
             throw new InvalidDataException("Input recording magic is invalid.");
         if (reader.ReadUInt16() != 1) throw new InvalidDataException("Input recording version is unsupported.");
@@ -57,7 +54,7 @@ public sealed class InputRecording
             var player = reader.ReadByte();
             recording.Add(new InputEvent(cycle, button, pressed, player));
         }
-        if (memory.Position != memory.Length) throw new InvalidDataException("Input recording has trailing data.");
+        if (reader.BaseStream.ReadByte() != -1) throw new InvalidDataException("Input recording has trailing data.");
         return recording;
     }
 }
