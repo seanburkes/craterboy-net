@@ -209,7 +209,8 @@ same 4/8-T-cycle register-versus-memory timing. The complete `0x80–0xBF`
 ALU block is covered by an opcode-by-opcode differential sweep.
 
 `InputRecording` provides a versioned, cycle-ordered event stream for
-deterministic replay; malformed recordings are rejected before publication and
+deterministic replay; malformed recordings—including invalid fields,
+truncation, and trailing data—are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles. Replay
 tests compare complete `ComputeStateHash` checkpoints across DMG, MGB, and CGB.
 `ComputeStateHash` provides a stable SHA-256 digest for replay/conformance

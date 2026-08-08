@@ -1892,6 +1892,46 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void InputRecordingRejectsInvalidEventsAndTrailingData()
+    {
+        using var invalidButton = new MemoryStream();
+        using (var writer = new BinaryWriter(invalidButton, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write("CBIN"u8.ToArray());
+            writer.Write((ushort)1);
+            writer.Write(1);
+            writer.Write(0L);
+            writer.Write((byte)0xFF); // invalid button
+            writer.Write(true);
+            writer.Write((byte)0);
+        }
+        invalidButton.Position = 0;
+        Assert.Throws<ArgumentOutOfRangeException>(() => InputRecording.Read(invalidButton));
+
+        using var invalidPlayer = new MemoryStream();
+        using (var writer = new BinaryWriter(invalidPlayer, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write("CBIN"u8.ToArray());
+            writer.Write((ushort)1);
+            writer.Write(1);
+            writer.Write(0L);
+            writer.Write((byte)GameBoyButton.A);
+            writer.Write(true);
+            writer.Write((byte)4); // unsupported player
+        }
+        invalidPlayer.Position = 0;
+        Assert.Throws<ArgumentOutOfRangeException>(() => InputRecording.Read(invalidPlayer));
+
+        using var trailing = new MemoryStream();
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(0, GameBoyButton.Start, true));
+        recording.Write(trailing);
+        trailing.WriteByte(0x00);
+        trailing.Position = 0;
+        Assert.Throws<InvalidDataException>(() => InputRecording.Read(trailing));
+    }
+
+    [Fact]
     public void EmulatorReplaysInputEventsAtTheirRecordedCycles()
     {
         var rom = MakeRom();
