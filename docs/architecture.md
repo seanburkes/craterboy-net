@@ -134,7 +134,8 @@ exposes CPU, I/O, and external-buffer descriptors, rejecting zero-sized
 descriptors with offsets and all ranges outside the file; emulator state
 loading can retrieve validated external buffer bytes through the same boundary;
 optional `INFO` metadata exposes the ROM title bytes and global checksum for
-identity checks; state loading remains field-by-field and transactional.
+identity checks, while optional `NAME` metadata exposes the ASCII producer
+identifier; state loading remains field-by-field and transactional.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
