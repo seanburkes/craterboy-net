@@ -1880,6 +1880,8 @@ public sealed class KernelTests
         recording.Add(new InputEvent(12, GameBoyButton.A, true));
         recording.Add(new InputEvent(12, GameBoyButton.A, false));
         recording.Add(new InputEvent(40, GameBoyButton.Start, true));
+        Assert.Throws<ArgumentNullException>(() => recording.Write(null!));
+        Assert.Throws<ArgumentNullException>(() => InputRecording.Read(null!));
         using var stream = new MemoryStream();
         recording.Write(stream);
         Assert.True(stream.CanWrite);
