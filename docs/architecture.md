@@ -129,7 +129,9 @@ The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. BESS container parsing now validates the
 little-endian footer, block bounds, required `CORE`/`END` structure, and
 known-block ordering while preserving unknown blocks for forward-compatible
-callers; emulator state loading remains field-by-field and transactional.
+callers. Its `CORE` parser validates version/model/execution metadata and
+exposes CPU, I/O, and external-buffer descriptors; emulator state loading
+remains field-by-field and transactional.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
