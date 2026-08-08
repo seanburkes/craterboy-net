@@ -136,6 +136,9 @@ loading can retrieve validated external buffer bytes through the same boundary;
 optional `INFO` metadata exposes the ROM title bytes and global checksum for
 identity checks, while optional `NAME` metadata exposes the ASCII producer
 identifier; state loading remains field-by-field and transactional.
+Optional `MBC ` metadata exposes ordered mapper register writes with validated
+Game Boy cartridge address ranges, ready for transactional replay during state
+loading.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.

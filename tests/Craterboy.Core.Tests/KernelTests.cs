@@ -2244,6 +2244,51 @@ public sealed class KernelTests
         Assert.Throws<InvalidDataException>(() => BessReader.ReadName(source));
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalMbcWritesInOrder()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            var mbc = new byte[6];
+            WriteUInt16(mbc, 0, 0x0000);
+            mbc[2] = 0x0A;
+            WriteUInt16(mbc, 3, 0x4000);
+            mbc[5] = 0x03;
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "MBC ", mbc);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var writes = BessReader.ReadMbc(source);
+
+        Assert.NotNull(writes);
+        Assert.Equal(new[] { new BessMbcWrite(0x0000, 0x0A), new BessMbcWrite(0x4000, 0x03) }, writes);
+        Assert.True(source.CanRead);
+
+        using var noMbc = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadMbc(noMbc));
+    }
+
+    [Fact]
+    public void BessReaderRejectsMalformedMbcWrites()
+    {
+        foreach (var payload in new[] { new byte[] { 0 }, new byte[] { 0x00, 0x80, 0x01 } })
+        {
+            using var source = CreateBess((stream, _) =>
+            {
+                WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+                WriteBessBlock(stream, "MBC ", payload);
+                WriteBessBlock(stream, "END ", Array.Empty<byte>());
+            });
+
+            Assert.Throws<InvalidDataException>(() => BessReader.ReadMbc(source));
+        }
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
