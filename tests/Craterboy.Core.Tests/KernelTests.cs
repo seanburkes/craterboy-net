@@ -1882,6 +1882,8 @@ public sealed class KernelTests
         recording.Add(new InputEvent(40, GameBoyButton.Start, true));
         using var stream = new MemoryStream();
         recording.Write(stream);
+        Assert.True(stream.CanWrite);
+        Assert.Equal(stream.Length, stream.Position);
         stream.Position = 0;
         var restored = InputRecording.Read(stream);
         Assert.Equal(recording.Events, restored.Events);
