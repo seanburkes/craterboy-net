@@ -1712,6 +1712,31 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuMgbMatchesDmgChannelAndPowerBehavior()
+    {
+        var rom = MakeRom();
+        var dmg = NewEmulator(rom, GameBoyModel.DmgB);
+        var mgb = NewEmulator(rom, GameBoyModel.Mgb);
+        ConfigurePulseChannel(dmg);
+        ConfigurePulseChannel(mgb);
+
+        dmg.RunCycles(95);
+        mgb.RunCycles(95);
+        var dmgSamples = new short[1];
+        var mgbSamples = new short[1];
+        Assert.Equal(1, dmg.CopyAudioSamples(dmgSamples));
+        Assert.Equal(1, mgb.CopyAudioSamples(mgbSamples));
+        Assert.Equal(dmgSamples, mgbSamples);
+        Assert.Equal((byte)0xF1, dmg.PeekMemory(0xFF26));
+        Assert.Equal(dmg.PeekMemory(0xFF26), mgb.PeekMemory(0xFF26));
+
+        dmg.WriteMemory(0xFF26, 0);
+        mgb.WriteMemory(0xFF26, 0);
+        Assert.Equal((byte)0x70, dmg.PeekMemory(0xFF26));
+        Assert.Equal(dmg.PeekMemory(0xFF26), mgb.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void ApuChannelTwoEnvelopeUpdatesOnTheEnvelopeFrameStep()
     {
         var rom = MakeRom();
@@ -1943,6 +1968,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -1963,6 +1989,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -1982,6 +2009,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
