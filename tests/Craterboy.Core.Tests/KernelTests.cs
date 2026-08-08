@@ -1885,6 +1885,8 @@ public sealed class KernelTests
         stream.Position = 0;
         var restored = InputRecording.Read(stream);
         Assert.Equal(recording.Events, restored.Events);
+        Assert.True(stream.CanRead);
+        Assert.Equal(stream.Length, stream.Position);
         Assert.Throws<ArgumentException>(() => recording.Add(new InputEvent(1, GameBoyButton.B, true)));
         Assert.Throws<ArgumentOutOfRangeException>(() => recording.Add(new InputEvent(40, GameBoyButton.B, true, Player: 1)));
 
