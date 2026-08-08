@@ -5,6 +5,7 @@ namespace Craterboy;
 
 public readonly record struct BessBlock(string Identifier, ReadOnlyMemory<byte> Payload);
 public readonly record struct BessBufferDescriptor(uint Size, uint Offset);
+public readonly record struct BessInfo(ReadOnlyMemory<byte> Title, ushort GlobalChecksum);
 
 public readonly record struct BessCore(
     ushort MajorVersion,
@@ -131,6 +132,13 @@ public static class BessReader
         return data.AsSpan(checked((int)descriptor.Offset), checked((int)descriptor.Size)).ToArray();
     }
 
+    public static BessInfo? ReadInfo(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var info = Read(source).FirstOrDefault(block => block.Identifier == "INFO");
+        return info.Identifier is null ? null : ParseInfo(info.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -174,6 +182,13 @@ public static class BessReader
             ReadDescriptor(payload, 0xB8),
             ReadDescriptor(payload, 0xC0),
             ReadDescriptor(payload, 0xC8));
+    }
+
+    private static BessInfo ParseInfo(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length != 0x12)
+            throw new InvalidDataException("BESS INFO block length is invalid.");
+        return new BessInfo(payload[..0x10].ToArray(), BinaryPrimitives.ReadUInt16LittleEndian(payload[0x10..]));
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>

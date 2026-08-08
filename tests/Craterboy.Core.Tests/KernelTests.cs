@@ -2169,6 +2169,47 @@ public sealed class KernelTests
         Assert.Empty(BessReader.ReadBuffer(emptySource, default));
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalInfoMetadata()
+    {
+        var info = new byte[0x12];
+        "CRATERBOY       "u8.CopyTo(info);
+        WriteUInt16(info, 0x10, 0xA55A);
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "INFO", info);
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadInfo(source);
+
+        Assert.NotNull(parsed);
+        Assert.Equal("CRATERBOY       ", System.Text.Encoding.ASCII.GetString(parsed.Value.Title.Span));
+        Assert.Equal((ushort)0xA55A, parsed.Value.GlobalChecksum);
+        Assert.True(source.CanRead);
+
+        using var noInfo = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadInfo(noInfo));
+    }
+
+    [Fact]
+    public void BessReaderRejectsInvalidInfoLength()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "INFO", new byte[0x11]);
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Throws<InvalidDataException>(() => BessReader.ReadInfo(source));
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
