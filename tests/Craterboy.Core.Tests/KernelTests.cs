@@ -2150,6 +2150,25 @@ public sealed class KernelTests
         Assert.Throws<InvalidDataException>(() => BessReader.ReadCore(shortCore));
     }
 
+    [Fact]
+    public void BessReaderExtractsValidatedExternalBuffers()
+    {
+        using var source = new MemoryStream();
+        source.Write("RAM!"u8);
+        var blockOffset = source.Position;
+        WriteBessBlock(source, "CORE", Array.Empty<byte>());
+        WriteBessBlock(source, "END ", Array.Empty<byte>());
+        WriteBessFooter(source, checked((uint)blockOffset));
+        source.Position = 0;
+
+        var buffer = BessReader.ReadBuffer(source, new BessBufferDescriptor(4, 0));
+
+        Assert.Equal("RAM!"u8.ToArray(), buffer);
+        Assert.True(source.CanRead);
+        using var emptySource = new MemoryStream(source.ToArray());
+        Assert.Empty(BessReader.ReadBuffer(emptySource, default));
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
