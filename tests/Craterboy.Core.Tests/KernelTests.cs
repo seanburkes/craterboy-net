@@ -1895,6 +1895,18 @@ public sealed class KernelTests
     [Fact]
     public void InputRecordingRejectsInvalidEventsAndTrailingData()
     {
+        using var invalidMagic = new MemoryStream(new byte[] { (byte)'N', (byte)'O', (byte)'P', (byte)'E' });
+        Assert.Throws<InvalidDataException>(() => InputRecording.Read(invalidMagic));
+
+        using var unsupportedVersion = new MemoryStream();
+        using (var writer = new BinaryWriter(unsupportedVersion, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write("CBIN"u8.ToArray());
+            writer.Write((ushort)2);
+        }
+        unsupportedVersion.Position = 0;
+        Assert.Throws<InvalidDataException>(() => InputRecording.Read(unsupportedVersion));
+
         using var invalidButton = new MemoryStream();
         using (var writer = new BinaryWriter(invalidButton, System.Text.Encoding.UTF8, leaveOpen: true))
         {
