@@ -2069,6 +2069,87 @@ public sealed class KernelTests
         Assert.Throws<InvalidDataException>(() => BessReader.Read(nonEmptyEnd));
     }
 
+    [Fact]
+    public void BessReaderParsesCoreMetadataAndBufferDescriptors()
+    {
+        var core = new byte[0xD0];
+        WriteUInt16(core, 0, 1);
+        WriteUInt16(core, 2, 7);
+        "GD  "u8.CopyTo(core.AsSpan(4));
+        WriteUInt16(core, 8, 0x1234);
+        WriteUInt16(core, 0x0A, 0xB0F0);
+        WriteUInt16(core, 0x0C, 0x5678);
+        WriteUInt16(core, 0x0E, 0x9ABC);
+        WriteUInt16(core, 0x10, 0xDEF0);
+        WriteUInt16(core, 0x12, 0xFFFE);
+        core[0x14] = 1;
+        core[0x15] = 0x1F;
+        core[0x16] = 1;
+        core[0x18] = 0x80;
+        WriteUInt32(core, 0x98, 0x2000);
+        WriteUInt32(core, 0x9C, 0x400);
+        WriteUInt32(core, 0xA0, 0x4000);
+        WriteUInt32(core, 0xA4, 0x2400);
+
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", core);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadCore(source);
+
+        Assert.Equal((ushort)1, parsed.MajorVersion);
+        Assert.Equal((ushort)7, parsed.MinorVersion);
+        Assert.Equal("GD  ", parsed.ModelIdentifier);
+        Assert.Equal((ushort)0x1234, parsed.Pc);
+        Assert.Equal((ushort)0xB0F0, parsed.Af);
+        Assert.True(parsed.Ime);
+        Assert.Equal((byte)0x1F, parsed.Ie);
+        Assert.Equal((byte)1, parsed.ExecutionMode);
+        Assert.Equal((byte)0x80, parsed.IoRegisters.Span[0]);
+        Assert.Equal(new BessBufferDescriptor(0x2000, 0x400), parsed.Ram);
+        Assert.Equal(new BessBufferDescriptor(0x4000, 0x2400), parsed.Vram);
+    }
+
+    [Fact]
+    public void BessReaderRejectsInvalidCoreMetadata()
+    {
+        foreach (var mutate in new Action<byte[]>[]
+        {
+            core => WriteUInt16(core, 0, 2),
+            core => core[4] = (byte)'X',
+            core => core[7] = (byte)'X',
+            core => core[0x16] = 3,
+            core => core[0x17] = 1,
+        })
+        {
+            var core = new byte[0xD0];
+            WriteUInt16(core, 0, 1);
+            "GD  "u8.CopyTo(core.AsSpan(4));
+            mutate(core);
+            using var source = CreateBess((stream, _) =>
+            {
+                WriteBessBlock(stream, "CORE", core);
+                WriteBessBlock(stream, "END ", Array.Empty<byte>());
+            });
+            Assert.Throws<InvalidDataException>(() => BessReader.ReadCore(source));
+        }
+
+        using var shortCore = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", new byte[0xCF]);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Throws<InvalidDataException>(() => BessReader.ReadCore(shortCore));
+    }
+
+    private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
+
+    private static void WriteUInt32(byte[] destination, int offset, uint value) =>
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(destination.AsSpan(offset), value);
+
     private static MemoryStream CreateBess(Action<MemoryStream, long> writeBlocks)
     {
         var stream = new MemoryStream();
