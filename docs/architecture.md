@@ -126,8 +126,11 @@ Channel 4 NR43 divisor and shift fields control the deterministic LFSR cadence.
 Channel 3 NR32 volume code 0 correctly mutes its PCM contribution.
 
 The implementation favors explicit state and opcode behavior over object
-layout compatibility with C. Serialization will be field-by-field and
-transactional. `PeekMemory` is intended to remain side-effect free while
+layout compatibility with C. BESS container parsing now validates the
+little-endian footer, block bounds, required `CORE`/`END` structure, and
+known-block ordering while preserving unknown blocks for forward-compatible
+callers; emulator state loading remains field-by-field and transactional.
+`PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
 
