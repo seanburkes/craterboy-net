@@ -120,6 +120,17 @@ public static class BessReader
         return parsed;
     }
 
+    public static byte[] ReadBuffer(Stream source, BessBufferDescriptor descriptor)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        using var buffer = new MemoryStream();
+        source.CopyTo(buffer);
+        var data = buffer.ToArray();
+        _ = Read(new MemoryStream(data));
+        ValidateDescriptor(descriptor, data.Length, "requested");
+        return data.AsSpan(checked((int)descriptor.Offset), checked((int)descriptor.Size)).ToArray();
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
