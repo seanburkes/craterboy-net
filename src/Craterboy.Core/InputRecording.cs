@@ -6,8 +6,11 @@ public sealed class InputRecording
 {
     private const int MaxEvents = 1_000_000;
     private readonly List<InputEvent> _events = new();
+    private readonly IReadOnlyList<InputEvent> _readOnlyEvents;
 
-    public IReadOnlyList<InputEvent> Events => _events;
+    public InputRecording() => _readOnlyEvents = _events.AsReadOnly();
+
+    public IReadOnlyList<InputEvent> Events => _readOnlyEvents;
 
     public void Add(InputEvent inputEvent)
     {

@@ -219,6 +219,8 @@ Recording reads and writes leave caller-owned streams open; writes finish at the
 current end position without closing the destination.
 Reads do not require seekable sources, and writes do not require seekable
 destinations, so recordings can use forward-only adapters in both directions.
+The exposed event list is read-only so replay inputs cannot be mutated behind
+the recording's validation boundary.
 Recordings currently accept only the primary player; SGB multiplayer input is
 deferred with the rest of the SGB host bridge.
 `ComputeStateHash` provides a stable SHA-256 digest for replay/conformance
