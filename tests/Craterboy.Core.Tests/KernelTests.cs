@@ -2210,6 +2210,40 @@ public sealed class KernelTests
         Assert.Throws<InvalidDataException>(() => BessReader.ReadInfo(source));
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalNameMetadata()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "NAME", "SameBoy v1.0.3"u8.ToArray());
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Equal("SameBoy v1.0.3", BessReader.ReadName(source));
+        Assert.True(source.CanRead);
+
+        using var noName = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadName(noName));
+    }
+
+    [Fact]
+    public void BessReaderRejectsNonAsciiNameMetadata()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "NAME", new byte[] { (byte)'S', 0xFF });
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Throws<InvalidDataException>(() => BessReader.ReadName(source));
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 

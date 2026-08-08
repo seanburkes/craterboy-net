@@ -139,6 +139,13 @@ public static class BessReader
         return info.Identifier is null ? null : ParseInfo(info.Payload.Span);
     }
 
+    public static string? ReadName(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var name = Read(source).FirstOrDefault(block => block.Identifier == "NAME");
+        return name.Identifier is null ? null : ParseName(name.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -189,6 +196,13 @@ public static class BessReader
         if (payload.Length != 0x12)
             throw new InvalidDataException("BESS INFO block length is invalid.");
         return new BessInfo(payload[..0x10].ToArray(), BinaryPrimitives.ReadUInt16LittleEndian(payload[0x10..]));
+    }
+
+    private static string ParseName(ReadOnlySpan<byte> payload)
+    {
+        if (payload.IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0)
+            throw new InvalidDataException("BESS NAME block is not ASCII.");
+        return Encoding.ASCII.GetString(payload);
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
