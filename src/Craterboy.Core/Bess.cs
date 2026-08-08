@@ -6,6 +6,7 @@ namespace Craterboy;
 public readonly record struct BessBlock(string Identifier, ReadOnlyMemory<byte> Payload);
 public readonly record struct BessBufferDescriptor(uint Size, uint Offset);
 public readonly record struct BessInfo(ReadOnlyMemory<byte> Title, ushort GlobalChecksum);
+public readonly record struct BessMbcWrite(ushort Address, byte Value);
 
 public readonly record struct BessCore(
     ushort MajorVersion,
@@ -146,6 +147,13 @@ public static class BessReader
         return name.Identifier is null ? null : ParseName(name.Payload.Span);
     }
 
+    public static IReadOnlyList<BessMbcWrite>? ReadMbc(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var mbc = Read(source).FirstOrDefault(block => block.Identifier == "MBC ");
+        return mbc.Identifier is null ? null : ParseMbc(mbc.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -203,6 +211,23 @@ public static class BessReader
         if (payload.IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0)
             throw new InvalidDataException("BESS NAME block is not ASCII.");
         return Encoding.ASCII.GetString(payload);
+    }
+
+    private static IReadOnlyList<BessMbcWrite> ParseMbc(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length % 3 != 0 || payload.Length > 0x1000)
+            throw new InvalidDataException("BESS MBC block length is invalid.");
+
+        var writes = new BessMbcWrite[payload.Length / 3];
+        for (var index = 0; index < writes.Length; index++)
+        {
+            var offset = index * 3;
+            var address = BinaryPrimitives.ReadUInt16LittleEndian(payload[offset..]);
+            if (address > 0x7FFF && (address < 0xA000 || address > 0xBFFF))
+                throw new InvalidDataException("BESS MBC block contains an invalid address.");
+            writes[index] = new BessMbcWrite(address, payload[offset + 2]);
+        }
+        return writes;
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
