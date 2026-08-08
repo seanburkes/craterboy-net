@@ -55,9 +55,21 @@ public sealed class InputRecording
             var button = (GameBoyButton)reader.ReadByte();
             var pressed = reader.ReadBoolean();
             var player = reader.ReadByte();
-            recording.Add(new InputEvent(cycle, button, pressed, player));
+            AddSerializedEvent(recording, new InputEvent(cycle, button, pressed, player));
         }
         if (reader.BaseStream.ReadByte() != -1) throw new InvalidDataException("Input recording has trailing data.");
         return recording;
+    }
+
+    private static void AddSerializedEvent(InputRecording recording, InputEvent inputEvent)
+    {
+        try
+        {
+            recording.Add(inputEvent);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new InvalidDataException("Input recording event is invalid.", exception);
+        }
     }
 }

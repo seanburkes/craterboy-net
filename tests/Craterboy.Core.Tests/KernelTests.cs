@@ -1928,7 +1928,7 @@ public sealed class KernelTests
             writer.Write((byte)0);
         }
         invalidButton.Position = 0;
-        Assert.Throws<ArgumentOutOfRangeException>(() => InputRecording.Read(invalidButton));
+        Assert.Throws<InvalidDataException>(() => InputRecording.Read(invalidButton));
 
         using var invalidPlayer = new MemoryStream();
         using (var writer = new BinaryWriter(invalidPlayer, System.Text.Encoding.UTF8, leaveOpen: true))
@@ -1942,7 +1942,7 @@ public sealed class KernelTests
             writer.Write((byte)4); // unsupported player
         }
         invalidPlayer.Position = 0;
-        Assert.Throws<ArgumentOutOfRangeException>(() => InputRecording.Read(invalidPlayer));
+        Assert.Throws<InvalidDataException>(() => InputRecording.Read(invalidPlayer));
 
         using var outOfOrder = new MemoryStream();
         using (var writer = new BinaryWriter(outOfOrder, System.Text.Encoding.UTF8, leaveOpen: true))
@@ -1960,7 +1960,7 @@ public sealed class KernelTests
             writer.Write((byte)0);
         }
         outOfOrder.Position = 0;
-        Assert.Throws<ArgumentException>(() => InputRecording.Read(outOfOrder));
+        Assert.Throws<InvalidDataException>(() => InputRecording.Read(outOfOrder));
 
         using var trailing = new MemoryStream();
         var recording = new InputRecording();
