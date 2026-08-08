@@ -1965,6 +1965,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void InputRecordingWritesToNonSeekableStream()
+    {
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(8, GameBoyButton.Start, true));
+        using var destination = new NonSeekableWriteStream();
+        recording.Write(destination);
+
+        using var source = new NonSeekableReadStream(destination.ToArray());
+        var restored = InputRecording.Read(source);
+
+        Assert.Equal(recording.Events, restored.Events);
+        Assert.False(destination.CanSeek);
+    }
+
+    [Fact]
     public void InputRecordingRejectsInvalidEventCounts()
     {
         foreach (var count in new[] { -1, 1_000_001 })
@@ -2825,6 +2840,33 @@ public sealed class KernelTests
         public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
         public override void SetLength(long value) => throw new NotSupportedException();
         public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing) _inner.Dispose();
+            base.Dispose(disposing);
+        }
+    }
+
+    private sealed class NonSeekableWriteStream : Stream
+    {
+        private readonly MemoryStream _inner = new();
+
+        public override bool CanRead => false;
+        public override bool CanSeek => false;
+        public override bool CanWrite => true;
+        public override long Length => _inner.Length;
+        public override long Position
+        {
+            get => _inner.Position;
+            set => throw new NotSupportedException();
+        }
+
+        public byte[] ToArray() => _inner.ToArray();
+        public override void Flush() => _inner.Flush();
+        public override int Read(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => _inner.Write(buffer, offset, count);
         protected override void Dispose(bool disposing)
         {
             if (disposing) _inner.Dispose();
