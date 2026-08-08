@@ -1886,6 +1886,9 @@ public sealed class KernelTests
         recording.Write(stream);
         Assert.True(stream.CanWrite);
         Assert.Equal(stream.Length, stream.Position);
+        var exposedEvents = Assert.IsAssignableFrom<IList<InputEvent>>(recording.Events);
+        Assert.Throws<NotSupportedException>(() => exposedEvents.Add(new InputEvent(80, GameBoyButton.B, true)));
+        Assert.Equal(3, recording.Events.Count);
         stream.Position = 0;
         var restored = InputRecording.Read(stream);
         Assert.Equal(recording.Events, restored.Events);
