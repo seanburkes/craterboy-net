@@ -214,7 +214,8 @@ bounded event counts, truncation, and trailing data—are rejected while parsing
 the source stream. `Emulator.ReplayInputRecording` applies events at exact
 emulated cycles. Replay tests compare complete `ComputeStateHash` checkpoints
 across DMG, MGB, and CGB.
-Recording reads and writes leave caller-owned streams open.
+Recording reads and writes leave caller-owned streams open; writes finish at the
+current end position without closing the destination.
 Reads do not require seekable sources, so recordings can be consumed from
 forward-only adapters.
 Recordings currently accept only the primary player; SGB multiplayer input is
