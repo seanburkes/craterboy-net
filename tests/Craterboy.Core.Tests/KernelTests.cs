@@ -1944,6 +1944,24 @@ public sealed class KernelTests
         invalidPlayer.Position = 0;
         Assert.Throws<ArgumentOutOfRangeException>(() => InputRecording.Read(invalidPlayer));
 
+        using var outOfOrder = new MemoryStream();
+        using (var writer = new BinaryWriter(outOfOrder, System.Text.Encoding.UTF8, leaveOpen: true))
+        {
+            writer.Write("CBIN"u8.ToArray());
+            writer.Write((ushort)1);
+            writer.Write(2);
+            writer.Write(16L);
+            writer.Write((byte)GameBoyButton.A);
+            writer.Write(true);
+            writer.Write((byte)0);
+            writer.Write(8L); // earlier than the preceding event
+            writer.Write((byte)GameBoyButton.A);
+            writer.Write(false);
+            writer.Write((byte)0);
+        }
+        outOfOrder.Position = 0;
+        Assert.Throws<ArgumentException>(() => InputRecording.Read(outOfOrder));
+
         using var trailing = new MemoryStream();
         var recording = new InputRecording();
         recording.Add(new InputEvent(0, GameBoyButton.Start, true));

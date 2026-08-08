@@ -210,7 +210,8 @@ ALU block is covered by an opcode-by-opcode differential sweep.
 
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings—including invalid headers, fields,
-bounded event counts, truncation, and trailing data—are rejected while parsing
+out-of-order events, bounded event counts, truncation, and trailing data—are
+rejected while parsing
 the non-null source stream; null stream arguments are rejected.
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles. Replay
 tests compare complete `ComputeStateHash` checkpoints
