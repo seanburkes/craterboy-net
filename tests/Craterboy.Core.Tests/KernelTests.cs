@@ -1886,6 +1886,7 @@ public sealed class KernelTests
         var restored = InputRecording.Read(stream);
         Assert.Equal(recording.Events, restored.Events);
         Assert.Throws<ArgumentException>(() => recording.Add(new InputEvent(1, GameBoyButton.B, true)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => recording.Add(new InputEvent(40, GameBoyButton.B, true, Player: 1)));
 
         using var malformed = new MemoryStream(new byte[] { (byte)'C', (byte)'B', (byte)'I', (byte)'N', 1, 0, 1, 0, 0, 0 });
         Assert.Throws<EndOfStreamException>(() => InputRecording.Read(malformed));

@@ -13,7 +13,7 @@ public sealed class InputRecording
     {
         if (inputEvent.Cycle < 0) throw new ArgumentOutOfRangeException(nameof(inputEvent));
         if (!Enum.IsDefined(inputEvent.Button)) throw new ArgumentOutOfRangeException(nameof(inputEvent));
-        if (inputEvent.Player is < 0 or > 3) throw new ArgumentOutOfRangeException(nameof(inputEvent));
+        if (inputEvent.Player != 0) throw new ArgumentOutOfRangeException(nameof(inputEvent), "Only the primary player is supported until SGB multiplayer input is implemented.");
         if (_events.Count > 0 && inputEvent.Cycle < _events[^1].Cycle)
             throw new ArgumentException("Input events must be ordered by emulated cycle.", nameof(inputEvent));
         if (_events.Count == MaxEvents) throw new InvalidOperationException("Input recording event limit reached.");

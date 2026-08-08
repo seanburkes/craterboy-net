@@ -213,6 +213,8 @@ deterministic replay; malformed recordings—including invalid fields, bounded
 event counts, truncation, and trailing data—are rejected before publication and
 `Emulator.ReplayInputRecording` applies events at exact emulated cycles. Replay
 tests compare complete `ComputeStateHash` checkpoints across DMG, MGB, and CGB.
+Recordings currently accept only the primary player; SGB multiplayer input is
+deferred with the rest of the SGB host bridge.
 `ComputeStateHash` provides a stable SHA-256 digest for replay/conformance
 comparisons without exposing mutable emulator state, including cartridge battery
 state when a cartridge is loaded.
