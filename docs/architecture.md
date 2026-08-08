@@ -210,10 +210,10 @@ ALU block is covered by an opcode-by-opcode differential sweep.
 
 `InputRecording` provides a versioned, cycle-ordered event stream for
 deterministic replay; malformed recordings—including invalid headers, fields,
-bounded event counts, truncation, and trailing data—are rejected before
-publication. `Emulator.ReplayInputRecording` applies events at exact emulated
-cycles. Replay
-tests compare complete `ComputeStateHash` checkpoints across DMG, MGB, and CGB.
+bounded event counts, truncation, and trailing data—are rejected while parsing
+the source stream. `Emulator.ReplayInputRecording` applies events at exact
+emulated cycles. Replay tests compare complete `ComputeStateHash` checkpoints
+across DMG, MGB, and CGB.
 Recordings currently accept only the primary player; SGB multiplayer input is
 deferred with the rest of the SGB host bridge.
 `ComputeStateHash` provides a stable SHA-256 digest for replay/conformance
