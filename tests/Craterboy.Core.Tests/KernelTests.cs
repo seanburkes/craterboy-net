@@ -1909,6 +1909,30 @@ public sealed class KernelTests
         Assert.Throws<InvalidOperationException>(() => emulator.ReplayInputRecording(recording));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
+    [InlineData(GameBoyModel.CgbE)]
+    public void InputRecordingReplayReproducesDeterministicCheckpoint(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
+        first.WriteMemory(0xFF00, 0x10);
+        second.WriteMemory(0xFF00, 0x10);
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(20, GameBoyButton.A, true));
+        recording.Add(new InputEvent(40, GameBoyButton.A, false));
+        recording.Add(new InputEvent(64, GameBoyButton.Start, true));
+
+        first.ReplayInputRecording(recording);
+        second.ReplayInputRecording(recording);
+
+        Assert.Equal(64, first.CycleCount);
+        Assert.Equal(first.CycleCount, second.CycleCount);
+        Assert.Equal(first.ComputeStateHash(), second.ComputeStateHash());
+    }
+
     [Fact]
     public void StateHashIsStableForEquivalentRunsAndChangesWithState()
     {
