@@ -139,7 +139,8 @@ identifier; state loading remains field-by-field and transactional.
 Optional `MBC ` metadata exposes ordered mapper register writes with validated
 Game Boy cartridge address ranges, ready for transactional replay during state
 loading. Optional `RTC ` metadata exposes current/latched MBC3 clock fields and
-the save timestamp for future host-time reconciliation.
+the save timestamp for future host-time reconciliation. Optional `XOAM`
+metadata exposes the fixed extra-OAM bytes for compatible frontends.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
