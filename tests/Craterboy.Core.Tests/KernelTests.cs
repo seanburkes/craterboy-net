@@ -2070,6 +2070,44 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterAppendsBlocksAndRoundTripsThroughReader()
+    {
+        using var stream = new MemoryStream();
+        stream.Write("native"u8);
+        BessWriter.Write(stream, new[]
+        {
+            new BessBlock("NAME", "Craterboy"u8.ToArray()),
+            new BessBlock("CORE", new byte[] { 1, 2, 3 }),
+        });
+        var endPosition = stream.Position;
+        stream.Position = 0;
+
+        var blocks = BessReader.Read(stream);
+
+        Assert.Equal(new[] { "NAME", "CORE", "END " }, blocks.Select(block => block.Identifier));
+        Assert.Equal(new byte[] { 1, 2, 3 }, blocks[1].Payload.ToArray());
+        Assert.Equal(endPosition, stream.Length);
+        Assert.True(stream.CanRead);
+    }
+
+    [Fact]
+    public void BessWriterRejectsInvalidBlockSequencesBeforeWriting()
+    {
+        foreach (var blocks in new[]
+        {
+            new[] { new BessBlock("NAME", ReadOnlyMemory<byte>.Empty) },
+            new[] { new BessBlock("MBC ", ReadOnlyMemory<byte>.Empty), new BessBlock("CORE", ReadOnlyMemory<byte>.Empty) },
+            new[] { new BessBlock("CORE", ReadOnlyMemory<byte>.Empty), new BessBlock("END ", ReadOnlyMemory<byte>.Empty) },
+            new[] { new BessBlock("éééé", ReadOnlyMemory<byte>.Empty), new BessBlock("CORE", ReadOnlyMemory<byte>.Empty) },
+        })
+        {
+            using var destination = new MemoryStream();
+            Assert.Throws<ArgumentException>(() => BessWriter.Write(destination, blocks));
+            Assert.Equal(0, destination.Length);
+        }
+    }
+
+    [Fact]
     public void BessReaderParsesCoreMetadataAndBufferDescriptors()
     {
         var core = new byte[0xD0];

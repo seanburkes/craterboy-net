@@ -70,6 +70,70 @@ public readonly record struct BessCore(
     BessBufferDescriptor BackgroundPalettes,
     BessBufferDescriptor ObjectPalettes);
 
+public static class BessWriter
+{
+    public static void Write(Stream destination, IReadOnlyList<BessBlock> blocks)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        ArgumentNullException.ThrowIfNull(blocks);
+        if (!destination.CanSeek)
+            throw new NotSupportedException("BESS writing requires a seekable destination.");
+        if (blocks.Count == 0)
+            throw new ArgumentException("At least one BESS block is required.", nameof(blocks));
+
+        ValidateBlocks(blocks);
+        if (destination.Position is < 0 or > uint.MaxValue)
+            throw new InvalidOperationException("BESS block offset exceeds the format limit.");
+        var blockOffset = checked((uint)destination.Position);
+        foreach (var block in blocks)
+            WriteBlock(destination, block.Identifier, block.Payload.Span);
+        WriteBlock(destination, "END ", ReadOnlySpan<byte>.Empty);
+
+        Span<byte> footer = stackalloc byte[8];
+        BinaryPrimitives.WriteUInt32LittleEndian(footer, blockOffset);
+        "BESS"u8.CopyTo(footer[4..]);
+        destination.Write(footer);
+    }
+
+    private static void ValidateBlocks(IReadOnlyList<BessBlock> blocks)
+    {
+        var foundCore = false;
+        foreach (var block in blocks)
+        {
+            if (block.Identifier.Length != 4 || block.Identifier.Any(character => character > 0x7F))
+                throw new ArgumentException("BESS block identifiers must contain four ASCII characters.", nameof(blocks));
+            if (block.Identifier == "END ")
+                throw new ArgumentException("BESS END is written automatically.", nameof(blocks));
+            if (block.Identifier == "CORE")
+            {
+                if (foundCore) throw new ArgumentException("BESS contains duplicate CORE blocks.", nameof(blocks));
+                foundCore = true;
+            }
+            else if (block.Identifier is "NAME" or "INFO")
+            {
+                if (foundCore) throw new ArgumentException($"BESS {block.Identifier} must precede CORE.", nameof(blocks));
+            }
+            else if (block.Identifier is "XOAM" or "MBC " or "RTC " or "HUC3" or "MBC7" or "TPP1" or "SGB ")
+            {
+                if (!foundCore) throw new ArgumentException($"BESS {block.Identifier} must follow CORE.", nameof(blocks));
+            }
+            if ((ulong)block.Payload.Length > uint.MaxValue)
+                throw new ArgumentException("BESS block payload is too large.", nameof(blocks));
+        }
+        if (!foundCore)
+            throw new ArgumentException("BESS CORE block is required.", nameof(blocks));
+    }
+
+    private static void WriteBlock(Stream destination, string identifier, ReadOnlySpan<byte> payload)
+    {
+        Span<byte> header = stackalloc byte[8];
+        Encoding.ASCII.GetBytes(identifier).CopyTo(header);
+        BinaryPrimitives.WriteUInt32LittleEndian(header[4..], checked((uint)payload.Length));
+        destination.Write(header);
+        destination.Write(payload);
+    }
+}
+
 public static class BessReader
 {
     private const int CoreMinimumLength = 0xD0;
