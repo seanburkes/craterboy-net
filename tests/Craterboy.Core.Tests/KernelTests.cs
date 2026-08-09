@@ -2250,6 +2250,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesMbc7StateForRoundTrip()
+    {
+        var state = new BessMbc7(0x3F, 7, 0x1234, 0x5678, 0x9ABC, 0xDEF0);
+        var block = BessWriter.CreateMbc7Block(state);
+        using var stream = CreateBess((destination, _) =>
+        {
+            WriteBessBlock(destination, "CORE", Array.Empty<byte>());
+            WriteBessBlock(destination, block.Identifier, block.Payload.ToArray());
+            WriteBessBlock(destination, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Equal(state, BessReader.ReadMbc7(stream));
+    }
+
+    [Fact]
+    public void BessWriterRejectsMbc7ReservedFlags()
+    {
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateMbc7Block(new BessMbc7(0x40, 0, 0, 0, 0, 0)));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);

@@ -162,6 +162,8 @@ preserves the sparse fixed-width current/latched clock fields and save
 timestamp used by the MBC3 state format.
 Its typed XOAM serializer enforces the fixed 96-byte extra-OAM payload and
 detaches the block from the caller's buffer.
+Its typed MBC7 serializer preserves EEPROM and latched gyro state while
+rejecting reserved flag bits.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
