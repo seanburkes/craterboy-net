@@ -2289,11 +2289,62 @@ public sealed class KernelTests
         }
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalRtcMetadata()
+    {
+        var rtc = new byte[0x30];
+        rtc[0] = 59;
+        rtc[4] = 58;
+        rtc[8] = 23;
+        rtc[0x0C] = 255;
+        rtc[0x10] = 0x81;
+        rtc[0x14] = 1;
+        rtc[0x18] = 2;
+        rtc[0x1C] = 3;
+        rtc[0x20] = 4;
+        rtc[0x24] = 0x40;
+        WriteUInt64(rtc, 0x28, 1_700_000_000);
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "RTC ", rtc);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadRtc(source);
+
+        Assert.Equal(new BessRtc(59, 58, 23, 255, 0x81, 1, 2, 3, 4, 0x40, 1_700_000_000), parsed);
+        Assert.True(source.CanRead);
+
+        using var noRtc = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadRtc(noRtc));
+    }
+
+    [Fact]
+    public void BessReaderRejectsInvalidRtcLength()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "RTC ", new byte[0x2F]);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Throws<InvalidDataException>(() => BessReader.ReadRtc(source));
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
     private static void WriteUInt32(byte[] destination, int offset, uint value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt32LittleEndian(destination.AsSpan(offset), value);
+
+    private static void WriteUInt64(byte[] destination, int offset, ulong value) =>
+        System.Buffers.Binary.BinaryPrimitives.WriteUInt64LittleEndian(destination.AsSpan(offset), value);
 
     private static MemoryStream CreateBess(Action<MemoryStream, long> writeBlocks)
     {
