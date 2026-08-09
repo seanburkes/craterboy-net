@@ -19,6 +19,13 @@ public readonly record struct BessRtc(
     byte LatchedDays,
     byte LatchedHigh,
     ulong LastUnixSecond);
+public readonly record struct BessMbc7(
+    byte Flags,
+    byte ArgumentBitsLeft,
+    ushort EepromCommand,
+    ushort PendingReadBits,
+    ushort LatchedGyroX,
+    ushort LatchedGyroY);
 
 public readonly record struct BessCore(
     ushort MajorVersion,
@@ -180,6 +187,13 @@ public static class BessReader
         return xoam.Identifier is null ? null : ParseExtraOam(xoam.Payload.Span);
     }
 
+    public static BessMbc7? ReadMbc7(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var mbc7 = Read(source).FirstOrDefault(block => block.Identifier == "MBC7");
+        return mbc7.Identifier is null ? null : ParseMbc7(mbc7.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -279,6 +293,21 @@ public static class BessReader
         if (payload.Length != 0x60)
             throw new InvalidDataException("BESS XOAM block length is invalid.");
         return payload.ToArray();
+    }
+
+    private static BessMbc7 ParseMbc7(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length != 0x0A)
+            throw new InvalidDataException("BESS MBC7 block length is invalid.");
+        if ((payload[0] & 0xC0) != 0)
+            throw new InvalidDataException("BESS MBC7 flags contain reserved bits.");
+        return new BessMbc7(
+            payload[0],
+            payload[1],
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[2..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[4..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[6..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[8..]));
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
