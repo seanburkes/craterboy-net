@@ -166,6 +166,8 @@ Its typed MBC7 serializer preserves EEPROM and latched gyro state while
 rejecting reserved flag bits.
 Its typed HUC3 serializer preserves the RTC/alarm counters and emits the
 canonical boolean alarm flag.
+Its typed TPP1 serializer enforces the two four-byte raw RTC fields and
+preserves the MR4 register.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
