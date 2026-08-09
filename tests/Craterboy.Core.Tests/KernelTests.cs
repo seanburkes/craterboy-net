@@ -2182,6 +2182,33 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesMbcWritesForRoundTrip()
+    {
+        var writes = new[]
+        {
+            new BessMbcWrite(0x2000, 3),
+            new BessMbcWrite(0xA123, 0x5A),
+        };
+
+        var block = BessWriter.CreateMbcBlock(writes);
+        using var stream = CreateBess((destination, _) =>
+        {
+            WriteBessBlock(destination, "CORE", Array.Empty<byte>());
+            WriteBessBlock(destination, block.Identifier, block.Payload.ToArray());
+            WriteBessBlock(destination, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Equal(writes, BessReader.ReadMbc(stream));
+    }
+
+    [Fact]
+    public void BessWriterRejectsInvalidMbcWrites()
+    {
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateMbcBlock(new[] { new BessMbcWrite(0x8000, 0) }));
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateMbcBlock(Enumerable.Repeat(new BessMbcWrite(0, 0), 0x1000 / 3 + 1).ToArray()));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);

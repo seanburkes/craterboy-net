@@ -92,6 +92,27 @@ public static class BessWriter
         return new BessBlock("NAME", Encoding.ASCII.GetBytes(name));
     }
 
+    public static BessBlock CreateMbcBlock(IReadOnlyList<BessMbcWrite> writes)
+    {
+        ArgumentNullException.ThrowIfNull(writes);
+        if (writes.Count > 0x1000 / 3)
+            throw new ArgumentException("BESS MBC block cannot exceed 4096 bytes.", nameof(writes));
+
+        var payload = new byte[writes.Count * 3];
+        for (var index = 0; index < writes.Count; index++)
+        {
+            var write = writes[index];
+            if (write.Address > 0x7FFF && (write.Address < 0xA000 || write.Address > 0xBFFF))
+                throw new ArgumentException("BESS MBC writes must target cartridge or external RAM addresses.", nameof(writes));
+
+            var offset = index * 3;
+            BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(offset), write.Address);
+            payload[offset + 2] = write.Value;
+        }
+
+        return new BessBlock("MBC ", payload);
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)
