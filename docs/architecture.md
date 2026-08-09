@@ -149,6 +149,8 @@ Optional `TPP1` metadata exposes its raw current/latched four-byte RTC values,
 MR4 register, and save timestamp with owned buffers.
 Optional `SGB ` metadata exposes border/palette/attribute descriptors and
 validated multiplayer state for the deferred SGB host bridge.
+SGB external-buffer descriptors are checked against the complete file before
+any future border or palette state is consumed.
 `BessWriter` appends validated NAME/INFO/CORE and optional state blocks to a
 seekable stream, emits the required END block and footer, and leaves the stream
 open for callers.
