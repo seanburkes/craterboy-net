@@ -7,6 +7,18 @@ public readonly record struct BessBlock(string Identifier, ReadOnlyMemory<byte> 
 public readonly record struct BessBufferDescriptor(uint Size, uint Offset);
 public readonly record struct BessInfo(ReadOnlyMemory<byte> Title, ushort GlobalChecksum);
 public readonly record struct BessMbcWrite(ushort Address, byte Value);
+public readonly record struct BessRtc(
+    byte Seconds,
+    byte Minutes,
+    byte Hours,
+    byte Days,
+    byte High,
+    byte LatchedSeconds,
+    byte LatchedMinutes,
+    byte LatchedHours,
+    byte LatchedDays,
+    byte LatchedHigh,
+    ulong LastUnixSecond);
 
 public readonly record struct BessCore(
     ushort MajorVersion,
@@ -154,6 +166,13 @@ public static class BessReader
         return mbc.Identifier is null ? null : ParseMbc(mbc.Payload.Span);
     }
 
+    public static BessRtc? ReadRtc(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var rtc = Read(source).FirstOrDefault(block => block.Identifier == "RTC ");
+        return rtc.Identifier is null ? null : ParseRtc(rtc.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -228,6 +247,24 @@ public static class BessReader
             writes[index] = new BessMbcWrite(address, payload[offset + 2]);
         }
         return writes;
+    }
+
+    private static BessRtc ParseRtc(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length != 0x30)
+            throw new InvalidDataException("BESS RTC block length is invalid.");
+        return new BessRtc(
+            payload[0],
+            payload[4],
+            payload[8],
+            payload[0x0C],
+            payload[0x10],
+            payload[0x14],
+            payload[0x18],
+            payload[0x1C],
+            payload[0x20],
+            payload[0x24],
+            BinaryPrimitives.ReadUInt64LittleEndian(payload[0x28..]));
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
