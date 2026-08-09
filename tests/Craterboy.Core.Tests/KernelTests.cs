@@ -2313,6 +2313,36 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesSgbStateForRoundTrip()
+    {
+        var state = new BessSgb(
+            new BessBufferDescriptor(0, 0),
+            new BessBufferDescriptor(0, 0),
+            new BessBufferDescriptor(0, 0),
+            new BessBufferDescriptor(0, 0),
+            new BessBufferDescriptor(0, 0),
+            new BessBufferDescriptor(0, 0),
+            new BessBufferDescriptor(0, 0),
+            0x21);
+        var block = BessWriter.CreateSgbBlock(state);
+        using var stream = CreateBess((destination, _) =>
+        {
+            WriteBessBlock(destination, "CORE", Array.Empty<byte>());
+            WriteBessBlock(destination, block.Identifier, block.Payload.ToArray());
+            WriteBessBlock(destination, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Equal(state, BessReader.ReadSgb(stream));
+    }
+
+    [Fact]
+    public void BessWriterRejectsInvalidSgbMultiplayerState()
+    {
+        var invalid = new BessSgb(default, default, default, default, default, default, default, 0x50);
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateSgbBlock(invalid));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);

@@ -181,6 +181,25 @@ public static class BessWriter
         return new BessBlock("TPP1", payload);
     }
 
+    public static BessBlock CreateSgbBlock(BessSgb state)
+    {
+        var playerCount = state.MultiplayerState >> 4;
+        var currentPlayer = state.MultiplayerState & 0x0F;
+        if (playerCount is not (1 or 2 or 4) || currentPlayer >= playerCount)
+            throw new ArgumentException("BESS SGB multiplayer state is invalid.", nameof(state));
+
+        var payload = new byte[0x39];
+        WriteDescriptor(payload, 0, state.BorderTiles);
+        WriteDescriptor(payload, 8, state.BorderTilemap);
+        WriteDescriptor(payload, 0x10, state.BorderPalettes);
+        WriteDescriptor(payload, 0x18, state.ActivePalettes);
+        WriteDescriptor(payload, 0x20, state.RamPalettes);
+        WriteDescriptor(payload, 0x28, state.AttributeMap);
+        WriteDescriptor(payload, 0x30, state.AttributeFiles);
+        payload[0x38] = state.MultiplayerState;
+        return new BessBlock("SGB ", payload);
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)
