@@ -2557,10 +2557,10 @@ public sealed class KernelTests
     public void BessReaderParsesOptionalSgbState()
     {
         var sgb = new byte[0x39];
-        WriteUInt32(sgb, 0, 0x2000);
-        WriteUInt32(sgb, 4, 0x1000);
-        WriteUInt32(sgb, 8, 0x800);
-        WriteUInt32(sgb, 0x0C, 0x3000);
+        WriteUInt32(sgb, 0, 4);
+        WriteUInt32(sgb, 4, 0);
+        WriteUInt32(sgb, 8, 4);
+        WriteUInt32(sgb, 0x0C, 4);
         sgb[0x38] = 0x20;
         using var source = CreateBess((stream, _) =>
         {
@@ -2572,8 +2572,8 @@ public sealed class KernelTests
         var parsed = BessReader.ReadSgb(source);
 
         Assert.NotNull(parsed);
-        Assert.Equal(new BessBufferDescriptor(0x2000, 0x1000), parsed.Value.BorderTiles);
-        Assert.Equal(new BessBufferDescriptor(0x800, 0x3000), parsed.Value.BorderTilemap);
+        Assert.Equal(new BessBufferDescriptor(4, 0), parsed.Value.BorderTiles);
+        Assert.Equal(new BessBufferDescriptor(4, 4), parsed.Value.BorderTilemap);
         Assert.Equal((byte)0x20, parsed.Value.MultiplayerState);
         Assert.True(source.CanRead);
 
@@ -2588,7 +2588,7 @@ public sealed class KernelTests
     [Fact]
     public void BessReaderRejectsMalformedSgbState()
     {
-        foreach (var payload in new[] { new byte[0x38], CreateInvalidSgbState(0x30), CreateInvalidSgbState(0x22) })
+        foreach (var payload in new[] { new byte[0x38], CreateInvalidSgbState(0x30), CreateInvalidSgbState(0x22), CreateInvalidSgbBuffer() })
         {
             using var source = CreateBess((stream, _) =>
             {
@@ -2605,6 +2605,14 @@ public sealed class KernelTests
     {
         var payload = new byte[0x39];
         payload[0x38] = multiplayerState;
+        return payload;
+    }
+
+    private static byte[] CreateInvalidSgbBuffer()
+    {
+        var payload = CreateInvalidSgbState(0x10);
+        WriteUInt32(payload, 0, 1);
+        WriteUInt32(payload, 4, uint.MaxValue);
         return payload;
     }
 

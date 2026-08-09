@@ -296,8 +296,21 @@ public static class BessReader
     public static BessSgb? ReadSgb(Stream source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        var sgb = Read(source).FirstOrDefault(block => block.Identifier == "SGB ");
-        return sgb.Identifier is null ? null : ParseSgb(sgb.Payload.Span);
+        using var buffer = new MemoryStream();
+        source.CopyTo(buffer);
+        var data = buffer.ToArray();
+        var sgb = Read(new MemoryStream(data)).FirstOrDefault(block => block.Identifier == "SGB ");
+        if (sgb.Identifier is null)
+            return null;
+        var parsed = ParseSgb(sgb.Payload.Span);
+        ValidateDescriptor(parsed.BorderTiles, data.Length, "SGB border tiles");
+        ValidateDescriptor(parsed.BorderTilemap, data.Length, "SGB border tilemap");
+        ValidateDescriptor(parsed.BorderPalettes, data.Length, "SGB border palettes");
+        ValidateDescriptor(parsed.ActivePalettes, data.Length, "SGB active palettes");
+        ValidateDescriptor(parsed.RamPalettes, data.Length, "SGB RAM palettes");
+        ValidateDescriptor(parsed.AttributeMap, data.Length, "SGB attribute map");
+        ValidateDescriptor(parsed.AttributeFiles, data.Length, "SGB attribute files");
+        return parsed;
     }
 
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
