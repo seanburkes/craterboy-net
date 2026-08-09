@@ -113,6 +113,23 @@ public static class BessWriter
         return new BessBlock("MBC ", payload);
     }
 
+    public static BessBlock CreateRtcBlock(BessRtc rtc)
+    {
+        var payload = new byte[0x30];
+        payload[0] = rtc.Seconds;
+        payload[4] = rtc.Minutes;
+        payload[8] = rtc.Hours;
+        payload[0x0C] = rtc.Days;
+        payload[0x10] = rtc.High;
+        payload[0x14] = rtc.LatchedSeconds;
+        payload[0x18] = rtc.LatchedMinutes;
+        payload[0x1C] = rtc.LatchedHours;
+        payload[0x20] = rtc.LatchedDays;
+        payload[0x24] = rtc.LatchedHigh;
+        BinaryPrimitives.WriteUInt64LittleEndian(payload.AsSpan(0x28), rtc.LastUnixSecond);
+        return new BessBlock("RTC ", payload);
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)

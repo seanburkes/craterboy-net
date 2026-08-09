@@ -2209,6 +2209,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesRtcStateForRoundTrip()
+    {
+        var rtc = new BessRtc(59, 58, 23, 255, 0x81, 1, 2, 3, 4, 0x40, 1_700_000_000);
+        var block = BessWriter.CreateRtcBlock(rtc);
+        using var stream = CreateBess((destination, _) =>
+        {
+            WriteBessBlock(destination, "CORE", Array.Empty<byte>());
+            WriteBessBlock(destination, block.Identifier, block.Payload.ToArray());
+            WriteBessBlock(destination, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Equal(rtc, BessReader.ReadRtc(stream));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);
