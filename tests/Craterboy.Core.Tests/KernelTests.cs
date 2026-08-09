@@ -2515,6 +2515,61 @@ public sealed class KernelTests
         Assert.Throws<InvalidDataException>(() => BessReader.ReadTpp1(source));
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalSgbState()
+    {
+        var sgb = new byte[0x39];
+        WriteUInt32(sgb, 0, 0x2000);
+        WriteUInt32(sgb, 4, 0x1000);
+        WriteUInt32(sgb, 8, 0x800);
+        WriteUInt32(sgb, 0x0C, 0x3000);
+        sgb[0x38] = 0x20;
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "SGB ", sgb);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadSgb(source);
+
+        Assert.NotNull(parsed);
+        Assert.Equal(new BessBufferDescriptor(0x2000, 0x1000), parsed.Value.BorderTiles);
+        Assert.Equal(new BessBufferDescriptor(0x800, 0x3000), parsed.Value.BorderTilemap);
+        Assert.Equal((byte)0x20, parsed.Value.MultiplayerState);
+        Assert.True(source.CanRead);
+
+        using var noSgb = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadSgb(noSgb));
+    }
+
+    [Fact]
+    public void BessReaderRejectsMalformedSgbState()
+    {
+        foreach (var payload in new[] { new byte[0x38], CreateInvalidSgbState(0x30), CreateInvalidSgbState(0x22) })
+        {
+            using var source = CreateBess((stream, _) =>
+            {
+                WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+                WriteBessBlock(stream, "SGB ", payload);
+                WriteBessBlock(stream, "END ", Array.Empty<byte>());
+            });
+
+            Assert.Throws<InvalidDataException>(() => BessReader.ReadSgb(source));
+        }
+    }
+
+    private static byte[] CreateInvalidSgbState(byte multiplayerState)
+    {
+        var payload = new byte[0x39];
+        payload[0x38] = multiplayerState;
+        return payload;
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 

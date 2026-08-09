@@ -38,6 +38,15 @@ public readonly record struct BessTpp1(
     ReadOnlyMemory<byte> RealRtcData,
     ReadOnlyMemory<byte> LatchedRtcData,
     byte Mr4);
+public readonly record struct BessSgb(
+    BessBufferDescriptor BorderTiles,
+    BessBufferDescriptor BorderTilemap,
+    BessBufferDescriptor BorderPalettes,
+    BessBufferDescriptor ActivePalettes,
+    BessBufferDescriptor RamPalettes,
+    BessBufferDescriptor AttributeMap,
+    BessBufferDescriptor AttributeFiles,
+    byte MultiplayerState);
 
 public readonly record struct BessCore(
     ushort MajorVersion,
@@ -220,6 +229,13 @@ public static class BessReader
         return tpp1.Identifier is null ? null : ParseTpp1(tpp1.Payload.Span);
     }
 
+    public static BessSgb? ReadSgb(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var sgb = Read(source).FirstOrDefault(block => block.Identifier == "SGB ");
+        return sgb.Identifier is null ? null : ParseSgb(sgb.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -360,6 +376,26 @@ public static class BessReader
             payload.Slice(8, 4).ToArray(),
             payload.Slice(0x0C, 4).ToArray(),
             payload[0x10]);
+    }
+
+    private static BessSgb ParseSgb(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length < 0x39)
+            throw new InvalidDataException("BESS SGB block is truncated.");
+        var multiplayerState = payload[0x38];
+        var playerCount = multiplayerState >> 4;
+        var currentPlayer = multiplayerState & 0x0F;
+        if (playerCount is not (1 or 2 or 4) || currentPlayer >= playerCount)
+            throw new InvalidDataException("BESS SGB multiplayer state is invalid.");
+        return new BessSgb(
+            ReadDescriptor(payload, 0),
+            ReadDescriptor(payload, 8),
+            ReadDescriptor(payload, 0x10),
+            ReadDescriptor(payload, 0x18),
+            ReadDescriptor(payload, 0x20),
+            ReadDescriptor(payload, 0x28),
+            ReadDescriptor(payload, 0x30),
+            multiplayerState);
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
