@@ -145,6 +145,8 @@ Optional `MBC7` metadata exposes EEPROM command state and latched gyro values,
 with reserved flag bits rejected before accessory state loading.
 Optional `HUC3` metadata exposes the RTC/alarm counters and save timestamp with
 strict fixed-length and boolean validation.
+Optional `TPP1` metadata exposes its raw current/latched four-byte RTC values,
+MR4 register, and save timestamp with owned buffers.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.

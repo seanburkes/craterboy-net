@@ -2470,6 +2470,51 @@ public sealed class KernelTests
         }
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalTpp1State()
+    {
+        var tpp1 = new byte[0x11];
+        WriteUInt64(tpp1, 0, 1_700_000_000);
+        new byte[] { 1, 2, 3, 4 }.CopyTo(tpp1, 8);
+        new byte[] { 5, 6, 7, 8 }.CopyTo(tpp1, 0x0C);
+        tpp1[0x10] = 0xA5;
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "TPP1", tpp1);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadTpp1(source);
+
+        Assert.NotNull(parsed);
+        Assert.Equal((ulong)1_700_000_000, parsed.Value.LastUnixSecond);
+        Assert.Equal(new byte[] { 1, 2, 3, 4 }, parsed.Value.RealRtcData.ToArray());
+        Assert.Equal(new byte[] { 5, 6, 7, 8 }, parsed.Value.LatchedRtcData.ToArray());
+        Assert.Equal((byte)0xA5, parsed.Value.Mr4);
+        Assert.True(source.CanRead);
+
+        using var noTpp1 = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadTpp1(noTpp1));
+    }
+
+    [Fact]
+    public void BessReaderRejectsInvalidTpp1Length()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "TPP1", new byte[0x10]);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Throws<InvalidDataException>(() => BessReader.ReadTpp1(source));
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
