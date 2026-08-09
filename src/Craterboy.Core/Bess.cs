@@ -153,6 +153,19 @@ public static class BessWriter
         return new BessBlock("MBC7", payload);
     }
 
+    public static BessBlock CreateHuc3Block(BessHuc3 state)
+    {
+        var payload = new byte[0x11];
+        BinaryPrimitives.WriteUInt64LittleEndian(payload, state.LastUnixSecond);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8), state.Minutes);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x0A), state.Days);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x0C), state.AlarmMinutes);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x0E), state.AlarmDays);
+        if (state.AlarmEnabled)
+            payload[0x10] = 1;
+        return new BessBlock("HUC3", payload);
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)

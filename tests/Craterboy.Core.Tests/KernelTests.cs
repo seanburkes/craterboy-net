@@ -2271,6 +2271,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesHuc3StateForRoundTrip()
+    {
+        var state = new BessHuc3(1_700_000_000, 1234, 56, 1250, 57, true);
+        var block = BessWriter.CreateHuc3Block(state);
+        using var stream = CreateBess((destination, _) =>
+        {
+            WriteBessBlock(destination, "CORE", Array.Empty<byte>());
+            WriteBessBlock(destination, block.Identifier, block.Payload.ToArray());
+            WriteBessBlock(destination, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Equal(state, BessReader.ReadHuc3(stream));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);

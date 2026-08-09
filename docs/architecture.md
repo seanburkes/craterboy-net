@@ -164,6 +164,8 @@ Its typed XOAM serializer enforces the fixed 96-byte extra-OAM payload and
 detaches the block from the caller's buffer.
 Its typed MBC7 serializer preserves EEPROM and latched gyro state while
 rejecting reserved flag bits.
+Its typed HUC3 serializer preserves the RTC/alarm counters and emits the
+canonical boolean alarm flag.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
