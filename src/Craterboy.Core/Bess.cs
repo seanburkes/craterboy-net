@@ -72,6 +72,26 @@ public readonly record struct BessCore(
 
 public static class BessWriter
 {
+    public static BessBlock CreateInfoBlock(BessInfo info)
+    {
+        if (info.Title.Length != 0x10)
+            throw new ArgumentException("BESS INFO title must contain exactly 16 bytes.", nameof(info));
+
+        var payload = new byte[0x12];
+        info.Title.Span.CopyTo(payload.AsSpan(0, 0x10));
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x10), info.GlobalChecksum);
+        return new BessBlock("INFO", payload);
+    }
+
+    public static BessBlock CreateNameBlock(string name)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        if (name.Any(character => character > 0x7F))
+            throw new ArgumentException("BESS NAME must contain only ASCII characters.", nameof(name));
+
+        return new BessBlock("NAME", Encoding.ASCII.GetBytes(name));
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)

@@ -2152,6 +2152,36 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesInfoAndNameMetadataForRoundTrip()
+    {
+        var info = new BessInfo("CRATERBOY       "u8.ToArray(), 0xA55A);
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+
+        using var stream = new MemoryStream();
+        BessWriter.Write(stream, new[]
+        {
+            BessWriter.CreateNameBlock("Craterboy v0.1"),
+            BessWriter.CreateInfoBlock(info),
+            BessWriter.CreateCoreBlock(core),
+        });
+
+        stream.Position = 0;
+        Assert.Equal("Craterboy v0.1", BessReader.ReadName(stream));
+        stream.Position = 0;
+        var parsedInfo = BessReader.ReadInfo(stream);
+        Assert.NotNull(parsedInfo);
+        Assert.Equal(info.Title.ToArray(), parsedInfo!.Value.Title.ToArray());
+        Assert.Equal(info.GlobalChecksum, parsedInfo.Value.GlobalChecksum);
+    }
+
+    [Fact]
+    public void BessWriterRejectsInvalidInfoAndNameMetadata()
+    {
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateInfoBlock(new BessInfo(new byte[0x0F], 0)));
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateNameBlock("Craterboy é"));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);
