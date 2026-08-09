@@ -147,6 +147,8 @@ Optional `HUC3` metadata exposes the RTC/alarm counters and save timestamp with
 strict fixed-length and boolean validation.
 Optional `TPP1` metadata exposes its raw current/latched four-byte RTC values,
 MR4 register, and save timestamp with owned buffers.
+Optional `SGB ` metadata exposes border/palette/attribute descriptors and
+validated multiplayer state for the deferred SGB host bridge.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
