@@ -168,6 +168,8 @@ Its typed HUC3 serializer preserves the RTC/alarm counters and emits the
 canonical boolean alarm flag.
 Its typed TPP1 serializer enforces the two four-byte raw RTC fields and
 preserves the MR4 register.
+Its typed SGB serializer emits all seven buffer descriptors and validates the
+encoded player-count/current-player state.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
