@@ -2374,6 +2374,52 @@ public sealed class KernelTests
         Assert.Throws<InvalidDataException>(() => BessReader.ReadExtraOam(source));
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalMbc7State()
+    {
+        var mbc7 = new byte[0x0A];
+        mbc7[0] = 0x3F;
+        mbc7[1] = 7;
+        WriteUInt16(mbc7, 2, 0x1234);
+        WriteUInt16(mbc7, 4, 0x5678);
+        WriteUInt16(mbc7, 6, 0x9ABC);
+        WriteUInt16(mbc7, 8, 0xDEF0);
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "MBC7", mbc7);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadMbc7(source);
+
+        Assert.Equal(new BessMbc7(0x3F, 7, 0x1234, 0x5678, 0x9ABC, 0xDEF0), parsed);
+        Assert.True(source.CanRead);
+
+        using var noMbc7 = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadMbc7(noMbc7));
+    }
+
+    [Fact]
+    public void BessReaderRejectsMalformedMbc7State()
+    {
+        foreach (var payload in new[] { new byte[9], new byte[] { 0x40, 0, 0, 0, 0, 0, 0, 0, 0, 0 } })
+        {
+            using var source = CreateBess((stream, _) =>
+            {
+                WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+                WriteBessBlock(stream, "MBC7", payload);
+                WriteBessBlock(stream, "END ", Array.Empty<byte>());
+            });
+
+            Assert.Throws<InvalidDataException>(() => BessReader.ReadMbc7(source));
+        }
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
