@@ -153,7 +153,8 @@ SGB external-buffer descriptors are checked against the complete file before
 any future border or palette state is consumed.
 `BessWriter` appends validated NAME/INFO/CORE and optional state blocks to a
 seekable stream, emits the required END block and footer, and leaves the stream
-open for callers.
+open for callers. Its CORE serializer emits the field-by-field 0xD0-byte
+metadata payload used by the reader.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
