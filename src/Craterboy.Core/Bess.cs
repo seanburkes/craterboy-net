@@ -26,6 +26,13 @@ public readonly record struct BessMbc7(
     ushort PendingReadBits,
     ushort LatchedGyroX,
     ushort LatchedGyroY);
+public readonly record struct BessHuc3(
+    ulong LastUnixSecond,
+    ushort Minutes,
+    ushort Days,
+    ushort AlarmMinutes,
+    ushort AlarmDays,
+    bool AlarmEnabled);
 
 public readonly record struct BessCore(
     ushort MajorVersion,
@@ -194,6 +201,13 @@ public static class BessReader
         return mbc7.Identifier is null ? null : ParseMbc7(mbc7.Payload.Span);
     }
 
+    public static BessHuc3? ReadHuc3(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var huc3 = Read(source).FirstOrDefault(block => block.Identifier == "HUC3");
+        return huc3.Identifier is null ? null : ParseHuc3(huc3.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -308,6 +322,21 @@ public static class BessReader
             BinaryPrimitives.ReadUInt16LittleEndian(payload[4..]),
             BinaryPrimitives.ReadUInt16LittleEndian(payload[6..]),
             BinaryPrimitives.ReadUInt16LittleEndian(payload[8..]));
+    }
+
+    private static BessHuc3 ParseHuc3(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length != 0x11)
+            throw new InvalidDataException("BESS HUC3 block length is invalid.");
+        if (payload[0x10] > 1)
+            throw new InvalidDataException("BESS HUC3 alarm flag is invalid.");
+        return new BessHuc3(
+            BinaryPrimitives.ReadUInt64LittleEndian(payload),
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[8..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[0x0A..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[0x0C..]),
+            BinaryPrimitives.ReadUInt16LittleEndian(payload[0x0E..]),
+            payload[0x10] != 0);
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>

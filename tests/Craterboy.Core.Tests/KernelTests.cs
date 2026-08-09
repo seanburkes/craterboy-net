@@ -2420,6 +2420,56 @@ public sealed class KernelTests
         }
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalHuc3State()
+    {
+        var huc3 = new byte[0x11];
+        WriteUInt64(huc3, 0, 1_700_000_000);
+        WriteUInt16(huc3, 8, 1234);
+        WriteUInt16(huc3, 0x0A, 56);
+        WriteUInt16(huc3, 0x0C, 1250);
+        WriteUInt16(huc3, 0x0E, 57);
+        huc3[0x10] = 1;
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "HUC3", huc3);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadHuc3(source);
+
+        Assert.Equal(new BessHuc3(1_700_000_000, 1234, 56, 1250, 57, true), parsed);
+        Assert.True(source.CanRead);
+
+        using var noHuc3 = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadHuc3(noHuc3));
+    }
+
+    [Fact]
+    public void BessReaderRejectsMalformedHuc3State()
+    {
+        foreach (var payload in new[]
+        {
+            new byte[0x10],
+            new byte[] { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2 },
+        })
+        {
+            using var source = CreateBess((stream, _) =>
+            {
+                WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+                WriteBessBlock(stream, "HUC3", payload);
+                WriteBessBlock(stream, "END ", Array.Empty<byte>());
+            });
+
+            Assert.Throws<InvalidDataException>(() => BessReader.ReadHuc3(source));
+        }
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 
