@@ -138,6 +138,21 @@ public static class BessWriter
         return new BessBlock("XOAM", extraOam.ToArray());
     }
 
+    public static BessBlock CreateMbc7Block(BessMbc7 state)
+    {
+        if ((state.Flags & 0xC0) != 0)
+            throw new ArgumentException("BESS MBC7 flags contain reserved bits.", nameof(state));
+
+        var payload = new byte[0x0A];
+        payload[0] = state.Flags;
+        payload[1] = state.ArgumentBitsLeft;
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2), state.EepromCommand);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(4), state.PendingReadBits);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(6), state.LatchedGyroX);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8), state.LatchedGyroY);
+        return new BessBlock("MBC7", payload);
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)
