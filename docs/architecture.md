@@ -160,6 +160,8 @@ typed MBC serializer preserves ordered mapper writes while enforcing the
 format's cartridge and external-RAM address ranges. Its typed RTC serializer
 preserves the sparse fixed-width current/latched clock fields and save
 timestamp used by the MBC3 state format.
+Its typed XOAM serializer enforces the fixed 96-byte extra-OAM payload and
+detaches the block from the caller's buffer.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
