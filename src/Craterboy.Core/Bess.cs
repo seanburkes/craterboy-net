@@ -130,6 +130,14 @@ public static class BessWriter
         return new BessBlock("RTC ", payload);
     }
 
+    public static BessBlock CreateExtraOamBlock(ReadOnlyMemory<byte> extraOam)
+    {
+        if (extraOam.Length != 0x60)
+            throw new ArgumentException("BESS XOAM data must contain exactly 96 bytes.", nameof(extraOam));
+
+        return new BessBlock("XOAM", extraOam.ToArray());
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)

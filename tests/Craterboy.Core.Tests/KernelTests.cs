@@ -2224,6 +2224,32 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesExtraOamForRoundTrip()
+    {
+        var extraOam = Enumerable.Range(0, 0x60).Select(value => (byte)value).ToArray();
+        var block = BessWriter.CreateExtraOamBlock(extraOam);
+        extraOam[0] = 0xFF;
+        using var stream = CreateBess((destination, _) =>
+        {
+            WriteBessBlock(destination, "CORE", Array.Empty<byte>());
+            WriteBessBlock(destination, block.Identifier, block.Payload.ToArray());
+            WriteBessBlock(destination, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadExtraOam(stream);
+        Assert.NotNull(parsed);
+        Assert.Equal((byte)0, parsed![0]);
+        Assert.Equal(Enumerable.Range(1, 0x5F).Select(value => (byte)value), parsed.Skip(1));
+    }
+
+    [Fact]
+    public void BessWriterRejectsInvalidExtraOamLength()
+    {
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateExtraOamBlock(new byte[0x5F]));
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateExtraOamBlock(new byte[0x61]));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);
