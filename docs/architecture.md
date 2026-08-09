@@ -155,7 +155,9 @@ any future border or palette state is consumed.
 seekable stream, emits the required END block and footer, and leaves the stream
 open for callers. Its CORE serializer emits the field-by-field 0xD0-byte
 metadata payload used by the reader, while typed INFO and NAME serializers
-preserve the fixed-width ROM identity fields and ASCII producer metadata.
+preserve the fixed-width ROM identity fields and ASCII producer metadata. Its
+typed MBC serializer preserves ordered mapper writes while enforcing the
+format's cartridge and external-RAM address ranges.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
