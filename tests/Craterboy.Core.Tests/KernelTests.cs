@@ -2286,6 +2286,33 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesTpp1StateForRoundTrip()
+    {
+        var state = new BessTpp1(1_700_000_000, new byte[] { 1, 2, 3, 4 }, new byte[] { 5, 6, 7, 8 }, 0xA5);
+        var block = BessWriter.CreateTpp1Block(state);
+        using var stream = CreateBess((destination, _) =>
+        {
+            WriteBessBlock(destination, "CORE", Array.Empty<byte>());
+            WriteBessBlock(destination, block.Identifier, block.Payload.ToArray());
+            WriteBessBlock(destination, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadTpp1(stream);
+        Assert.NotNull(parsed);
+        Assert.Equal(state.LastUnixSecond, parsed!.Value.LastUnixSecond);
+        Assert.Equal(state.RealRtcData.ToArray(), parsed.Value.RealRtcData.ToArray());
+        Assert.Equal(state.LatchedRtcData.ToArray(), parsed.Value.LatchedRtcData.ToArray());
+        Assert.Equal(state.Mr4, parsed.Value.Mr4);
+    }
+
+    [Fact]
+    public void BessWriterRejectsInvalidTpp1RtcDataLengths()
+    {
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateTpp1Block(new BessTpp1(0, new byte[3], new byte[4], 0)));
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateTpp1Block(new BessTpp1(0, new byte[4], new byte[5], 0)));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);

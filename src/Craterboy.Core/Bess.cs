@@ -166,6 +166,21 @@ public static class BessWriter
         return new BessBlock("HUC3", payload);
     }
 
+    public static BessBlock CreateTpp1Block(BessTpp1 state)
+    {
+        if (state.RealRtcData.Length != 4)
+            throw new ArgumentException("BESS TPP1 real RTC data must contain exactly 4 bytes.", nameof(state));
+        if (state.LatchedRtcData.Length != 4)
+            throw new ArgumentException("BESS TPP1 latched RTC data must contain exactly 4 bytes.", nameof(state));
+
+        var payload = new byte[0x11];
+        BinaryPrimitives.WriteUInt64LittleEndian(payload, state.LastUnixSecond);
+        state.RealRtcData.Span.CopyTo(payload.AsSpan(8, 4));
+        state.LatchedRtcData.Span.CopyTo(payload.AsSpan(0x0C, 4));
+        payload[0x10] = state.Mr4;
+        return new BessBlock("TPP1", payload);
+    }
+
     public static BessBlock CreateCoreBlock(BessCore core)
     {
         if (core.MajorVersion != 1)
