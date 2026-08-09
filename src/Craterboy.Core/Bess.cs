@@ -72,6 +72,41 @@ public readonly record struct BessCore(
 
 public static class BessWriter
 {
+    public static BessBlock CreateCoreBlock(BessCore core)
+    {
+        if (core.MajorVersion != 1)
+            throw new ArgumentException("BESS CORE major version must be 1.", nameof(core));
+        if (core.ModelIdentifier.Length != 4 || core.ModelIdentifier.Any(character => character > 0x7F) || core.ModelIdentifier[3] != ' ')
+            throw new ArgumentException("BESS CORE model identifier must be four ASCII characters ending in a space.", nameof(core));
+        if (core.ExecutionMode > 2)
+            throw new ArgumentException("BESS CORE execution mode is invalid.", nameof(core));
+        if (core.IoRegisters.Length != 0x80)
+            throw new ArgumentException("BESS CORE requires exactly 128 I/O registers.", nameof(core));
+
+        var payload = new byte[0xD0];
+        BinaryPrimitives.WriteUInt16LittleEndian(payload, core.MajorVersion);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(2), core.MinorVersion);
+        Encoding.ASCII.GetBytes(core.ModelIdentifier).CopyTo(payload, 4);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(8), core.Pc);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x0A), core.Af);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x0C), core.Bc);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x0E), core.De);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x10), core.Hl);
+        BinaryPrimitives.WriteUInt16LittleEndian(payload.AsSpan(0x12), core.Sp);
+        payload[0x14] = core.Ime ? (byte)1 : (byte)0;
+        payload[0x15] = core.Ie;
+        payload[0x16] = core.ExecutionMode;
+        core.IoRegisters.Span.CopyTo(payload.AsSpan(0x18, 0x80));
+        WriteDescriptor(payload, 0x98, core.Ram);
+        WriteDescriptor(payload, 0xA0, core.Vram);
+        WriteDescriptor(payload, 0xA8, core.MbcRam);
+        WriteDescriptor(payload, 0xB0, core.Oam);
+        WriteDescriptor(payload, 0xB8, core.Hram);
+        WriteDescriptor(payload, 0xC0, core.BackgroundPalettes);
+        WriteDescriptor(payload, 0xC8, core.ObjectPalettes);
+        return new BessBlock("CORE", payload);
+    }
+
     public static void Write(Stream destination, IReadOnlyList<BessBlock> blocks)
     {
         ArgumentNullException.ThrowIfNull(destination);
@@ -131,6 +166,12 @@ public static class BessWriter
         BinaryPrimitives.WriteUInt32LittleEndian(header[4..], checked((uint)payload.Length));
         destination.Write(header);
         destination.Write(payload);
+    }
+
+    private static void WriteDescriptor(byte[] payload, int offset, BessBufferDescriptor descriptor)
+    {
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset), descriptor.Size);
+        BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset + 4), descriptor.Offset);
     }
 }
 

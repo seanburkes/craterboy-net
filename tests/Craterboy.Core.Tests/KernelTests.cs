@@ -2108,6 +2108,60 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterSerializesCoreMetadataForRoundTrip()
+    {
+        var core = new BessCore(
+            1,
+            3,
+            "GD  ",
+            0x1234,
+            0xB0F0,
+            0x5678,
+            0x9ABC,
+            0xDEF0,
+            0xFFFE,
+            true,
+            0x1F,
+            1,
+            Enumerable.Range(0, 0x80).Select(value => (byte)value).ToArray(),
+            default,
+            default,
+            default,
+            default,
+            default,
+            default,
+            default);
+
+        using var stream = new MemoryStream();
+        BessWriter.Write(stream, new[] { BessWriter.CreateCoreBlock(core) });
+        stream.Position = 0;
+
+        var parsed = BessReader.ReadCore(stream);
+
+        Assert.Equal(core.MajorVersion, parsed.MajorVersion);
+        Assert.Equal(core.MinorVersion, parsed.MinorVersion);
+        Assert.Equal(core.ModelIdentifier, parsed.ModelIdentifier);
+        Assert.Equal(core.Pc, parsed.Pc);
+        Assert.Equal(core.Af, parsed.Af);
+        Assert.Equal(core.Hl, parsed.Hl);
+        Assert.Equal(core.Sp, parsed.Sp);
+        Assert.Equal(core.Ime, parsed.Ime);
+        Assert.Equal(core.Ie, parsed.Ie);
+        Assert.Equal(core.ExecutionMode, parsed.ExecutionMode);
+        Assert.Equal(core.IoRegisters.ToArray(), parsed.IoRegisters.ToArray());
+    }
+
+    [Fact]
+    public void BessWriterRejectsInvalidCoreMetadata()
+    {
+        var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateCoreBlock(invalidIo));
+
+        var invalidModel = new BessCore(1, 0, "GDXX", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateCoreBlock(invalidModel));
+    }
+
+    [Fact]
     public void BessReaderParsesCoreMetadataAndBufferDescriptors()
     {
         var core = new byte[0xD0];
