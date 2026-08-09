@@ -33,6 +33,11 @@ public readonly record struct BessHuc3(
     ushort AlarmMinutes,
     ushort AlarmDays,
     bool AlarmEnabled);
+public readonly record struct BessTpp1(
+    ulong LastUnixSecond,
+    ReadOnlyMemory<byte> RealRtcData,
+    ReadOnlyMemory<byte> LatchedRtcData,
+    byte Mr4);
 
 public readonly record struct BessCore(
     ushort MajorVersion,
@@ -208,6 +213,13 @@ public static class BessReader
         return huc3.Identifier is null ? null : ParseHuc3(huc3.Payload.Span);
     }
 
+    public static BessTpp1? ReadTpp1(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var tpp1 = Read(source).FirstOrDefault(block => block.Identifier == "TPP1");
+        return tpp1.Identifier is null ? null : ParseTpp1(tpp1.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -337,6 +349,17 @@ public static class BessReader
             BinaryPrimitives.ReadUInt16LittleEndian(payload[0x0C..]),
             BinaryPrimitives.ReadUInt16LittleEndian(payload[0x0E..]),
             payload[0x10] != 0);
+    }
+
+    private static BessTpp1 ParseTpp1(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length != 0x11)
+            throw new InvalidDataException("BESS TPP1 block length is invalid.");
+        return new BessTpp1(
+            BinaryPrimitives.ReadUInt64LittleEndian(payload),
+            payload.Slice(8, 4).ToArray(),
+            payload.Slice(0x0C, 4).ToArray(),
+            payload[0x10]);
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
