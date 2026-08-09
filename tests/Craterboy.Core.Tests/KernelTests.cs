@@ -2337,6 +2337,43 @@ public sealed class KernelTests
         Assert.Throws<InvalidDataException>(() => BessReader.ReadRtc(source));
     }
 
+    [Fact]
+    public void BessReaderParsesOptionalExtraOam()
+    {
+        var extraOam = Enumerable.Range(0, 0x60).Select(value => (byte)value).ToArray();
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "XOAM", extraOam);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        var parsed = BessReader.ReadExtraOam(source);
+
+        Assert.Equal(extraOam, parsed);
+        Assert.True(source.CanRead);
+
+        using var noExtraOam = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+        Assert.Null(BessReader.ReadExtraOam(noExtraOam));
+    }
+
+    [Fact]
+    public void BessReaderRejectsInvalidExtraOamLength()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "XOAM", new byte[0x5F]);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Throws<InvalidDataException>(() => BessReader.ReadExtraOam(source));
+    }
+
     private static void WriteUInt16(byte[] destination, int offset, ushort value) =>
         System.Buffers.Binary.BinaryPrimitives.WriteUInt16LittleEndian(destination.AsSpan(offset), value);
 

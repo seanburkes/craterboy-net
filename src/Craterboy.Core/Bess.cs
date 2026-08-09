@@ -173,6 +173,13 @@ public static class BessReader
         return rtc.Identifier is null ? null : ParseRtc(rtc.Payload.Span);
     }
 
+    public static byte[]? ReadExtraOam(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var xoam = Read(source).FirstOrDefault(block => block.Identifier == "XOAM");
+        return xoam.Identifier is null ? null : ParseExtraOam(xoam.Payload.Span);
+    }
+
     private static BessCore ParseCore(ReadOnlySpan<byte> payload)
     {
         if (payload.Length < CoreMinimumLength)
@@ -265,6 +272,13 @@ public static class BessReader
             payload[0x20],
             payload[0x24],
             BinaryPrimitives.ReadUInt64LittleEndian(payload[0x28..]));
+    }
+
+    private static byte[] ParseExtraOam(ReadOnlySpan<byte> payload)
+    {
+        if (payload.Length != 0x60)
+            throw new InvalidDataException("BESS XOAM block length is invalid.");
+        return payload.ToArray();
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
