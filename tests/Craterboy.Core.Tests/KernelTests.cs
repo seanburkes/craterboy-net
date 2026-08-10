@@ -2343,6 +2343,16 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterRejectsZeroSizedCoreAndSgbBuffersWithOffsets()
+    {
+        var invalidCore = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], new BessBufferDescriptor(0, 1), default, default, default, default, default, default);
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateCoreBlock(invalidCore));
+
+        var invalidSgb = new BessSgb(new BessBufferDescriptor(0, 1), default, default, default, default, default, default, 0x10);
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateSgbBlock(invalidSgb));
+    }
+
+    [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
         var invalidIo = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x7F], default, default, default, default, default, default, default);
