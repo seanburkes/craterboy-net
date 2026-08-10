@@ -27,6 +27,10 @@ No SameBoy private native-state compatibility is planned. BESS will be the
 interoperable save-state format. A layer moves from partial to ported only
 after differential evidence is added against the pinned native oracle.
 
+The typed `BessWriter.WriteCoreWithBuffers` path now lays out CORE external
+buffers, patches absolute descriptors, and emits the matching CORE/END block
+container; empty buffers use the format's zero descriptor convention.
+
 The test-only oracle is built from the pinned checkout by
 `tests/native/build-oracle.sh`. Its ABI deliberately exposes only model IDs,
 register snapshots, memory operations, and single-instruction execution.

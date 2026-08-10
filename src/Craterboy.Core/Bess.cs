@@ -70,6 +70,15 @@ public readonly record struct BessCore(
     BessBufferDescriptor BackgroundPalettes,
     BessBufferDescriptor ObjectPalettes);
 
+public readonly record struct BessCoreBuffers(
+    ReadOnlyMemory<byte> Ram,
+    ReadOnlyMemory<byte> Vram,
+    ReadOnlyMemory<byte> MbcRam,
+    ReadOnlyMemory<byte> Oam,
+    ReadOnlyMemory<byte> Hram,
+    ReadOnlyMemory<byte> BackgroundPalettes,
+    ReadOnlyMemory<byte> ObjectPalettes);
+
 public static class BessWriter
 {
     public static BessBlock CreateInfoBlock(BessInfo info)
@@ -272,6 +281,36 @@ public static class BessWriter
         destination.Write(footer);
     }
 
+    public static void WriteCoreWithBuffers(Stream destination, BessCore core, BessCoreBuffers buffers)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        if (!destination.CanSeek)
+            throw new NotSupportedException("BESS writing requires a seekable destination.");
+        if (destination.Position is < 0 or > uint.MaxValue)
+            throw new InvalidOperationException("BESS buffer offset exceeds the format limit.");
+
+        var offset = destination.Position;
+        var ram = WriteExternalBuffer(destination, buffers.Ram, ref offset);
+        var vram = WriteExternalBuffer(destination, buffers.Vram, ref offset);
+        var mbcRam = WriteExternalBuffer(destination, buffers.MbcRam, ref offset);
+        var oam = WriteExternalBuffer(destination, buffers.Oam, ref offset);
+        var hram = WriteExternalBuffer(destination, buffers.Hram, ref offset);
+        var backgroundPalettes = WriteExternalBuffer(destination, buffers.BackgroundPalettes, ref offset);
+        var objectPalettes = WriteExternalBuffer(destination, buffers.ObjectPalettes, ref offset);
+        var patchedCore = core with
+        {
+            Ram = ram,
+            Vram = vram,
+            MbcRam = mbcRam,
+            Oam = oam,
+            Hram = hram,
+            BackgroundPalettes = backgroundPalettes,
+            ObjectPalettes = objectPalettes,
+        };
+
+        Write(destination, new[] { CreateCoreBlock(patchedCore) });
+    }
+
     private static void ValidateBlocks(IReadOnlyList<BessBlock> blocks)
     {
         var foundCore = false;
@@ -319,6 +358,22 @@ public static class BessWriter
     {
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset), descriptor.Size);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset + 4), descriptor.Offset);
+    }
+
+    private static BessBufferDescriptor WriteExternalBuffer(
+        Stream destination,
+        ReadOnlyMemory<byte> buffer,
+        ref long offset)
+    {
+        if (buffer.Length == 0)
+            return default;
+        if (offset > uint.MaxValue || buffer.Length > uint.MaxValue - offset)
+            throw new InvalidOperationException("BESS buffer range exceeds the format limit.");
+
+        var descriptor = new BessBufferDescriptor((uint)buffer.Length, (uint)offset);
+        destination.Write(buffer.Span);
+        offset += buffer.Length;
+        return descriptor;
     }
 
     private static void ValidateDescriptorForWriting(BessBufferDescriptor descriptor, string name)

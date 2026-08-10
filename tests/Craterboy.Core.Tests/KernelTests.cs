@@ -2224,6 +2224,42 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterLaysOutCoreBuffersForReaderExtraction()
+    {
+        var core = new BessCore(
+            1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80],
+            default, default, default, default, default, default, default);
+        var buffers = new BessCoreBuffers(
+            new byte[] { 1, 2 },
+            new byte[] { 3 },
+            Array.Empty<byte>(),
+            new byte[] { 4, 5 },
+            new byte[] { 6 },
+            new byte[] { 7, 8 },
+            new byte[] { 9 });
+
+        using var stream = new MemoryStream();
+        BessWriter.WriteCoreWithBuffers(stream, core, buffers);
+        stream.Position = 0;
+
+        var parsed = BessReader.ReadCore(stream);
+
+        Assert.Equal((uint)buffers.Ram.Length, parsed.Ram.Size);
+        Assert.Equal(0u, parsed.Ram.Offset);
+        Assert.Equal((uint)buffers.Vram.Length, parsed.Vram.Size);
+        Assert.Equal(2u, parsed.Vram.Offset);
+        Assert.Equal(default, parsed.MbcRam);
+        stream.Position = 0;
+        Assert.Equal(buffers.Oam.ToArray(), BessReader.ReadBuffer(stream, parsed.Oam));
+        stream.Position = 0;
+        Assert.Equal(buffers.Hram.ToArray(), BessReader.ReadBuffer(stream, parsed.Hram));
+        stream.Position = 0;
+        Assert.Equal(buffers.BackgroundPalettes.ToArray(), BessReader.ReadBuffer(stream, parsed.BackgroundPalettes));
+        stream.Position = 0;
+        Assert.Equal(buffers.ObjectPalettes.ToArray(), BessReader.ReadBuffer(stream, parsed.ObjectPalettes));
+    }
+
+    [Fact]
     public void BessWriterSerializesInfoAndNameMetadataForRoundTrip()
     {
         var info = new BessInfo("CRATERBOY       "u8.ToArray(), 0xA55A);
