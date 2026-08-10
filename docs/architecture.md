@@ -179,6 +179,9 @@ Its typed TPP1 serializer enforces the two four-byte raw RTC fields and
 preserves the MR4 register.
 Its typed SGB serializer emits all seven buffer descriptors and validates the
 encoded player-count/current-player state.
+`WriteCoreWithBuffers` lays out owned CORE external buffers before the block
+table, patches their absolute file offsets, and emits a self-contained
+CORE/END container; empty buffers retain the zero descriptor convention.
 Writer preflight also rejects zero-sized descriptors that carry nonzero
 offsets and ranges that overflow the 32-bit file-offset space, matching the
 reader's bounds invariant before any bytes are emitted.
