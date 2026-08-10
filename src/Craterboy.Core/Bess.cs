@@ -79,6 +79,8 @@ public readonly record struct BessCoreBuffers(
     ReadOnlyMemory<byte> BackgroundPalettes,
     ReadOnlyMemory<byte> ObjectPalettes);
 
+public readonly record struct BessCoreState(BessCore Core, BessCoreBuffers Buffers);
+
 internal static class BessModelIdentifier
 {
     public static bool IsValid(string model)
@@ -486,18 +488,15 @@ public static class BessReader
         using var buffer = new MemoryStream();
         source.CopyTo(buffer);
         var data = buffer.ToArray();
-        var core = Read(new MemoryStream(data)).FirstOrDefault(block => block.Identifier == "CORE");
-        if (core.Identifier is null)
-            throw new InvalidDataException("BESS CORE block is missing.");
-        var parsed = ParseCore(core.Payload.Span);
-        ValidateDescriptor(parsed.Ram, data.Length, "RAM");
-        ValidateDescriptor(parsed.Vram, data.Length, "VRAM");
-        ValidateDescriptor(parsed.MbcRam, data.Length, "MBC RAM");
-        ValidateDescriptor(parsed.Oam, data.Length, "OAM");
-        ValidateDescriptor(parsed.Hram, data.Length, "HRAM");
-        ValidateDescriptor(parsed.BackgroundPalettes, data.Length, "background palettes");
-        ValidateDescriptor(parsed.ObjectPalettes, data.Length, "object palettes");
-        return parsed;
+        return ReadCoreState(data).Core;
+    }
+
+    public static BessCoreState ReadCoreWithBuffers(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        using var buffer = new MemoryStream();
+        source.CopyTo(buffer);
+        return ReadCoreState(buffer.ToArray());
     }
 
     public static byte[] ReadBuffer(Stream source, BessBufferDescriptor descriptor)
@@ -623,6 +622,30 @@ public static class BessReader
             ReadDescriptor(payload, 0xB8),
             ReadDescriptor(payload, 0xC0),
             ReadDescriptor(payload, 0xC8));
+    }
+
+    private static BessCoreState ReadCoreState(byte[] data)
+    {
+        var core = Read(new MemoryStream(data)).FirstOrDefault(block => block.Identifier == "CORE");
+        if (core.Identifier is null)
+            throw new InvalidDataException("BESS CORE block is missing.");
+        var parsed = ParseCore(core.Payload.Span);
+        return new BessCoreState(
+            parsed,
+            new BessCoreBuffers(
+                ReadBuffer(data, parsed.Ram, "RAM"),
+                ReadBuffer(data, parsed.Vram, "VRAM"),
+                ReadBuffer(data, parsed.MbcRam, "MBC RAM"),
+                ReadBuffer(data, parsed.Oam, "OAM"),
+                ReadBuffer(data, parsed.Hram, "HRAM"),
+                ReadBuffer(data, parsed.BackgroundPalettes, "background palettes"),
+                ReadBuffer(data, parsed.ObjectPalettes, "object palettes")));
+    }
+
+    private static byte[] ReadBuffer(byte[] data, BessBufferDescriptor descriptor, string name)
+    {
+        ValidateDescriptor(descriptor, data.Length, name);
+        return data.AsSpan(checked((int)descriptor.Offset), checked((int)descriptor.Size)).ToArray();
     }
 
     private static BessInfo ParseInfo(ReadOnlySpan<byte> payload)

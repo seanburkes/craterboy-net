@@ -182,6 +182,9 @@ encoded player-count/current-player state.
 `WriteCoreWithBuffers` lays out owned CORE external buffers before the block
 table, patches their absolute file offsets, and emits a self-contained
 CORE/END container; empty buffers retain the zero descriptor convention.
+`ReadCoreWithBuffers` performs one complete-container validation and returns
+the CORE metadata with all seven external buffers detached into an owned
+snapshot, giving future state loading a transactional read boundary.
 CORE model identifiers are checked against the BESS family/revision forms
 used by SameBoy (`GD`/`GM`, `SN`/`SP`/`S2`, and `CC`/`CA`) before writing or
 loading state.
