@@ -182,6 +182,9 @@ encoded player-count/current-player state.
 `WriteCoreWithBuffers` lays out owned CORE external buffers before the block
 table, patches their absolute file offsets, and emits a self-contained
 CORE/END container; empty buffers retain the zero descriptor convention.
+CORE model identifiers are checked against the BESS family/revision forms
+used by SameBoy (`GD`/`GM`, `SN`/`SP`/`S2`, and `CC`/`CA`) before writing or
+loading state.
 Writer preflight also rejects zero-sized descriptors that carry nonzero
 offsets and ranges that overflow the 32-bit file-offset space, matching the
 reader's bounds invariant before any bytes are emitted.
