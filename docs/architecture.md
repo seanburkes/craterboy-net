@@ -9,6 +9,9 @@ of the core.
 SGB2 classification helpers. `IsColor` and `IsSuperGameBoy` are derived from
 those families so later revision-specific behavior cannot accidentally depend
 on enum ordering.
+Joypad selection timing consumes the DMG/MGB predicates directly: DMG and MGB
+retain their delayed transitions, while color and SGB families switch
+immediately.
 
 The current state kernel groups CPU registers and the master scheduler in
 `EmulatorState`. The scheduler advances registered participants one T-cycle at

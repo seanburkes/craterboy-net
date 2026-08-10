@@ -94,7 +94,7 @@ internal sealed class JoypadDevice : ICycleParticipant
 
     private int SelectionDelay(byte previous, byte next)
     {
-        if (_model is not (GameBoyModel.DmgB or GameBoyModel.Mgb)) return 0;
+        if (!_model.IsDmg() && !_model.IsMgb()) return 0;
         var key = ((previous & 0x30) >> 4) | ((next & 0x30) >> 2);
         var delay = key switch
         {
@@ -102,7 +102,7 @@ internal sealed class JoypadDevice : ICycleParticipant
             0x08 or 0x09 or 0x0D => 24,
             _ => 0,
         };
-        return _model == GameBoyModel.Mgb ? Math.Max(0, delay - 16) : delay;
+        return _model.IsMgb() ? Math.Max(0, delay - 16) : delay;
     }
 
     private byte ReadButtons()
