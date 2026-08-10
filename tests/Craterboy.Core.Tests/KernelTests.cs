@@ -2260,6 +2260,34 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterCombinesCoreBuffersWithTypedOptionalBlocks()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        var buffers = new BessCoreBuffers(new byte[] { 1, 2 }, default, default, default, default, default, default);
+        var infoState = new BessInfo("CRATERBOY       "u8.ToArray(), 0xA55A);
+        var info = BessWriter.CreateInfoBlock(infoState);
+        var writes = new[] { new BessMbcWrite(0x2000, 3) };
+
+        using var stream = new MemoryStream();
+        BessWriter.WriteCoreWithBuffers(
+            stream,
+            core,
+            buffers,
+            new[] { BessWriter.CreateNameBlock("Craterboy"), info },
+            new[] { BessWriter.CreateMbcBlock(writes) });
+        stream.Position = 0;
+
+        Assert.Equal("Craterboy", BessReader.ReadName(stream));
+        stream.Position = 0;
+        var parsedInfo = BessReader.ReadInfo(stream);
+        Assert.NotNull(parsedInfo);
+        Assert.Equal(infoState.Title.ToArray(), parsedInfo!.Value.Title.ToArray());
+        Assert.Equal(infoState.GlobalChecksum, parsedInfo.Value.GlobalChecksum);
+        stream.Position = 0;
+        Assert.Equal(writes, BessReader.ReadMbc(stream));
+    }
+
+    [Fact]
     public void BessWriterSerializesInfoAndNameMetadataForRoundTrip()
     {
         var info = new BessInfo("CRATERBOY       "u8.ToArray(), 0xA55A);
