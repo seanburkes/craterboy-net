@@ -187,6 +187,13 @@ public static class BessWriter
         var currentPlayer = state.MultiplayerState & 0x0F;
         if (playerCount is not (1 or 2 or 4) || currentPlayer >= playerCount)
             throw new ArgumentException("BESS SGB multiplayer state is invalid.", nameof(state));
+        ValidateDescriptorForWriting(state.BorderTiles, "SGB border tiles");
+        ValidateDescriptorForWriting(state.BorderTilemap, "SGB border tilemap");
+        ValidateDescriptorForWriting(state.BorderPalettes, "SGB border palettes");
+        ValidateDescriptorForWriting(state.ActivePalettes, "SGB active palettes");
+        ValidateDescriptorForWriting(state.RamPalettes, "SGB RAM palettes");
+        ValidateDescriptorForWriting(state.AttributeMap, "SGB attribute map");
+        ValidateDescriptorForWriting(state.AttributeFiles, "SGB attribute files");
 
         var payload = new byte[0x39];
         WriteDescriptor(payload, 0, state.BorderTiles);
@@ -210,6 +217,13 @@ public static class BessWriter
             throw new ArgumentException("BESS CORE execution mode is invalid.", nameof(core));
         if (core.IoRegisters.Length != 0x80)
             throw new ArgumentException("BESS CORE requires exactly 128 I/O registers.", nameof(core));
+        ValidateDescriptorForWriting(core.Ram, "RAM");
+        ValidateDescriptorForWriting(core.Vram, "VRAM");
+        ValidateDescriptorForWriting(core.MbcRam, "MBC RAM");
+        ValidateDescriptorForWriting(core.Oam, "OAM");
+        ValidateDescriptorForWriting(core.Hram, "HRAM");
+        ValidateDescriptorForWriting(core.BackgroundPalettes, "background palettes");
+        ValidateDescriptorForWriting(core.ObjectPalettes, "object palettes");
 
         var payload = new byte[0xD0];
         BinaryPrimitives.WriteUInt16LittleEndian(payload, core.MajorVersion);
@@ -300,6 +314,12 @@ public static class BessWriter
     {
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset), descriptor.Size);
         BinaryPrimitives.WriteUInt32LittleEndian(payload.AsSpan(offset + 4), descriptor.Offset);
+    }
+
+    private static void ValidateDescriptorForWriting(BessBufferDescriptor descriptor, string name)
+    {
+        if (descriptor.Size == 0 && descriptor.Offset != 0)
+            throw new ArgumentException($"BESS {name} buffer has an offset without data.");
     }
 }
 
