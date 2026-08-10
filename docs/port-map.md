@@ -30,6 +30,8 @@ after differential evidence is added against the pinned native oracle.
 The typed `BessWriter.WriteCoreWithBuffers` path now lays out CORE external
 buffers, patches absolute descriptors, and emits the matching CORE/END block
 container; empty buffers use the format's zero descriptor convention.
+The writer overload accepts ordered pre-CORE and post-CORE typed blocks so
+external memory and optional metadata can be emitted as one state container.
 CORE model validation accepts the defined SameBoy family/revision identifiers
 and rejects unsupported prefixes or revision placements at both boundaries.
 `BessReader.ReadCoreWithBuffers` provides one-pass validated CORE metadata and

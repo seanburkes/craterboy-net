@@ -302,8 +302,18 @@ public static class BessWriter
     }
 
     public static void WriteCoreWithBuffers(Stream destination, BessCore core, BessCoreBuffers buffers)
+        => WriteCoreWithBuffers(destination, core, buffers, Array.Empty<BessBlock>(), Array.Empty<BessBlock>());
+
+    public static void WriteCoreWithBuffers(
+        Stream destination,
+        BessCore core,
+        BessCoreBuffers buffers,
+        IReadOnlyList<BessBlock> beforeCore,
+        IReadOnlyList<BessBlock> afterCore)
     {
         ArgumentNullException.ThrowIfNull(destination);
+        ArgumentNullException.ThrowIfNull(beforeCore);
+        ArgumentNullException.ThrowIfNull(afterCore);
         if (!destination.CanSeek)
             throw new NotSupportedException("BESS writing requires a seekable destination.");
         if (destination.Position is < 0 or > uint.MaxValue)
@@ -328,7 +338,11 @@ public static class BessWriter
             ObjectPalettes = objectPalettes,
         };
 
-        Write(destination, new[] { CreateCoreBlock(patchedCore) });
+        var blocks = new List<BessBlock>(beforeCore.Count + afterCore.Count + 1);
+        blocks.AddRange(beforeCore);
+        blocks.Add(CreateCoreBlock(patchedCore));
+        blocks.AddRange(afterCore);
+        Write(destination, blocks);
     }
 
     private static void ValidateBlocks(IReadOnlyList<BessBlock> blocks)

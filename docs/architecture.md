@@ -182,6 +182,9 @@ encoded player-count/current-player state.
 `WriteCoreWithBuffers` lays out owned CORE external buffers before the block
 table, patches their absolute file offsets, and emits a self-contained
 CORE/END container; empty buffers retain the zero descriptor convention.
+An overload accepts explicitly ordered blocks before and after CORE, allowing
+typed identity, mapper, RTC, and accessory metadata to share the same buffer
+layout while retaining the writer's ordering checks.
 `ReadCoreWithBuffers` performs one complete-container validation and returns
 the CORE metadata with all seven external buffers detached into an owned
 snapshot, giving future state loading a transactional read boundary.
