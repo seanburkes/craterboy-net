@@ -1902,6 +1902,36 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void GameBoyModelClassifiesCgbAgbAndGbpFamilies()
+    {
+        foreach (var model in new[] { GameBoyModel.Cgb0, GameBoyModel.CgbA, GameBoyModel.CgbB, GameBoyModel.CgbC, GameBoyModel.CgbD, GameBoyModel.CgbE })
+        {
+            Assert.True(model.IsCgbRevision());
+            Assert.False(model.IsAgb());
+            Assert.False(model.IsGbp());
+            Assert.True(model.IsColor());
+        }
+
+        Assert.True(GameBoyModel.AgbA.IsAgb());
+        Assert.False(GameBoyModel.AgbA.IsCgbRevision());
+        Assert.False(GameBoyModel.AgbA.IsGbp());
+        Assert.True(GameBoyModel.AgbA.IsColor());
+
+        Assert.True(GameBoyModel.GbpA.IsGbp());
+        Assert.False(GameBoyModel.GbpA.IsCgbRevision());
+        Assert.False(GameBoyModel.GbpA.IsAgb());
+        Assert.True(GameBoyModel.GbpA.IsColor());
+
+        foreach (var model in new[] { GameBoyModel.DmgB, GameBoyModel.Mgb, GameBoyModel.Sgb, GameBoyModel.Sgb2 })
+        {
+            Assert.False(model.IsCgbRevision());
+            Assert.False(model.IsAgb());
+            Assert.False(model.IsGbp());
+            Assert.False(model.IsColor());
+        }
+    }
+
+    [Fact]
     public void InputRecordingRejectsInvalidEventsAndTrailingData()
     {
         using var invalidMagic = new MemoryStream(new byte[] { (byte)'N', (byte)'O', (byte)'P', (byte)'E' });
