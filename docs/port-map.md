@@ -36,6 +36,8 @@ CORE model validation accepts the defined SameBoy family/revision identifiers
 and rejects unsupported prefixes or revision placements at both boundaries.
 `BessReader.ReadCoreWithBuffers` provides one-pass validated CORE metadata and
 owned external-buffer snapshots for transactional state loading.
+`BessReader.ReadSnapshot` adds the typed optional metadata to the same
+one-pass, owned aggregate and preserves null for absent sections.
 
 The test-only oracle is built from the pinned checkout by
 `tests/native/build-oracle.sh`. Its ABI deliberately exposes only model IDs,

@@ -2662,6 +2662,34 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessReaderReadsTypedOptionalBlocksAsOneSnapshot()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        var info = new BessInfo("CRATERBOY       "u8.ToArray(), 0xA55A);
+        var writes = new[] { new BessMbcWrite(0x2000, 3), new BessMbcWrite(0xA000, 0x5A) };
+        using var source = new MemoryStream();
+        BessWriter.WriteCoreWithBuffers(
+            source,
+            core,
+            new BessCoreBuffers(new byte[] { 1, 2 }, default, default, default, default, default, default),
+            new[] { BessWriter.CreateNameBlock("Craterboy"), BessWriter.CreateInfoBlock(info) },
+            new[] { BessWriter.CreateMbcBlock(writes) });
+        source.Position = 0;
+
+        var snapshot = BessReader.ReadSnapshot(source);
+
+        Assert.Equal("Craterboy", snapshot.Name);
+        Assert.NotNull(snapshot.Info);
+        Assert.Equal(info.Title.ToArray(), snapshot.Info!.Value.Title.ToArray());
+        Assert.Equal(info.GlobalChecksum, snapshot.Info.Value.GlobalChecksum);
+        Assert.Equal(writes, snapshot.Mbc);
+        Assert.Equal(new byte[] { 1, 2 }, snapshot.Core.Buffers.Ram.ToArray());
+        Assert.Null(snapshot.Rtc);
+        Assert.Null(snapshot.Sgb);
+        Assert.True(source.CanRead);
+    }
+
+    [Fact]
     public void BessReaderParsesOptionalInfoMetadata()
     {
         var info = new byte[0x12];
