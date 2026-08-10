@@ -2605,6 +2605,35 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessReaderReadsCoreAndOwnedBuffersAsOneSnapshot()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        var buffers = new BessCoreBuffers(
+            new byte[] { 1, 2 },
+            new byte[] { 3 },
+            Array.Empty<byte>(),
+            new byte[] { 4 },
+            new byte[] { 5, 6 },
+            new byte[] { 7 },
+            new byte[] { 8, 9 });
+        using var source = new MemoryStream();
+        BessWriter.WriteCoreWithBuffers(source, core, buffers);
+        source.Position = 0;
+
+        var snapshot = BessReader.ReadCoreWithBuffers(source);
+
+        Assert.Equal(core.ModelIdentifier, snapshot.Core.ModelIdentifier);
+        Assert.Equal(buffers.Ram.ToArray(), snapshot.Buffers.Ram.ToArray());
+        Assert.Equal(buffers.Vram.ToArray(), snapshot.Buffers.Vram.ToArray());
+        Assert.Equal(buffers.MbcRam.ToArray(), snapshot.Buffers.MbcRam.ToArray());
+        Assert.Equal(buffers.Oam.ToArray(), snapshot.Buffers.Oam.ToArray());
+        Assert.Equal(buffers.Hram.ToArray(), snapshot.Buffers.Hram.ToArray());
+        Assert.Equal(buffers.BackgroundPalettes.ToArray(), snapshot.Buffers.BackgroundPalettes.ToArray());
+        Assert.Equal(buffers.ObjectPalettes.ToArray(), snapshot.Buffers.ObjectPalettes.ToArray());
+        Assert.True(source.CanRead);
+    }
+
+    [Fact]
     public void BessReaderParsesOptionalInfoMetadata()
     {
         var info = new byte[0x12];
