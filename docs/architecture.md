@@ -128,8 +128,9 @@ Channel 3 NR32 volume code 0 correctly mutes its PCM contribution.
 The implementation favors explicit state and opcode behavior over object
 layout compatibility with C. BESS container parsing now validates the
 little-endian footer, block bounds, required `CORE`/`END` structure, and
-known-block ordering and duplicate known-block rejection while preserving unknown blocks for forward-compatible
-callers. Its `CORE` parser validates version/model/execution metadata and
+known-block ordering and duplicate known-block rejection while preserving
+repeated unknown blocks for forward-compatible callers. Its `CORE` parser
+validates version/model/execution metadata and
 exposes CPU, I/O, and external-buffer descriptors, rejecting zero-sized
 descriptors with offsets and all ranges outside the file; emulator state
 loading can retrieve validated external buffer bytes through the same boundary;
