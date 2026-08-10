@@ -2099,12 +2099,27 @@ public sealed class KernelTests
             new[] { new BessBlock("MBC ", ReadOnlyMemory<byte>.Empty), new BessBlock("CORE", ReadOnlyMemory<byte>.Empty) },
             new[] { new BessBlock("CORE", ReadOnlyMemory<byte>.Empty), new BessBlock("END ", ReadOnlyMemory<byte>.Empty) },
             new[] { new BessBlock("éééé", ReadOnlyMemory<byte>.Empty), new BessBlock("CORE", ReadOnlyMemory<byte>.Empty) },
+            new[] { new BessBlock("NAME", ReadOnlyMemory<byte>.Empty), new BessBlock("NAME", ReadOnlyMemory<byte>.Empty), new BessBlock("CORE", ReadOnlyMemory<byte>.Empty) },
         })
         {
             using var destination = new MemoryStream();
             Assert.Throws<ArgumentException>(() => BessWriter.Write(destination, blocks));
             Assert.Equal(0, destination.Length);
         }
+    }
+
+    [Fact]
+    public void BessReaderRejectsDuplicateKnownBlocks()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "MBC ", new byte[3]);
+            WriteBessBlock(stream, "MBC ", new byte[3]);
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Throws<InvalidDataException>(() => BessReader.Read(source));
     }
 
     [Fact]
