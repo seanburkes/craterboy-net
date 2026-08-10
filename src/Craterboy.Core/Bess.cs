@@ -275,15 +275,17 @@ public static class BessWriter
     private static void ValidateBlocks(IReadOnlyList<BessBlock> blocks)
     {
         var foundCore = false;
+        var seenKnownBlocks = new HashSet<string>(StringComparer.Ordinal);
         foreach (var block in blocks)
         {
             if (block.Identifier.Length != 4 || block.Identifier.Any(character => character > 0x7F))
                 throw new ArgumentException("BESS block identifiers must contain four ASCII characters.", nameof(blocks));
             if (block.Identifier == "END ")
                 throw new ArgumentException("BESS END is written automatically.", nameof(blocks));
+            if (IsKnownBlock(block.Identifier) && !seenKnownBlocks.Add(block.Identifier))
+                throw new ArgumentException($"BESS contains duplicate {block.Identifier} blocks.", nameof(blocks));
             if (block.Identifier == "CORE")
             {
-                if (foundCore) throw new ArgumentException("BESS contains duplicate CORE blocks.", nameof(blocks));
                 foundCore = true;
             }
             else if (block.Identifier is "NAME" or "INFO")
@@ -300,6 +302,9 @@ public static class BessWriter
         if (!foundCore)
             throw new ArgumentException("BESS CORE block is required.", nameof(blocks));
     }
+
+    private static bool IsKnownBlock(string identifier) => identifier is
+        "CORE" or "NAME" or "INFO" or "XOAM" or "MBC " or "RTC " or "HUC3" or "MBC7" or "TPP1" or "SGB ";
 
     private static void WriteBlock(Stream destination, string identifier, ReadOnlySpan<byte> payload)
     {
@@ -329,6 +334,9 @@ public static class BessReader
 {
     private const int CoreMinimumLength = 0xD0;
 
+    private static bool IsKnownBlock(string identifier) => identifier is
+        "CORE" or "NAME" or "INFO" or "XOAM" or "MBC " or "RTC " or "HUC3" or "MBC7" or "TPP1" or "SGB ";
+
     public static IReadOnlyList<BessBlock> Read(Stream source)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -346,6 +354,7 @@ public static class BessReader
         var blocks = new List<BessBlock>();
         var position = checked((int)blockOffset);
         var foundCore = false;
+        var seenKnownBlocks = new HashSet<string>(StringComparer.Ordinal);
         while (position < footerOffset)
         {
             if (footerOffset - position < 8)
@@ -361,10 +370,11 @@ public static class BessReader
                 throw new InvalidDataException("BESS block extends beyond the footer.");
 
             var payload = data.AsMemory(position, checked((int)payloadLength));
+            if (IsKnownBlock(identifier) && !seenKnownBlocks.Add(identifier))
+                throw new InvalidDataException($"BESS contains duplicate {identifier} blocks.");
             switch (identifier)
             {
                 case "CORE":
-                    if (foundCore) throw new InvalidDataException("BESS contains duplicate CORE blocks.");
                     foundCore = true;
                     break;
                 case "NAME":
