@@ -171,7 +171,8 @@ preserves the MR4 register.
 Its typed SGB serializer emits all seven buffer descriptors and validates the
 encoded player-count/current-player state.
 Writer preflight also rejects zero-sized descriptors that carry nonzero
-offsets, matching the reader's bounds invariant before any bytes are emitted.
+offsets and ranges that overflow the 32-bit file-offset space, matching the
+reader's bounds invariant before any bytes are emitted.
 `PeekMemory` is intended to remain side-effect free while
 `ReadMemory` and `WriteMemory` represent bus operations as devices gain
 read/write side effects.
