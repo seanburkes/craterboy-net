@@ -81,6 +81,18 @@ public readonly record struct BessCoreBuffers(
 
 public readonly record struct BessCoreState(BessCore Core, BessCoreBuffers Buffers);
 
+public readonly record struct BessStateSnapshot(
+    BessCoreState Core,
+    BessInfo? Info,
+    string? Name,
+    IReadOnlyList<BessMbcWrite>? Mbc,
+    BessRtc? Rtc,
+    byte[]? ExtraOam,
+    BessMbc7? Mbc7,
+    BessHuc3? Huc3,
+    BessTpp1? Tpp1,
+    BessSgb? Sgb);
+
 internal static class BessModelIdentifier
 {
     public static bool IsValid(string model)
@@ -513,6 +525,41 @@ public static class BessReader
         return ReadCoreState(buffer.ToArray());
     }
 
+    public static BessStateSnapshot ReadSnapshot(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        using var buffer = new MemoryStream();
+        source.CopyTo(buffer);
+        var data = buffer.ToArray();
+        var blocks = Read(new MemoryStream(data));
+        BessBlock? Find(string identifier)
+        {
+            var block = blocks.FirstOrDefault(candidate => candidate.Identifier == identifier);
+            return block.Identifier is null ? null : block;
+        }
+
+        var info = Find("INFO");
+        var name = Find("NAME");
+        var mbc = Find("MBC ");
+        var rtc = Find("RTC ");
+        var extraOam = Find("XOAM");
+        var mbc7 = Find("MBC7");
+        var huc3 = Find("HUC3");
+        var tpp1 = Find("TPP1");
+        var sgb = Find("SGB ");
+        return new BessStateSnapshot(
+            ReadCoreState(data, blocks),
+            info is null ? null : ParseInfo(info.Value.Payload.Span),
+            name is null ? null : ParseName(name.Value.Payload.Span),
+            mbc is null ? null : ParseMbc(mbc.Value.Payload.Span),
+            rtc is null ? null : ParseRtc(rtc.Value.Payload.Span),
+            extraOam is null ? null : ParseExtraOam(extraOam.Value.Payload.Span),
+            mbc7 is null ? null : ParseMbc7(mbc7.Value.Payload.Span),
+            huc3 is null ? null : ParseHuc3(huc3.Value.Payload.Span),
+            tpp1 is null ? null : ParseTpp1(tpp1.Value.Payload.Span),
+            sgb is null ? null : ParseSgb(sgb.Value.Payload.Span));
+    }
+
     public static byte[] ReadBuffer(Stream source, BessBufferDescriptor descriptor)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -640,7 +687,12 @@ public static class BessReader
 
     private static BessCoreState ReadCoreState(byte[] data)
     {
-        var core = Read(new MemoryStream(data)).FirstOrDefault(block => block.Identifier == "CORE");
+        return ReadCoreState(data, Read(new MemoryStream(data)));
+    }
+
+    private static BessCoreState ReadCoreState(byte[] data, IReadOnlyList<BessBlock> blocks)
+    {
+        var core = blocks.FirstOrDefault(block => block.Identifier == "CORE");
         if (core.Identifier is null)
             throw new InvalidDataException("BESS CORE block is missing.");
         var parsed = ParseCore(core.Payload.Span);

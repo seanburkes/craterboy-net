@@ -188,6 +188,9 @@ layout while retaining the writer's ordering checks.
 `ReadCoreWithBuffers` performs one complete-container validation and returns
 the CORE metadata with all seven external buffers detached into an owned
 snapshot, giving future state loading a transactional read boundary.
+`ReadSnapshot` extends that boundary across typed NAME/INFO, mapper, RTC, and
+accessory blocks, returning absent optional sections as null without exposing
+the parser's internal block storage.
 CORE model identifiers are checked against the BESS family/revision forms
 used by SameBoy (`GD`/`GM`, `SN`/`SP`/`S2`, and `CC`/`CA`) before writing or
 loading state.
