@@ -1929,6 +1929,17 @@ public sealed class KernelTests
             Assert.False(model.IsGbp());
             Assert.False(model.IsColor());
         }
+
+        Assert.True(GameBoyModel.DmgB.IsDmg());
+        Assert.False(GameBoyModel.Mgb.IsDmg());
+        Assert.True(GameBoyModel.Mgb.IsMgb());
+        Assert.False(GameBoyModel.DmgB.IsMgb());
+        Assert.True(GameBoyModel.Sgb.IsSgb());
+        Assert.False(GameBoyModel.Sgb.IsSgb2());
+        Assert.True(GameBoyModel.Sgb2.IsSgb2());
+        Assert.False(GameBoyModel.Sgb2.IsSgb());
+        Assert.True(GameBoyModel.Sgb.IsSuperGameBoy());
+        Assert.True(GameBoyModel.Sgb2.IsSuperGameBoy());
     }
 
     [Fact]

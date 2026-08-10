@@ -5,9 +5,10 @@ and the only authority that advances T-cycles. Host time, entropy, and serial
 I/O enter through explicit interfaces; file access and presentation stay out
 of the core.
 
-`GameBoyModel` exposes separate `IsCgbRevision`, `IsAgb`, and `IsGbp`
-classification helpers. `IsColor` is derived from those families so later
-revision-specific behavior cannot accidentally depend on enum ordering.
+`GameBoyModel` exposes separate DMG, MGB, CGB-revision, AGB, GBP, SGB, and
+SGB2 classification helpers. `IsColor` and `IsSuperGameBoy` are derived from
+those families so later revision-specific behavior cannot accidentally depend
+on enum ordering.
 
 The current state kernel groups CPU registers and the master scheduler in
 `EmulatorState`. The scheduler advances registered participants one T-cycle at
