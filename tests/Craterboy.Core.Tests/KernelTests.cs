@@ -402,6 +402,17 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void JoypadSelectionSwitchIsImmediateOnCgbFamily()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF00, 0x10);
+        emulator.SetButtonState(GameBoyButton.Right, true);
+        emulator.WriteMemory(0xFF00, 0x20);
+
+        Assert.Equal((byte)0x0E, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+    }
+
+    [Fact]
     public void JoypadFiltersOpposingDirectionInputs()
     {
         var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
