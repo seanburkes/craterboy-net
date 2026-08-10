@@ -79,6 +79,24 @@ public readonly record struct BessCoreBuffers(
     ReadOnlyMemory<byte> BackgroundPalettes,
     ReadOnlyMemory<byte> ObjectPalettes);
 
+internal static class BessModelIdentifier
+{
+    public static bool IsValid(string model)
+    {
+        if (model.Length != 4 || model.Any(character => character > 0x7F) || model[3] != ' ')
+            return false;
+
+        return model[..2] switch
+        {
+            "GD" => model[2] is ' ' or '0' or >= 'A' and <= 'C',
+            "GM" or "SN" or "SP" or "S2" => model[2] == ' ',
+            "CC" => model[2] is ' ' or '0' or >= 'A' and <= 'E',
+            "CA" => model[2] is ' ' or '0' or 'A' or 'B',
+            _ => false,
+        };
+    }
+}
+
 public static class BessWriter
 {
     public static BessBlock CreateInfoBlock(BessInfo info)
@@ -220,8 +238,8 @@ public static class BessWriter
     {
         if (core.MajorVersion != 1)
             throw new ArgumentException("BESS CORE major version must be 1.", nameof(core));
-        if (core.ModelIdentifier.Length != 4 || core.ModelIdentifier.Any(character => character > 0x7F) || core.ModelIdentifier[3] != ' ')
-            throw new ArgumentException("BESS CORE model identifier must be four ASCII characters ending in a space.", nameof(core));
+        if (!BessModelIdentifier.IsValid(core.ModelIdentifier))
+            throw new ArgumentException("BESS CORE model identifier is not a supported SameBoy model.", nameof(core));
         if (core.ExecutionMode > 2)
             throw new ArgumentException("BESS CORE execution mode is invalid.", nameof(core));
         if (core.IoRegisters.Length != 0x80)
@@ -578,16 +596,9 @@ public static class BessReader
         var minor = BinaryPrimitives.ReadUInt16LittleEndian(payload[2..]);
         if (major != 1) throw new InvalidDataException("BESS CORE major version is unsupported.");
 
-        var modelBytes = payload.Slice(4, 4);
-        if (modelBytes.IndexOfAnyInRange((byte)0x80, byte.MaxValue) >= 0 || modelBytes[3] != (byte)' ')
-            throw new InvalidDataException("BESS CORE model identifier is invalid.");
-        var model = Encoding.ASCII.GetString(modelBytes);
-        if (model[0] is not ('G' or 'S' or 'C'))
-            throw new InvalidDataException("BESS CORE model family is unsupported.");
-        if (model[0] == 'G' && model[1] is not (' ' or 'D' or 'M') ||
-            model[0] == 'S' && model[1] is not (' ' or 'N' or 'P' or '2') ||
-            model[0] == 'C' && model[1] is not (' ' or 'C' or 'A'))
-            throw new InvalidDataException("BESS CORE model identifier is invalid.");
+        var model = Encoding.ASCII.GetString(payload.Slice(4, 4));
+        if (!BessModelIdentifier.IsValid(model))
+            throw new InvalidDataException("BESS CORE model identifier is unsupported or invalid.");
         if (payload[0x17] != 0 || payload[0x16] > 2)
             throw new InvalidDataException("BESS CORE execution state is invalid.");
 

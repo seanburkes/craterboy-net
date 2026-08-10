@@ -2470,6 +2470,27 @@ public sealed class KernelTests
         Assert.Throws<ArgumentException>(() => BessWriter.CreateSgbBlock(invalidSgb));
     }
 
+    [Theory]
+    [InlineData("GD  ")]
+    [InlineData("GDA ")]
+    [InlineData("GM  ")]
+    [InlineData("SN  ")]
+    [InlineData("SP  ")]
+    [InlineData("S2  ")]
+    [InlineData("CC  ")]
+    [InlineData("CCE ")]
+    [InlineData("CA  ")]
+    [InlineData("CAB ")]
+    public void BessRoundTripsKnownModelIdentifiers(string model)
+    {
+        var core = new BessCore(1, 0, model, 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        using var stream = new MemoryStream();
+        BessWriter.Write(stream, new[] { BessWriter.CreateCoreBlock(core) });
+        stream.Position = 0;
+
+        Assert.Equal(model, BessReader.ReadCore(stream).ModelIdentifier);
+    }
+
     [Fact]
     public void BessWriterRejectsInvalidCoreMetadata()
     {
@@ -2478,6 +2499,9 @@ public sealed class KernelTests
 
         var invalidModel = new BessCore(1, 0, "GDXX", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
         Assert.Throws<ArgumentException>(() => BessWriter.CreateCoreBlock(invalidModel));
+
+        var invalidFamily = invalidModel with { ModelIdentifier = "GZ  " };
+        Assert.Throws<ArgumentException>(() => BessWriter.CreateCoreBlock(invalidFamily));
     }
 
     [Fact]

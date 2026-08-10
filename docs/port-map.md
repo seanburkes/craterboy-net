@@ -30,6 +30,8 @@ after differential evidence is added against the pinned native oracle.
 The typed `BessWriter.WriteCoreWithBuffers` path now lays out CORE external
 buffers, patches absolute descriptors, and emits the matching CORE/END block
 container; empty buffers use the format's zero descriptor convention.
+CORE model validation accepts the defined SameBoy family/revision identifiers
+and rejects unsupported prefixes or revision placements at both boundaries.
 
 The test-only oracle is built from the pinned checkout by
 `tests/native/build-oracle.sh`. Its ABI deliberately exposes only model IDs,
