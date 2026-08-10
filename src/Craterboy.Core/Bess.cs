@@ -320,6 +320,8 @@ public static class BessWriter
     {
         if (descriptor.Size == 0 && descriptor.Offset != 0)
             throw new ArgumentException($"BESS {name} buffer has an offset without data.");
+        if (descriptor.Size > uint.MaxValue - descriptor.Offset)
+            throw new ArgumentException($"BESS {name} buffer range overflows the file offset limit.");
     }
 }
 
