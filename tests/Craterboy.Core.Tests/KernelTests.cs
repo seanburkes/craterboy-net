@@ -2027,6 +2027,7 @@ public sealed class KernelTests
         var blockOffset = source.Position;
         WriteBessBlock(source, "NAME", "SameBoy"u8.ToArray());
         WriteBessBlock(source, "FUTR", new byte[] { 1, 2, 3 });
+        WriteBessBlock(source, "FUTR", new byte[] { 4, 5 });
         WriteBessBlock(source, "CORE", new byte[] { 1, 0, 0, 0 });
         WriteBessBlock(source, "END ", Array.Empty<byte>());
         WriteBessFooter(source, checked((uint)blockOffset));
@@ -2034,8 +2035,9 @@ public sealed class KernelTests
 
         var blocks = BessReader.Read(source);
 
-        Assert.Equal(new[] { "NAME", "FUTR", "CORE", "END " }, blocks.Select(block => block.Identifier));
+        Assert.Equal(new[] { "NAME", "FUTR", "FUTR", "CORE", "END " }, blocks.Select(block => block.Identifier));
         Assert.Equal(new byte[] { 1, 2, 3 }, blocks[1].Payload.ToArray());
+        Assert.Equal(new byte[] { 4, 5 }, blocks[2].Payload.ToArray());
         Assert.True(source.CanRead);
     }
 
@@ -2077,6 +2079,8 @@ public sealed class KernelTests
         BessWriter.Write(stream, new[]
         {
             new BessBlock("NAME", "Craterboy"u8.ToArray()),
+            new BessBlock("FUTR", new byte[] { 1, 2, 3 }),
+            new BessBlock("FUTR", new byte[] { 4, 5 }),
             new BessBlock("CORE", new byte[] { 1, 2, 3 }),
         });
         var endPosition = stream.Position;
@@ -2084,8 +2088,9 @@ public sealed class KernelTests
 
         var blocks = BessReader.Read(stream);
 
-        Assert.Equal(new[] { "NAME", "CORE", "END " }, blocks.Select(block => block.Identifier));
+        Assert.Equal(new[] { "NAME", "FUTR", "FUTR", "CORE", "END " }, blocks.Select(block => block.Identifier));
         Assert.Equal(new byte[] { 1, 2, 3 }, blocks[1].Payload.ToArray());
+        Assert.Equal(new byte[] { 4, 5 }, blocks[2].Payload.ToArray());
         Assert.Equal(endPosition, stream.Length);
         Assert.True(stream.CanRead);
     }
