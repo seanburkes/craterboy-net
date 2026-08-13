@@ -557,7 +557,7 @@ public static class BessReader
             mbc7 is null ? null : ParseMbc7(mbc7.Value.Payload.Span),
             huc3 is null ? null : ParseHuc3(huc3.Value.Payload.Span),
             tpp1 is null ? null : ParseTpp1(tpp1.Value.Payload.Span),
-            sgb is null ? null : ParseSgb(sgb.Value.Payload.Span));
+            sgb is null ? null : ParseValidatedSgb(sgb.Value.Payload.Span, data.Length));
     }
 
     public static byte[] ReadBuffer(Stream source, BessBufferDescriptor descriptor)
@@ -829,6 +829,19 @@ public static class BessReader
             ReadDescriptor(payload, 0x28),
             ReadDescriptor(payload, 0x30),
             multiplayerState);
+    }
+
+    private static BessSgb ParseValidatedSgb(ReadOnlySpan<byte> payload, int fileLength)
+    {
+        var parsed = ParseSgb(payload);
+        ValidateDescriptor(parsed.BorderTiles, fileLength, "SGB border tiles");
+        ValidateDescriptor(parsed.BorderTilemap, fileLength, "SGB border tilemap");
+        ValidateDescriptor(parsed.BorderPalettes, fileLength, "SGB border palettes");
+        ValidateDescriptor(parsed.ActivePalettes, fileLength, "SGB active palettes");
+        ValidateDescriptor(parsed.RamPalettes, fileLength, "SGB RAM palettes");
+        ValidateDescriptor(parsed.AttributeMap, fileLength, "SGB attribute map");
+        ValidateDescriptor(parsed.AttributeFiles, fileLength, "SGB attribute files");
+        return parsed;
     }
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
