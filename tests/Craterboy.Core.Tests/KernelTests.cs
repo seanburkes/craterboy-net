@@ -2690,6 +2690,19 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessReaderSnapshotValidatesSgbBufferBounds()
+    {
+        using var source = CreateBess((stream, _) =>
+        {
+            WriteBessBlock(stream, "CORE", Array.Empty<byte>());
+            WriteBessBlock(stream, "SGB ", CreateInvalidSgbBuffer());
+            WriteBessBlock(stream, "END ", Array.Empty<byte>());
+        });
+
+        Assert.Throws<InvalidDataException>(() => BessReader.ReadSnapshot(source));
+    }
+
+    [Fact]
     public void BessReaderParsesOptionalInfoMetadata()
     {
         var info = new byte[0x12];

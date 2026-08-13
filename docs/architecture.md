@@ -191,6 +191,8 @@ snapshot, giving future state loading a transactional read boundary.
 `ReadSnapshot` extends that boundary across typed NAME/INFO, mapper, RTC, and
 accessory blocks, returning absent optional sections as null without exposing
 the parser's internal block storage.
+Its SGB path applies the same complete-file bounds validation to all seven
+border, palette, and attribute descriptors before returning the snapshot.
 CORE model identifiers are checked against the BESS family/revision forms
 used by SameBoy (`GD`/`GM`, `SN`/`SP`/`S2`, and `CC`/`CA`) before writing or
 loading state.
