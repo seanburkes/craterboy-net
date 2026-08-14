@@ -367,6 +367,53 @@ public static class BessWriter
         Write(destination, blocks);
     }
 
+    public static void WriteCoreAndSgbWithBuffers(
+        Stream destination,
+        BessCore core,
+        BessCoreBuffers coreBuffers,
+        BessSgb sgb,
+        BessSgbBuffers sgbBuffers,
+        IReadOnlyList<BessBlock> beforeCore,
+        IReadOnlyList<BessBlock> afterSgb)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        ArgumentNullException.ThrowIfNull(beforeCore);
+        ArgumentNullException.ThrowIfNull(afterSgb);
+        if (!destination.CanSeek)
+            throw new NotSupportedException("BESS writing requires a seekable destination.");
+        if (destination.Position is < 0 or > uint.MaxValue)
+            throw new InvalidOperationException("BESS buffer offset exceeds the format limit.");
+
+        var offset = destination.Position;
+        var patchedCore = core with
+        {
+            Ram = WriteExternalBuffer(destination, coreBuffers.Ram, ref offset),
+            Vram = WriteExternalBuffer(destination, coreBuffers.Vram, ref offset),
+            MbcRam = WriteExternalBuffer(destination, coreBuffers.MbcRam, ref offset),
+            Oam = WriteExternalBuffer(destination, coreBuffers.Oam, ref offset),
+            Hram = WriteExternalBuffer(destination, coreBuffers.Hram, ref offset),
+            BackgroundPalettes = WriteExternalBuffer(destination, coreBuffers.BackgroundPalettes, ref offset),
+            ObjectPalettes = WriteExternalBuffer(destination, coreBuffers.ObjectPalettes, ref offset),
+        };
+        var patchedSgb = sgb with
+        {
+            BorderTiles = WriteExternalBuffer(destination, sgbBuffers.BorderTiles, ref offset),
+            BorderTilemap = WriteExternalBuffer(destination, sgbBuffers.BorderTilemap, ref offset),
+            BorderPalettes = WriteExternalBuffer(destination, sgbBuffers.BorderPalettes, ref offset),
+            ActivePalettes = WriteExternalBuffer(destination, sgbBuffers.ActivePalettes, ref offset),
+            RamPalettes = WriteExternalBuffer(destination, sgbBuffers.RamPalettes, ref offset),
+            AttributeMap = WriteExternalBuffer(destination, sgbBuffers.AttributeMap, ref offset),
+            AttributeFiles = WriteExternalBuffer(destination, sgbBuffers.AttributeFiles, ref offset),
+        };
+
+        var blocks = new List<BessBlock>(beforeCore.Count + afterSgb.Count + 2);
+        blocks.AddRange(beforeCore);
+        blocks.Add(CreateCoreBlock(patchedCore));
+        blocks.Add(CreateSgbBlock(patchedSgb));
+        blocks.AddRange(afterSgb);
+        Write(destination, blocks);
+    }
+
     private static void ValidateBlocks(IReadOnlyList<BessBlock> blocks)
     {
         var foundCore = false;

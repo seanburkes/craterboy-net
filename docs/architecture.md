@@ -196,6 +196,8 @@ border, palette, and attribute descriptors before returning the snapshot.
 When present, `ReadSnapshot` also detaches those seven SGB buffers into an
 owned `BessSgbBuffers` value so border and palette loading does not re-read the
 source stream.
+`WriteCoreAndSgbWithBuffers` provides the matching offset layout for CORE and
+SGB memory, inserting the required CORE and SGB blocks in validated order.
 CORE model identifiers are checked against the BESS family/revision forms
 used by SameBoy (`GD`/`GM`, `SN`/`SP`/`S2`, and `CC`/`CA`) before writing or
 loading state.

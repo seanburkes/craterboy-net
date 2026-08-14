@@ -2741,6 +2741,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterLaysOutCoreAndSgbBuffersForSnapshotRoundTrip()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        var sgb = new BessSgb(default, default, default, default, default, default, default, 0x10);
+        var coreBuffers = new BessCoreBuffers(new byte[] { 1 }, default, default, default, default, default, default);
+        var sgbBuffers = new BessSgbBuffers(
+            new byte[] { 2 }, new byte[] { 3 }, new byte[] { 4 }, new byte[] { 5 },
+            new byte[] { 6 }, new byte[] { 7 }, new byte[] { 8 });
+        using var stream = new MemoryStream();
+
+        BessWriter.WriteCoreAndSgbWithBuffers(stream, core, coreBuffers, sgb, sgbBuffers, Array.Empty<BessBlock>(), Array.Empty<BessBlock>());
+        stream.Position = 0;
+        var snapshot = BessReader.ReadSnapshot(stream);
+
+        Assert.Equal(new byte[] { 1 }, snapshot.Core.Buffers.Ram.ToArray());
+        Assert.NotNull(snapshot.SgbBuffers);
+        Assert.Equal(sgbBuffers.BorderTiles, snapshot.SgbBuffers!.Value.BorderTiles);
+        Assert.Equal(sgbBuffers.AttributeFiles, snapshot.SgbBuffers.Value.AttributeFiles);
+    }
+
+    [Fact]
     public void BessReaderParsesOptionalInfoMetadata()
     {
         var info = new byte[0x12];
