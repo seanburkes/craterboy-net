@@ -46,6 +46,7 @@ transactional loading.
 buffers without caller-managed file offsets.
 `BessWriter.WriteSnapshot` serializes the aggregate typed snapshot back into a
 complete BESS container and requires SGB external buffers when SGB is present.
+Round-trip coverage now exercises every typed optional persistence section.
 Writer preflight rejects invalid ordering before emitting external data,
 preserving the transactional write boundary.
 

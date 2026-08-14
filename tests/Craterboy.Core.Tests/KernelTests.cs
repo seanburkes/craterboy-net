@@ -2791,6 +2791,41 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterRoundTripsEveryTypedOptionalSnapshotSection()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        var snapshot = new BessStateSnapshot(
+            new BessCoreState(core, new BessCoreBuffers(default, default, default, default, default, default, default)),
+            new BessInfo("CRATERBOY       "u8.ToArray(), 0xA55A),
+            "Craterboy",
+            new[] { new BessMbcWrite(0x2000, 3) },
+            new BessRtc(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1_700_000_000),
+            new byte[0x60],
+            new BessMbc7(0x3F, 7, 0x1234, 0x5678, 0x9ABC, 0xDEF0),
+            new BessHuc3(1_700_000_000, 1234, 56, 1250, 57, true),
+            new BessTpp1(1_700_000_000, new byte[] { 1, 2, 3, 4 }, new byte[] { 5, 6, 7, 8 }, 0xA5),
+            new BessSgb(default, default, default, default, default, default, default, 0x10),
+            new BessSgbBuffers(new byte[] { 11 }, new byte[] { 12 }, new byte[] { 13 }, new byte[] { 14 }, new byte[] { 15 }, new byte[] { 16 }, new byte[] { 17 }));
+        using var stream = new MemoryStream();
+
+        BessWriter.WriteSnapshot(stream, snapshot);
+        stream.Position = 0;
+        var restored = BessReader.ReadSnapshot(stream);
+
+        Assert.NotNull(restored.Info);
+        Assert.Equal(snapshot.Info!.Value.GlobalChecksum, restored.Info!.Value.GlobalChecksum);
+        Assert.Equal(snapshot.Name, restored.Name);
+        Assert.Equal(snapshot.Mbc, restored.Mbc);
+        Assert.Equal(snapshot.Rtc, restored.Rtc);
+        Assert.Equal(snapshot.ExtraOam, restored.ExtraOam);
+        Assert.Equal(snapshot.Mbc7, restored.Mbc7);
+        Assert.Equal(snapshot.Huc3, restored.Huc3);
+        Assert.Equal(snapshot.Tpp1!.Value.LastUnixSecond, restored.Tpp1!.Value.LastUnixSecond);
+        Assert.Equal(snapshot.Tpp1.Value.RealRtcData.ToArray(), restored.Tpp1.Value.RealRtcData.ToArray());
+        Assert.Equal(snapshot.SgbBuffers!.Value.AttributeFiles, restored.SgbBuffers!.Value.AttributeFiles);
+    }
+
+    [Fact]
     public void BessBufferWritersPreflightOrderingBeforeWritingExternalData()
     {
         var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
