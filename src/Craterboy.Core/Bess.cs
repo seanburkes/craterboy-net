@@ -338,6 +338,7 @@ public static class BessWriter
         ArgumentNullException.ThrowIfNull(afterCore);
         if (!destination.CanSeek)
             throw new NotSupportedException("BESS writing requires a seekable destination.");
+        ValidateCoreBufferWriteInputs(core, beforeCore, afterCore);
         if (destination.Position is < 0 or > uint.MaxValue)
             throw new InvalidOperationException("BESS buffer offset exceeds the format limit.");
 
@@ -381,6 +382,7 @@ public static class BessWriter
         ArgumentNullException.ThrowIfNull(afterSgb);
         if (!destination.CanSeek)
             throw new NotSupportedException("BESS writing requires a seekable destination.");
+        ValidateCoreAndSgbBufferWriteInputs(core, sgb, beforeCore, afterSgb);
         if (destination.Position is < 0 or > uint.MaxValue)
             throw new InvalidOperationException("BESS buffer offset exceeds the format limit.");
 
@@ -412,6 +414,59 @@ public static class BessWriter
         blocks.Add(CreateSgbBlock(patchedSgb));
         blocks.AddRange(afterSgb);
         Write(destination, blocks);
+    }
+
+    private static void ValidateCoreBufferWriteInputs(
+        BessCore core,
+        IReadOnlyList<BessBlock> beforeCore,
+        IReadOnlyList<BessBlock> afterCore)
+    {
+        var blocks = new List<BessBlock>(beforeCore.Count + afterCore.Count + 1);
+        blocks.AddRange(beforeCore);
+        blocks.Add(CreateCoreBlock(core with
+        {
+            Ram = default,
+            Vram = default,
+            MbcRam = default,
+            Oam = default,
+            Hram = default,
+            BackgroundPalettes = default,
+            ObjectPalettes = default,
+        }));
+        blocks.AddRange(afterCore);
+        ValidateBlocks(blocks);
+    }
+
+    private static void ValidateCoreAndSgbBufferWriteInputs(
+        BessCore core,
+        BessSgb sgb,
+        IReadOnlyList<BessBlock> beforeCore,
+        IReadOnlyList<BessBlock> afterSgb)
+    {
+        var blocks = new List<BessBlock>(beforeCore.Count + afterSgb.Count + 2);
+        blocks.AddRange(beforeCore);
+        blocks.Add(CreateCoreBlock(core with
+        {
+            Ram = default,
+            Vram = default,
+            MbcRam = default,
+            Oam = default,
+            Hram = default,
+            BackgroundPalettes = default,
+            ObjectPalettes = default,
+        }));
+        blocks.Add(CreateSgbBlock(sgb with
+        {
+            BorderTiles = default,
+            BorderTilemap = default,
+            BorderPalettes = default,
+            ActivePalettes = default,
+            RamPalettes = default,
+            AttributeMap = default,
+            AttributeFiles = default,
+        }));
+        blocks.AddRange(afterSgb);
+        ValidateBlocks(blocks);
     }
 
     private static void ValidateBlocks(IReadOnlyList<BessBlock> blocks)
