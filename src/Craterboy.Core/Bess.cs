@@ -48,6 +48,15 @@ public readonly record struct BessSgb(
     BessBufferDescriptor AttributeFiles,
     byte MultiplayerState);
 
+public readonly record struct BessSgbBuffers(
+    byte[] BorderTiles,
+    byte[] BorderTilemap,
+    byte[] BorderPalettes,
+    byte[] ActivePalettes,
+    byte[] RamPalettes,
+    byte[] AttributeMap,
+    byte[] AttributeFiles);
+
 public readonly record struct BessCore(
     ushort MajorVersion,
     ushort MinorVersion,
@@ -91,7 +100,8 @@ public readonly record struct BessStateSnapshot(
     BessMbc7? Mbc7,
     BessHuc3? Huc3,
     BessTpp1? Tpp1,
-    BessSgb? Sgb);
+    BessSgb? Sgb,
+    BessSgbBuffers? SgbBuffers);
 
 internal static class BessModelIdentifier
 {
@@ -547,6 +557,7 @@ public static class BessReader
         var huc3 = Find("HUC3");
         var tpp1 = Find("TPP1");
         var sgb = Find("SGB ");
+        BessSgb? parsedSgb = sgb is null ? null : ParseValidatedSgb(sgb.Value.Payload.Span, data.Length);
         return new BessStateSnapshot(
             ReadCoreState(data, blocks),
             info is null ? null : ParseInfo(info.Value.Payload.Span),
@@ -557,7 +568,8 @@ public static class BessReader
             mbc7 is null ? null : ParseMbc7(mbc7.Value.Payload.Span),
             huc3 is null ? null : ParseHuc3(huc3.Value.Payload.Span),
             tpp1 is null ? null : ParseTpp1(tpp1.Value.Payload.Span),
-            sgb is null ? null : ParseValidatedSgb(sgb.Value.Payload.Span, data.Length));
+            parsedSgb,
+            parsedSgb is null ? null : ReadSgbBuffers(data, parsedSgb.Value));
     }
 
     public static byte[] ReadBuffer(Stream source, BessBufferDescriptor descriptor)
@@ -843,6 +855,16 @@ public static class BessReader
         ValidateDescriptor(parsed.AttributeFiles, fileLength, "SGB attribute files");
         return parsed;
     }
+
+    private static BessSgbBuffers ReadSgbBuffers(byte[] data, BessSgb state) =>
+        new(
+            ReadBuffer(data, state.BorderTiles, "SGB border tiles"),
+            ReadBuffer(data, state.BorderTilemap, "SGB border tilemap"),
+            ReadBuffer(data, state.BorderPalettes, "SGB border palettes"),
+            ReadBuffer(data, state.ActivePalettes, "SGB active palettes"),
+            ReadBuffer(data, state.RamPalettes, "SGB RAM palettes"),
+            ReadBuffer(data, state.AttributeMap, "SGB attribute map"),
+            ReadBuffer(data, state.AttributeFiles, "SGB attribute files"));
 
     private static BessBufferDescriptor ReadDescriptor(ReadOnlySpan<byte> payload, int offset) =>
         new(BinaryPrimitives.ReadUInt32LittleEndian(payload[offset..]),

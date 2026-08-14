@@ -193,6 +193,9 @@ accessory blocks, returning absent optional sections as null without exposing
 the parser's internal block storage.
 Its SGB path applies the same complete-file bounds validation to all seven
 border, palette, and attribute descriptors before returning the snapshot.
+When present, `ReadSnapshot` also detaches those seven SGB buffers into an
+owned `BessSgbBuffers` value so border and palette loading does not re-read the
+source stream.
 CORE model identifiers are checked against the BESS family/revision forms
 used by SameBoy (`GD`/`GM`, `SN`/`SP`/`S2`, and `CC`/`CA`) before writing or
 loading state.
