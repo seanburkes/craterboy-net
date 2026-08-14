@@ -2762,6 +2762,35 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessWriterRoundTripsAggregateSnapshot()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        var sgb = new BessSgb(default, default, default, default, default, default, default, 0x10);
+        var snapshot = new BessStateSnapshot(
+            new BessCoreState(core, new BessCoreBuffers(new byte[] { 1 }, default, default, default, default, default, default)),
+            new BessInfo("CRATERBOY       "u8.ToArray(), 0xA55A),
+            "Craterboy",
+            new[] { new BessMbcWrite(0x2000, 3) },
+            null,
+            null,
+            null,
+            null,
+            null,
+            sgb,
+            new BessSgbBuffers(new byte[] { 2 }, new byte[] { 3 }, new byte[] { 4 }, new byte[] { 5 }, new byte[] { 6 }, new byte[] { 7 }, new byte[] { 8 }));
+        using var stream = new MemoryStream();
+
+        BessWriter.WriteSnapshot(stream, snapshot);
+        stream.Position = 0;
+        var restored = BessReader.ReadSnapshot(stream);
+
+        Assert.Equal(snapshot.Name, restored.Name);
+        Assert.Equal(snapshot.Mbc, restored.Mbc);
+        Assert.Equal(snapshot.Core.Buffers.Ram.ToArray(), restored.Core.Buffers.Ram.ToArray());
+        Assert.Equal(snapshot.SgbBuffers!.Value.BorderPalettes, restored.SgbBuffers!.Value.BorderPalettes);
+    }
+
+    [Fact]
     public void BessBufferWritersPreflightOrderingBeforeWritingExternalData()
     {
         var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);

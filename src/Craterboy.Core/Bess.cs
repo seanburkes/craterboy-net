@@ -416,6 +416,47 @@ public static class BessWriter
         Write(destination, blocks);
     }
 
+    public static void WriteSnapshot(Stream destination, BessStateSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        var beforeCore = new List<BessBlock>();
+        if (snapshot.Name is not null)
+            beforeCore.Add(CreateNameBlock(snapshot.Name));
+        if (snapshot.Info is { } info)
+            beforeCore.Add(CreateInfoBlock(info));
+
+        var afterCore = new List<BessBlock>();
+        if (snapshot.Mbc is not null)
+            afterCore.Add(CreateMbcBlock(snapshot.Mbc));
+        if (snapshot.Rtc is { } rtc)
+            afterCore.Add(CreateRtcBlock(rtc));
+        if (snapshot.ExtraOam is not null)
+            afterCore.Add(CreateExtraOamBlock(snapshot.ExtraOam));
+        if (snapshot.Mbc7 is { } mbc7)
+            afterCore.Add(CreateMbc7Block(mbc7));
+        if (snapshot.Huc3 is { } huc3)
+            afterCore.Add(CreateHuc3Block(huc3));
+        if (snapshot.Tpp1 is { } tpp1)
+            afterCore.Add(CreateTpp1Block(tpp1));
+
+        if (snapshot.Sgb is { } sgb)
+        {
+            if (snapshot.SgbBuffers is not { } sgbBuffers)
+                throw new ArgumentException("BESS SGB state requires its external buffers.", nameof(snapshot));
+            WriteCoreAndSgbWithBuffers(
+                destination,
+                snapshot.Core.Core,
+                snapshot.Core.Buffers,
+                sgb,
+                sgbBuffers,
+                beforeCore,
+                afterCore);
+            return;
+        }
+
+        WriteCoreWithBuffers(destination, snapshot.Core.Core, snapshot.Core.Buffers, beforeCore, afterCore);
+    }
+
     private static void ValidateCoreBufferWriteInputs(
         BessCore core,
         IReadOnlyList<BessBlock> beforeCore,

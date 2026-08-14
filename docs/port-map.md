@@ -44,6 +44,8 @@ Validated SGB snapshots include owned border, palette, and attribute bytes for
 transactional loading.
 `BessWriter.WriteCoreAndSgbWithBuffers` emits matching CORE/SGB external
 buffers without caller-managed file offsets.
+`BessWriter.WriteSnapshot` serializes the aggregate typed snapshot back into a
+complete BESS container and requires SGB external buffers when SGB is present.
 Writer preflight rejects invalid ordering before emitting external data,
 preserving the transactional write boundary.
 
