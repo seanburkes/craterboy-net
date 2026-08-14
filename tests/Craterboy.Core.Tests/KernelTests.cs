@@ -2703,6 +2703,44 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessReaderSnapshotOwnsSgbBuffers()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        var sgbBuffers = new[]
+        {
+            new byte[] { 1 }, new byte[] { 2, 3 }, new byte[] { 4 },
+            new byte[] { 5 }, new byte[] { 6 }, new byte[] { 7, 8 }, new byte[] { 9 },
+        };
+        using var source = new MemoryStream();
+        foreach (var buffer in sgbBuffers)
+            source.Write(buffer);
+        var descriptors = new BessBufferDescriptor[7];
+        var offset = 0u;
+        for (var index = 0; index < descriptors.Length; index++)
+        {
+            descriptors[index] = new BessBufferDescriptor((uint)sgbBuffers[index].Length, offset);
+            offset += (uint)sgbBuffers[index].Length;
+        }
+        var sgb = BessWriter.CreateSgbBlock(new BessSgb(
+            descriptors[0], descriptors[1], descriptors[2], descriptors[3],
+            descriptors[4], descriptors[5], descriptors[6], 0x10));
+        var blockOffset = checked((uint)source.Position);
+        WriteBessBlock(source, "CORE", BessWriter.CreateCoreBlock(core).Payload.ToArray());
+        WriteBessBlock(source, sgb.Identifier, sgb.Payload.ToArray());
+        WriteBessBlock(source, "END ", Array.Empty<byte>());
+        WriteBessFooter(source, blockOffset);
+        source.Position = 0;
+
+        var snapshot = BessReader.ReadSnapshot(source);
+
+        Assert.NotNull(snapshot.SgbBuffers);
+        Assert.Equal(sgbBuffers[0], snapshot.SgbBuffers!.Value.BorderTiles);
+        Assert.Equal(sgbBuffers[1], snapshot.SgbBuffers.Value.BorderTilemap);
+        Assert.Equal(sgbBuffers[5], snapshot.SgbBuffers.Value.AttributeMap);
+        Assert.Equal(sgbBuffers[6], snapshot.SgbBuffers.Value.AttributeFiles);
+    }
+
+    [Fact]
     public void BessReaderParsesOptionalInfoMetadata()
     {
         var info = new byte[0x12];

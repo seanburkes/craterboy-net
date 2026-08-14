@@ -40,6 +40,8 @@ owned external-buffer snapshots for transactional state loading.
 one-pass, owned aggregate and preserves null for absent sections.
 SGB descriptors in that aggregate use the same in-file bounds checks as the
 dedicated SGB reader.
+Validated SGB snapshots include owned border, palette, and attribute bytes for
+transactional loading.
 
 The test-only oracle is built from the pinned checkout by
 `tests/native/build-oracle.sh`. Its ABI deliberately exposes only model IDs,
