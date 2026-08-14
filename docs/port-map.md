@@ -48,7 +48,10 @@ buffers without caller-managed file offsets.
 complete BESS container and requires SGB external buffers when SGB is present.
 Round-trip coverage now exercises every typed optional persistence section.
 `Emulator.SaveBess` emits live register, I/O, memory, and cartridge battery
-state through the managed BESS snapshot path; state application remains next.
+state through the managed BESS snapshot path. `Emulator.LoadBess` now validates
+the model, required buffer sizes, and unsupported optional blocks before
+resetting and applying CORE CPU/I/O/memory/battery state; device timing and
+mapper-register replay remain separate follow-up work.
 Writer preflight rejects invalid ordering before emitting external data,
 preserving the transactional write boundary.
 

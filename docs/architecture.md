@@ -203,8 +203,11 @@ and selects the CORE-only or CORE+SGB layout automatically.
 The snapshot round-trip covers the typed RTC, XOAM, MBC7, HUC3, TPP1, and SGB
 sections alongside mapper and identity metadata.
 `Emulator.SaveBess` now projects the live CPU, I/O, work RAM, VRAM, OAM, HRAM,
-and cartridge battery state into that managed snapshot boundary; load/apply
-remains a separate transactional slice.
+and cartridge battery state into that managed snapshot boundary. The matching
+`Emulator.LoadBess` path rejects model or buffer-size mismatches and unsupported
+optional blocks before applying CORE CPU/I/O/memory/battery state, preserving a
+transactional validation boundary; device timing and mapper-register replay
+remain separate follow-up slices.
 Both buffer-writing paths preflight model metadata and complete block ordering
 before writing external bytes, so rejected containers do not partially mutate
 the destination stream.
