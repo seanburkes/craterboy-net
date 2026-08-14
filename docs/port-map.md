@@ -44,6 +44,8 @@ Validated SGB snapshots include owned border, palette, and attribute bytes for
 transactional loading.
 `BessWriter.WriteCoreAndSgbWithBuffers` emits matching CORE/SGB external
 buffers without caller-managed file offsets.
+Writer preflight rejects invalid ordering before emitting external data,
+preserving the transactional write boundary.
 
 The test-only oracle is built from the pinned checkout by
 `tests/native/build-oracle.sh`. Its ABI deliberately exposes only model IDs,

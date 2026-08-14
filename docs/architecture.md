@@ -198,6 +198,9 @@ owned `BessSgbBuffers` value so border and palette loading does not re-read the
 source stream.
 `WriteCoreAndSgbWithBuffers` provides the matching offset layout for CORE and
 SGB memory, inserting the required CORE and SGB blocks in validated order.
+Both buffer-writing paths preflight model metadata and complete block ordering
+before writing external bytes, so rejected containers do not partially mutate
+the destination stream.
 CORE model identifiers are checked against the BESS family/revision forms
 used by SameBoy (`GD`/`GM`, `SN`/`SP`/`S2`, and `CC`/`CA`) before writing or
 loading state.

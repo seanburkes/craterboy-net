@@ -2762,6 +2762,31 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void BessBufferWritersPreflightOrderingBeforeWritingExternalData()
+    {
+        var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
+        using var coreStream = new MemoryStream();
+        Assert.Throws<ArgumentException>(() => BessWriter.WriteCoreWithBuffers(
+            coreStream,
+            core,
+            new BessCoreBuffers(new byte[] { 1 }, default, default, default, default, default, default),
+            Array.Empty<BessBlock>(),
+            new[] { BessWriter.CreateNameBlock("invalid-after-core") }));
+        Assert.Equal(0, coreStream.Length);
+
+        using var sgbStream = new MemoryStream();
+        Assert.Throws<ArgumentException>(() => BessWriter.WriteCoreAndSgbWithBuffers(
+            sgbStream,
+            core,
+            default,
+            new BessSgb(default, default, default, default, default, default, default, 0x10),
+            default,
+            Array.Empty<BessBlock>(),
+            new[] { BessWriter.CreateNameBlock("invalid-after-sgb") }));
+        Assert.Equal(0, sgbStream.Length);
+    }
+
+    [Fact]
     public void BessReaderParsesOptionalInfoMetadata()
     {
         var info = new byte[0x12];
