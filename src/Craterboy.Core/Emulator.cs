@@ -130,6 +130,55 @@ public sealed class Emulator
         BessWriter.WriteSnapshot(destination, snapshot);
     }
 
+    public void LoadBess(Stream source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var snapshot = BessReader.ReadSnapshot(source);
+        var core = snapshot.Core.Core;
+        var buffers = snapshot.Core.Buffers;
+
+        if (!string.Equals(core.ModelIdentifier, BessModelIdentifier.For(_model), StringComparison.Ordinal))
+            throw new InvalidDataException($"BESS model {core.ModelIdentifier} does not match emulator model {BessModelIdentifier.For(_model)}.");
+        if (buffers.Ram.Length != _wram.Length)
+            throw new InvalidDataException($"BESS WRAM must be exactly {_wram.Length} bytes.");
+        if (buffers.Vram.Length != _vram.Length)
+            throw new InvalidDataException($"BESS VRAM must be exactly {_vram.Length} bytes.");
+        if (buffers.Oam.Length != _oam.Length)
+            throw new InvalidDataException($"BESS OAM must be exactly {_oam.Length} bytes.");
+        if (buffers.Hram.Length != _hram.Length)
+            throw new InvalidDataException($"BESS HRAM must be exactly {_hram.Length} bytes.");
+        if (snapshot.Info is not null || snapshot.Name is not null || snapshot.Mbc is not null || snapshot.Rtc is not null ||
+            snapshot.ExtraOam is not null || snapshot.Mbc7 is not null || snapshot.Huc3 is not null || snapshot.Tpp1 is not null ||
+            snapshot.Sgb is not null || snapshot.SgbBuffers is not null)
+            throw new InvalidDataException("This BESS loader supports CORE state only; device-specific blocks are not supported yet.");
+        if (buffers.MbcRam.Length != 0 && _cartridge is null)
+            throw new InvalidDataException("BESS battery data requires a loaded ROM.");
+
+        if (buffers.MbcRam.Length != 0)
+            _cartridge!.LoadBattery(buffers.MbcRam.Span);
+
+        Reset();
+        buffers.Ram.Span.CopyTo(_wram);
+        buffers.Vram.Span.CopyTo(_vram);
+        buffers.Oam.Span.CopyTo(_oam);
+        buffers.Hram.Span.CopyTo(_hram);
+        core.IoRegisters.Span.CopyTo(_io);
+        _io[0x7F] = core.Ie;
+
+        var cpu = _state.Cpu;
+        cpu.PC = core.Pc;
+        cpu.A = (byte)(core.Af >> 8);
+        cpu.F = (byte)core.Af;
+        cpu.B = (byte)(core.Bc >> 8);
+        cpu.C = (byte)core.Bc;
+        cpu.D = (byte)(core.De >> 8);
+        cpu.E = (byte)core.De;
+        cpu.H = (byte)(core.Hl >> 8);
+        cpu.L = (byte)core.Hl;
+        cpu.SP = core.Sp;
+        cpu.Ime = core.Ime;
+    }
+
     public void Reset()
     {
         _state.Scheduler.Reset();

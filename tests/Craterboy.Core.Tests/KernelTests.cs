@@ -2848,6 +2848,48 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void EmulatorLoadsCoreMemoryAndRegistersFromBess()
+    {
+        var emulator = new Emulator(GameBoyModel.DmgB);
+        emulator.LoadRom(MakeRom());
+        emulator.WriteMemory(0xC000, 0x42);
+        emulator.WriteMemory(0xFF80, 0x24);
+        emulator.WriteMemory(0xFF0F, 0x03);
+        using var stream = new MemoryStream();
+        emulator.SaveBess(stream);
+        var expected = emulator.Registers;
+
+        emulator.WriteMemory(0xC000, 0x99);
+        emulator.WriteMemory(0xFF80, 0x88);
+        emulator.WriteMemory(0xFF0F, 0x77);
+        emulator.LoadBess(new MemoryStream(stream.ToArray()));
+
+        Assert.Equal(expected, emulator.Registers);
+        Assert.Equal(0x42, emulator.ReadMemory(0xC000));
+        Assert.Equal(0x24, emulator.ReadMemory(0xFF80));
+        Assert.Equal(0x03, emulator.ReadMemory(0xFF0F) & 0x1F);
+    }
+
+    [Fact]
+    public void EmulatorRejectsMismatchedBessWithoutMutatingState()
+    {
+        var emulator = new Emulator(GameBoyModel.DmgB);
+        emulator.LoadRom(MakeRom());
+        emulator.WriteMemory(0xC000, 0x42);
+        var before = emulator.ComputeStateHash();
+        using var stream = new MemoryStream();
+        var snapshot = new BessStateSnapshot(
+            new BessCoreState(
+                new BessCore(1, 0, "GM  ", 0x100, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default),
+                new BessCoreBuffers(new byte[0x8000], new byte[0x4000], Array.Empty<byte>(), new byte[0xA0], new byte[0x7F], default, default)),
+            null, null, null, null, null, null, null, null, null, null);
+        BessWriter.WriteSnapshot(stream, snapshot);
+
+        Assert.Throws<InvalidDataException>(() => emulator.LoadBess(new MemoryStream(stream.ToArray())));
+        Assert.Equal(before, emulator.ComputeStateHash());
+    }
+
+    [Fact]
     public void BessBufferWritersPreflightOrderingBeforeWritingExternalData()
     {
         var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
