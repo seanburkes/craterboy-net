@@ -2826,6 +2826,28 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void EmulatorSavesCoreMemoryAndRegistersAsBess()
+    {
+        var emulator = new Emulator(GameBoyModel.DmgB);
+        emulator.LoadRom(MakeRom());
+        emulator.WriteMemory(0xC000, 0x42);
+        emulator.WriteMemory(0xFF80, 0x24);
+        emulator.WriteMemory(0xFF0F, 0x03);
+
+        using var stream = new MemoryStream();
+        emulator.SaveBess(stream);
+        stream.Position = 0;
+        var snapshot = BessReader.ReadSnapshot(stream);
+
+        Assert.Equal("GD  ", snapshot.Core.Core.ModelIdentifier);
+        Assert.Equal(emulator.Registers.ProgramCounter, snapshot.Core.Core.Pc);
+        Assert.Equal(0x42, snapshot.Core.Buffers.Ram.Span[0]);
+        Assert.Equal(0x24, snapshot.Core.Buffers.Hram.Span[0]);
+        Assert.Equal(0x03, snapshot.Core.Core.IoRegisters.Span[0x0F]);
+        Assert.Null(snapshot.Sgb);
+    }
+
+    [Fact]
     public void BessBufferWritersPreflightOrderingBeforeWritingExternalData()
     {
         var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);

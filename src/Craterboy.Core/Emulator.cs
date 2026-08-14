@@ -81,6 +81,55 @@ public sealed class Emulator
         Reset();
     }
 
+    public void SaveBess(Stream destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        var registers = Registers;
+        var core = new BessCore(
+            1,
+            0,
+            BessModelIdentifier.For(_model),
+            registers.ProgramCounter,
+            (ushort)((registers.A << 8) | registers.F),
+            (ushort)((registers.B << 8) | registers.C),
+            (ushort)((registers.D << 8) | registers.E),
+            (ushort)((registers.H << 8) | registers.L),
+            registers.StackPointer,
+            registers.InterruptMasterEnable,
+            _io[0x7F],
+            0,
+            _io.ToArray(),
+            default,
+            default,
+            default,
+            default,
+            default,
+            default,
+            default);
+        var snapshot = new BessStateSnapshot(
+            new BessCoreState(
+                core,
+                new BessCoreBuffers(
+                    _wram,
+                    _vram,
+                    _cartridge?.SaveBattery() ?? Array.Empty<byte>(),
+                    _oam,
+                    _hram,
+                    default,
+                    default)),
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+        BessWriter.WriteSnapshot(destination, snapshot);
+    }
+
     public void Reset()
     {
         _state.Scheduler.Reset();
