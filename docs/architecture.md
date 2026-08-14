@@ -200,6 +200,8 @@ source stream.
 SGB memory, inserting the required CORE and SGB blocks in validated order.
 `WriteSnapshot` composes the typed optional sections from a validated snapshot
 and selects the CORE-only or CORE+SGB layout automatically.
+The snapshot round-trip covers the typed RTC, XOAM, MBC7, HUC3, TPP1, and SGB
+sections alongside mapper and identity metadata.
 Both buffer-writing paths preflight model metadata and complete block ordering
 before writing external bytes, so rejected containers do not partially mutate
 the destination stream.
