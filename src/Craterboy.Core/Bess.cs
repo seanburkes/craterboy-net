@@ -105,6 +105,17 @@ public readonly record struct BessStateSnapshot(
 
 internal static class BessModelIdentifier
 {
+    public static string For(GameBoyModel model) => model switch
+    {
+        GameBoyModel.DmgB => "GD  ",
+        GameBoyModel.Mgb => "GM  ",
+        GameBoyModel.Sgb => "SN  ",
+        GameBoyModel.Sgb2 => "S2  ",
+        GameBoyModel.Cgb0 or GameBoyModel.CgbA or GameBoyModel.CgbB or GameBoyModel.CgbC or GameBoyModel.CgbD or GameBoyModel.CgbE => "CC  ",
+        GameBoyModel.AgbA or GameBoyModel.GbpA => "CA  ",
+        _ => throw new ArgumentOutOfRangeException(nameof(model)),
+    };
+
     public static bool IsValid(string model)
     {
         if (model.Length != 4 || model.Any(character => character > 0x7F) || model[3] != ' ')
