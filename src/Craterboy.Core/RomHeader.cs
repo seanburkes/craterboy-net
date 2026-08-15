@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Text;
 
 namespace Craterboy;
@@ -10,7 +11,8 @@ public sealed record RomHeader(
     bool SupportsColor,
     bool RequiresColor,
     bool SupportsSuperGameBoy,
-    bool HeaderChecksumValid)
+    bool HeaderChecksumValid,
+    ushort GlobalChecksum)
 {
     public static RomHeader Parse(ReadOnlySpan<byte> rom)
     {
@@ -38,6 +40,7 @@ public sealed record RomHeader(
 
         var cgb = rom[0x143];
         return new(title, rom[0x147], romSize, ramSize, cgb is 0x80 or 0xC0,
-            cgb == 0xC0, rom[0x146] == 3, checksum == rom[0x14D]);
+            cgb == 0xC0, rom[0x146] == 3, checksum == rom[0x14D],
+            BinaryPrimitives.ReadUInt16BigEndian(rom[0x14E..0x150]));
     }
 }

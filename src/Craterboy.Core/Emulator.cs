@@ -117,8 +117,10 @@ public sealed class Emulator
                     _hram,
                     default,
                     default)),
-            null,
-            null,
+            RomHeader is null ? null : new BessInfo(
+                System.Text.Encoding.ASCII.GetBytes(RomHeader.Title.PadRight(16)[..16]),
+                RomHeader.GlobalChecksum),
+            RomHeader is null ? null : "Craterboy",
             null,
             _cartridge?.SaveBessRtc(),
             null,
@@ -147,10 +149,16 @@ public sealed class Emulator
             throw new InvalidDataException($"BESS OAM must be exactly {_oam.Length} bytes.");
         if (buffers.Hram.Length != _hram.Length)
             throw new InvalidDataException($"BESS HRAM must be exactly {_hram.Length} bytes.");
-        if (snapshot.Info is not null || snapshot.Name is not null ||
-            snapshot.ExtraOam is not null || snapshot.Mbc7 is not null || snapshot.Huc3 is not null || snapshot.Tpp1 is not null ||
+        if (snapshot.ExtraOam is not null || snapshot.Mbc7 is not null || snapshot.Huc3 is not null || snapshot.Tpp1 is not null ||
             snapshot.Sgb is not null || snapshot.SgbBuffers is not null)
-            throw new InvalidDataException("This BESS loader supports CORE, MBC, and MBC3 RTC state only; other device-specific blocks are not supported yet.");
+            throw new InvalidDataException("This BESS loader supports CORE, INFO, NAME, MBC, and MBC3 RTC state only; other device-specific blocks are not supported yet.");
+        if (snapshot.Info is not null && RomHeader is not null)
+        {
+            var expectedTitle = System.Text.Encoding.ASCII.GetBytes(RomHeader.Title.PadRight(16)[..16]);
+            if (!snapshot.Info.Value.Title.Span.SequenceEqual(expectedTitle) ||
+                snapshot.Info.Value.GlobalChecksum != RomHeader.GlobalChecksum)
+                throw new InvalidDataException("BESS INFO metadata does not match the loaded ROM.");
+        }
         if (buffers.MbcRam.Length != 0 && _cartridge is null)
             throw new InvalidDataException("BESS battery data requires a loaded ROM.");
         if (snapshot.Mbc is not null && _cartridge is null)

@@ -2841,6 +2841,8 @@ public sealed class KernelTests
 
         Assert.Equal("GD  ", snapshot.Core.Core.ModelIdentifier);
         Assert.Equal(emulator.Registers.ProgramCounter, snapshot.Core.Core.Pc);
+        Assert.Equal(new string(' ', 16), System.Text.Encoding.ASCII.GetString(snapshot.Info!.Value.Title.Span));
+        Assert.Equal("Craterboy", snapshot.Name);
         Assert.Equal(0x42, snapshot.Core.Buffers.Ram.Span[0]);
         Assert.Equal(0x24, snapshot.Core.Buffers.Hram.Span[0]);
         Assert.Equal(0x03, snapshot.Core.Core.IoRegisters.Span[0x0F]);
