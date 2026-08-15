@@ -121,7 +121,7 @@ APU register reads apply SameBoy’s fixed high-bit and write-only masks, includ
 the fixed NR52 status bits.
 Channel 1 frequency sweep updates are clocked on frame-sequencer steps 2 and
 6, with the NR10 period selecting the number of sweep events between
-updates; live NR10 writes reconfigure active sweep timing, and trigger-time
+updates; an NR10 period of zero uses the hardware eight-step interval; live NR10 writes reconfigure active sweep timing, and trigger-time
 overflow disables the channel. The sweep shadow frequency remains tied to the
 trigger while live NR13/NR14 writes update playback. The core emits channel
 samples into a bounded managed ring and exposes

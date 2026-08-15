@@ -348,7 +348,11 @@ internal sealed class ApuDevice : ICycleParticipant
         }
     }
 
-    private int SweepPeriodTicks() => Math.Max(1, (_io[0x10] >> 4) & 0x07);
+    private int SweepPeriodTicks()
+    {
+        var period = (_io[0x10] >> 4) & 0x07;
+        return period == 0 ? 8 : period;
+    }
 
     private int SweepFrequency()
     {
