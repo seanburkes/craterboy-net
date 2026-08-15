@@ -44,12 +44,15 @@ internal abstract class Cartridge
     public static Cartridge Create(byte[] rom, RomHeader header, ITimeProvider timeProvider) => header.CartridgeType switch
     {
         0x00 or 0x08 or 0x09 => new RomOnlyCartridge(rom, header.RamSize),
-        0x01 or 0x02 or 0x03 => new Mbc1Cartridge(rom, header.RamSize),
+        0x01 or 0x02 or 0x03 => new Mbc1Cartridge(rom, header.RamSize, IsMbc1Multicart(rom)),
         0x05 or 0x06 => new Mbc2Cartridge(rom),
         0x0F or 0x10 or 0x11 or 0x12 or 0x13 => new Mbc3Cartridge(rom, header.RamSize, timeProvider),
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
     };
+
+    private static bool IsMbc1Multicart(byte[] rom) =>
+        rom.Length >= 0x44000 && rom.AsSpan(0x104, 0x30).SequenceEqual(rom.AsSpan(0x40104, 0x30));
 
     protected byte ReadRom(int index) => Rom[index % Rom.Length];
     protected byte ReadRam(int index) => Ram.Length == 0 ? (byte)0xFF : Ram[index % Ram.Length];
@@ -274,18 +277,21 @@ internal sealed class RomOnlyCartridge(byte[] rom, int ramSize) : Cartridge(rom,
     }
 }
 
-internal sealed class Mbc1Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ramSize)
+internal sealed class Mbc1Cartridge : Cartridge
 {
+    private readonly bool _multicart;
     private bool _ramEnabled;
     private int _lowBank = 1, _highBank;
     private bool _ramMode;
 
+    public Mbc1Cartridge(byte[] rom, int ramSize, bool multicart) : base(rom, ramSize) => _multicart = multicart;
+
     public override byte Read(ushort address) => address switch
     {
-        < 0x4000 => ReadRom(((_ramMode ? _highBank << 5 : 0) * 0x4000) + address),
-        < 0x8000 => ReadRom((((_highBank << 5) | _lowBank) * 0x4000) + address - 0x4000),
+        < 0x4000 => ReadRom(((_ramMode ? _highBank << (_multicart ? 4 : 5) : 0) * 0x4000) + address),
+        < 0x8000 => ReadRom((RomBank() * 0x4000) + address - 0x4000),
         >= 0xA000 and < 0xC000 when _ramEnabled =>
-            ReadRam(((_ramMode ? _highBank : 0) * 0x2000) + address - 0xA000),
+            ReadRam(((!_multicart && _ramMode ? _highBank : 0) * 0x2000) + address - 0xA000),
         _ => 0xFF,
     };
 
@@ -294,7 +300,7 @@ internal sealed class Mbc1Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ra
         switch (address)
         {
             case < 0x2000: _ramEnabled = (value & 0x0F) == 0x0A; break;
-            case < 0x4000: _lowBank = (value & 0x1F) is 0 ? 1 : value & 0x1F; break;
+            case < 0x4000: _lowBank = _multicart ? value : (value & 0x1F) is 0 ? 1 : value & 0x1F; break;
             case < 0x6000: _highBank = value & 3; break;
             case < 0x8000: _ramMode = (value & 1) != 0; break;
             case >= 0xA000 and < 0xC000 when _ramEnabled:
@@ -310,6 +316,14 @@ internal sealed class Mbc1Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ra
         writer.Write(_lowBank);
         writer.Write(_highBank);
         writer.Write(_ramMode);
+        writer.Write(_multicart);
+    }
+
+    private int RomBank()
+    {
+        if (!_multicart) return (_highBank << 5) | _lowBank;
+        var bank = (_lowBank & 0x0F) | (_highBank << 4);
+        return (_lowBank & 0x1F) == 0 ? bank + 1 : bank;
     }
 }
 
