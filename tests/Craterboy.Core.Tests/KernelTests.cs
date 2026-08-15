@@ -4166,6 +4166,38 @@ public sealed class KernelTests
         Assert.Equal((byte)5, restored.PeekMemory(0xA000));
     }
 
+    [Fact]
+    public void BessRoundTripsMbc3RtcState()
+    {
+        var clock = new TestTimeProvider();
+        clock.Advance(TimeSpan.FromSeconds(1_700_000_000));
+        var rom = MakeRom(type: 0x10, romSizeCode: 1, ramSizeCode: 3);
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        emulator.LoadRom(rom);
+        emulator.WriteMemory(0, 0x0A);
+        emulator.WriteMemory(0x4000, 0x08);
+        emulator.WriteMemory(0xA000, 37);
+        emulator.WriteMemory(0x4000, 0x09);
+        emulator.WriteMemory(0xA000, 12);
+        emulator.WriteMemory(0x6000, 0);
+        emulator.WriteMemory(0x6000, 1);
+
+        using var state = new MemoryStream();
+        emulator.SaveBess(state);
+        state.Position = 0;
+        Assert.Equal((byte)37, BessReader.ReadRtc(state)!.Value.Seconds);
+        state.Position = 0;
+
+        var restored = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        restored.LoadRom(rom);
+        restored.LoadBess(state);
+        restored.WriteMemory(0, 0x0A);
+        restored.WriteMemory(0x4000, 0x08);
+        Assert.Equal((byte)37, restored.PeekMemory(0xA000));
+        restored.WriteMemory(0x4000, 0x09);
+        Assert.Equal((byte)12, restored.PeekMemory(0xA000));
+    }
+
     private static void ConfigurePulseChannel(Emulator emulator)
     {
         emulator.WriteMemory(0xFF26, 0x80);
