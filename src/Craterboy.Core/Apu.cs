@@ -248,25 +248,38 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF1D:
                 _channel3Frequency = (_channel3Frequency & 0x700) | value;
                 break;
-            case 0xFF1E when (value & 0x80) != 0:
-                if (!_model.IsColor() && _channel3Enabled && _wave3Phase != 0)
+            case 0xFF1E:
+                _channel3Frequency = (_channel3Frequency & 0x0FF) | ((value & 0x07) << 8);
+                if ((value & 0x80) != 0)
                 {
-                    var offset = ((_wave3Phase + 1) >> 1) & 0x0F;
-                    if (offset < 4 && _model != GameBoyModel.Mgb)
+                    if (!_model.IsColor() && _channel3Enabled && _wave3Phase != 0)
                     {
-                        _io[0x30] = _io[0x30 + offset];
+                        var offset = ((_wave3Phase + 1) >> 1) & 0x0F;
+                        if (offset < 4 && _model != GameBoyModel.Mgb)
+                        {
+                            _io[0x30] = _io[0x30 + offset];
+                        }
+                        else
+                        {
+                            var group = offset & ~3;
+                            for (var i = 0; i < 4; i++) _io[0x30 + i] = _io[0x30 + group + i];
+                        }
                     }
-                    else
+                    if (_channel3Length == 0) _channel3Length = 256;
+                    _channel3Enabled = (_io[0x1A] & 0x80) != 0;
+                    _wave3Phase = 0;
+                    UpdateStatus();
+                }
+                if ((previousValue & 0x40) == 0 && (value & 0x80) == 0 && (_frameStep & 1) == 0 &&
+                    _channel3Length > 0 && ((value & 0x40) != 0 ||
+                    (_model.IsCgbRevision() && _model <= GameBoyModel.CgbB)))
+                {
+                    if (--_channel3Length == 0)
                     {
-                        var group = offset & ~3;
-                        for (var i = 0; i < 4; i++) _io[0x30 + i] = _io[0x30 + group + i];
+                        _channel3Enabled = false;
+                        UpdateStatus();
                     }
                 }
-                if (_channel3Length == 0) _channel3Length = 256;
-                _channel3Frequency = (_channel3Frequency & 0x0FF) | ((value & 0x07) << 8);
-                _channel3Enabled = (_io[0x1A] & 0x80) != 0;
-                _wave3Phase = 0;
-                UpdateStatus();
                 break;
             case 0xFF20:
                 _channel4Length = 64 - (value & 0x3F);
