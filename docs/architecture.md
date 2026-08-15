@@ -137,7 +137,7 @@ Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present.
 DMG channel 3 retriggers at a nonzero wave phase apply SameBoy's deterministic
 first-byte wave-RAM corruption variant; MGB's instance-specific variant remains
-deferred.
+deterministically copies the selected four-byte wave group.
 DMG channel 3 wave-RAM reads and writes are restricted while the channel is
 active, matching SameBoy’s inaccessible active-wave behavior.
 CGB PCM12 and PCM34 reads expose the current digital channel amplitudes.

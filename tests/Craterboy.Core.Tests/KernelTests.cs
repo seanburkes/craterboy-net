@@ -3632,6 +3632,29 @@ public sealed class KernelTests
         Assert.Equal((byte)0x20, emulator.PeekMemory(0xFF30));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
+    public void WaveRetriggerCopiesACompleteLaterSampleGroup(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF30, 0x10);
+        emulator.WriteMemory(0xFF31, 0x20);
+        emulator.WriteMemory(0xFF34, 0x50);
+        emulator.WriteMemory(0xFF35, 0x60);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1D, 0x00);
+        emulator.WriteMemory(0xFF1E, 0x81);
+
+        emulator.RunCycles(95 * 8);
+        emulator.WriteMemory(0xFF1E, 0x81);
+        emulator.WriteMemory(0xFF1A, 0x00);
+
+        Assert.Equal((byte)0x50, emulator.PeekMemory(0xFF30));
+        Assert.Equal((byte)0x60, emulator.PeekMemory(0xFF31));
+    }
+
     [Fact]
     public void StateHashIncludesCartridgeBatteryState()
     {
