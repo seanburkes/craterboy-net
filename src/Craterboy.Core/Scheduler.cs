@@ -54,7 +54,7 @@ internal sealed class TimerDevice : ICycleParticipant
     public byte Read(ushort address) => address switch
     {
         0xFF04 => (byte)(_divider >> 8),
-        0xFF05 => _io[0x05],
+        0xFF05 => _timaReloadState == 1 ? (byte)0 : _io[0x05],
         0xFF06 => _io[0x06],
         0xFF07 => (byte)(_io[0x07] | 0xF8),
         _ => 0xFF,
