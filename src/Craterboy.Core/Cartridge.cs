@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+
 namespace Craterboy;
 
 internal abstract class Cartridge
@@ -61,6 +63,9 @@ internal abstract class Cartridge
 
 internal sealed class Mbc3Cartridge(byte[] rom, int ramSize, ITimeProvider timeProvider) : Cartridge(rom, ramSize)
 {
+    private const int CompactRtcLength = 5;
+    private const int SameBoyRtcLength = 48;
+    private const int SameBoyRtc32Length = 44;
     private readonly ITimeProvider _timeProvider = timeProvider;
     private readonly byte[] _rtc = new byte[5];
     private readonly byte[] _latchedRtc = new byte[5];
@@ -114,20 +119,48 @@ internal sealed class Mbc3Cartridge(byte[] rom, int ramSize, ITimeProvider timeP
     public override byte[] SaveBattery()
     {
         UpdateClock();
-        var result = new byte[Ram.Length + _rtc.Length];
+        var result = new byte[Ram.Length + SameBoyRtcLength];
         Ram.CopyTo(result, 0);
-        _rtc.CopyTo(result, Ram.Length);
+        WriteBatteryRtc(result.AsSpan(Ram.Length));
         return result;
     }
 
     public override void LoadBattery(ReadOnlySpan<byte> data)
     {
-        if (data.Length != Ram.Length && data.Length != Ram.Length + _rtc.Length)
-            throw new ArgumentException($"MBC3 battery data must be {Ram.Length} or {Ram.Length + _rtc.Length} bytes.", nameof(data));
+        var rtcLength = data.Length - Ram.Length;
+        if (data.Length < Ram.Length || rtcLength is not (0 or CompactRtcLength or SameBoyRtc32Length or SameBoyRtcLength))
+            throw new ArgumentException($"MBC3 battery data must be {Ram.Length}, {Ram.Length + CompactRtcLength}, {Ram.Length + SameBoyRtc32Length}, or {Ram.Length + SameBoyRtcLength} bytes.", nameof(data));
         data[..Ram.Length].CopyTo(Ram);
-        if (data.Length > Ram.Length) data[Ram.Length..].CopyTo(_rtc);
-        _rtc.CopyTo(_latchedRtc, 0);
-        _lastRtcUpdate = _timeProvider.UtcNow;
+        if (rtcLength == CompactRtcLength)
+        {
+            data[Ram.Length..].CopyTo(_rtc);
+            _rtc.CopyTo(_latchedRtc, 0);
+            _lastRtcUpdate = _timeProvider.UtcNow;
+        }
+        else if (rtcLength is SameBoyRtc32Length or SameBoyRtcLength)
+        {
+            var rtc = data[Ram.Length..];
+            ReadPaddedRtc(rtc, _rtc);
+            ReadPaddedRtc(rtc[20..], _latchedRtc);
+            var timestamp = rtcLength == SameBoyRtcLength
+                ? BinaryPrimitives.ReadUInt64LittleEndian(rtc[40..])
+                : BinaryPrimitives.ReadUInt32LittleEndian(rtc[40..]);
+            try
+            {
+                var savedTime = DateTimeOffset.FromUnixTimeSeconds(checked((long)timestamp));
+                _lastRtcUpdate = savedTime > _timeProvider.UtcNow ? _timeProvider.UtcNow : savedTime;
+            }
+            catch (Exception exception) when (exception is ArgumentOutOfRangeException or OverflowException)
+            {
+                throw new ArgumentException("MBC3 battery RTC timestamp is invalid.", nameof(data), exception);
+            }
+        }
+        else
+        {
+            Array.Clear(_rtc);
+            Array.Clear(_latchedRtc);
+            _lastRtcUpdate = _timeProvider.UtcNow;
+        }
     }
 
     public override BessRtc? SaveBessRtc()
@@ -173,6 +206,31 @@ internal sealed class Mbc3Cartridge(byte[] rom, int ramSize, ITimeProvider timeP
         _rtc[0], _rtc[1], _rtc[2], _rtc[3], _rtc[4],
         _latchedRtc[0], _latchedRtc[1], _latchedRtc[2], _latchedRtc[3], _latchedRtc[4],
         checked((ulong)_lastRtcUpdate.ToUnixTimeSeconds()));
+
+    private void WriteBatteryRtc(Span<byte> destination)
+    {
+        WritePaddedRtc(destination, _rtc);
+        WritePaddedRtc(destination[20..], _latchedRtc);
+        BinaryPrimitives.WriteUInt64LittleEndian(destination[40..], checked((ulong)_lastRtcUpdate.ToUnixTimeSeconds()));
+    }
+
+    private static void WritePaddedRtc(Span<byte> destination, byte[] rtc)
+    {
+        destination[0] = rtc[0];
+        destination[4] = rtc[1];
+        destination[8] = rtc[2];
+        destination[12] = rtc[3];
+        destination[16] = rtc[4];
+    }
+
+    private static void ReadPaddedRtc(ReadOnlySpan<byte> source, byte[] rtc)
+    {
+        rtc[0] = source[0];
+        rtc[1] = source[4];
+        rtc[2] = source[8];
+        rtc[3] = source[12];
+        rtc[4] = source[16];
+    }
 
     private void UpdateClock()
     {

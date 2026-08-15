@@ -4156,7 +4156,9 @@ public sealed class KernelTests
 
         using var battery = new MemoryStream();
         emulator.SaveBattery(battery);
-        Assert.Equal(32 * 1024 + 5, battery.Length);
+        Assert.Equal(32 * 1024 + 48, battery.Length);
+        Assert.Equal((byte)5, battery.GetBuffer()[32 * 1024]);
+        Assert.Equal((byte)0, battery.GetBuffer()[32 * 1024 + 1]);
         battery.Position = 0;
         var restored = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
         restored.LoadRom(rom);
