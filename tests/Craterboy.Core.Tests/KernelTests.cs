@@ -576,6 +576,30 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbPpuBlocksPaletteDataAfterModeThreeStarts()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF68, 0x80);
+        emulator.WriteMemory(0xFF69, 0x12);
+        emulator.WriteMemory(0xFF68, 0x00);
+        emulator.WriteMemory(0xFF40, 0x80); // LCD on: mode 2
+
+        emulator.RunCycles(80); // mode 3 begins
+        emulator.RunCycles(4);  // first five mode-3 cycles remain accessible
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0xFF69));
+
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF69));
+        emulator.WriteMemory(0xFF68, 0x80);
+        emulator.WriteMemory(0xFF69, 0x34);
+        Assert.Equal((byte)0x01, (byte)(emulator.PeekMemory(0xFF68) & 0x3F));
+
+        emulator.WriteMemory(0xFF40, 0x00);
+        emulator.WriteMemory(0xFF68, 0x00);
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0xFF69));
+    }
+
+    [Fact]
     public void DmgDoesNotExposeCgbPaletteRam()
     {
         var emulator = NewEmulator(MakeRom());

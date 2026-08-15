@@ -24,6 +24,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _mode;
     private bool _coincidence;
     private bool _statLine;
+    private bool _paletteAccessBlocked;
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
@@ -51,6 +52,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _mode = 0;
         _coincidence = false;
         _statLine = false;
+        _paletteAccessBlocked = false;
         Array.Clear(_frame);
         Array.Clear(_colorFrame);
         Array.Clear(_backgroundPaletteRam);
@@ -136,6 +138,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_mode);
         writer.Write(_coincidence);
         writer.Write(_statLine);
+        writer.Write(_paletteAccessBlocked);
         writer.Write(_backgroundPaletteRam);
         writer.Write(_objectPaletteRam);
     }
@@ -147,6 +150,7 @@ internal sealed class PpuDevice : ICycleParticipant
         if (_line < 144)
         {
             if (_lineCycles == 80) SetMode(3);
+            else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
             else if (_lineCycles == Mode3End())
             {
                 RenderBackgroundLine(_line);
@@ -216,6 +220,7 @@ internal sealed class PpuDevice : ICycleParticipant
             return;
         }
         _mode = mode;
+        if (mode != 3) _paletteAccessBlocked = false;
         if (mode == 0 && _line < 144) _hblankStarted?.Invoke();
         UpdateStatLine();
     }
@@ -243,12 +248,18 @@ internal sealed class PpuDevice : ICycleParticipant
     private byte ReadPaletteData(byte[] paletteRam, byte indexRegister)
     {
         if (!_model.IsColor()) return 0xFF;
-        return paletteRam[indexRegister & 0x3F];
+        return _paletteAccessBlocked ? (byte)0xFF : paletteRam[indexRegister & 0x3F];
     }
 
     private void WritePaletteData(byte[] paletteRam, int indexOffset, byte value)
     {
         var indexRegister = _io[indexOffset];
+        if (_paletteAccessBlocked)
+        {
+            if ((indexRegister & 0x80) != 0)
+                _io[indexOffset] = (byte)(0x80 | ((indexRegister + 1) & 0x3F));
+            return;
+        }
         paletteRam[indexRegister & 0x3F] = value;
         if ((indexRegister & 0x80) != 0)
             _io[indexOffset] = (byte)(0x80 | ((indexRegister + 1) & 0x3F));
