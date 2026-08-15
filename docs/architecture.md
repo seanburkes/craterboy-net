@@ -139,7 +139,7 @@ DMG channel 3 wave-RAM reads and writes are restricted while the channel is
 active, matching SameBoy’s inaccessible active-wave behavior.
 CGB PCM12 and PCM34 reads expose the current digital channel amplitudes.
 CGB-0 through CGB-C retain SameBoy's revision-specific PCM read masks across
-envelope and frame-sequencer events.
+envelope, frame-sequencer, and pulse-waveform edge events.
 Channel 4 noise LFSR, trigger/length timing, status, and PCM mixing are also
 present.
 Channel 1 and channel 2 pulse phases reset on trigger and advance from their

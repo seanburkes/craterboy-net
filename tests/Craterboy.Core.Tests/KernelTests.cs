@@ -2030,6 +2030,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void EarlyCgbPcmMaskClearsPulseBitsAtWaveformEdge()
+    {
+        var early = NewEmulator(MakeRom(), GameBoyModel.CgbC);
+        var late = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        foreach (var emulator in new[] { early, late })
+        {
+            emulator.WriteMemory(0xFF26, 0x80);
+            emulator.WriteMemory(0xFF11, 0x40); // duty 1 starts high, then falls
+            emulator.WriteMemory(0xFF12, 0xF0);
+            emulator.WriteMemory(0xFF13, 0x00);
+            emulator.WriteMemory(0xFF14, 0x81); // frequency 0x100, trigger
+        }
+
+        early.RunCycles(95 * 8);
+        late.RunCycles(95 * 8);
+
+        Assert.Equal((byte)0x00, early.PeekMemory(0xFF76));
+        Assert.Equal((byte)0x0F, late.PeekMemory(0xFF76));
+    }
+
+    [Fact]
     public void InputRecordingRoundTripsOrderedEventsAndRejectsMalformedData()
     {
         var recording = new InputRecording();

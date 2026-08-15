@@ -420,14 +420,20 @@ internal sealed class ApuDevice : ICycleParticipant
             var duty = (_io[0x11] >> 6) & 0x03;
             var high = ((DutyPatterns[duty] >> (7 - _wave1Phase)) & 1) != 0;
             channels[0] = high ? _channel1Volume * 2048 : -_channel1Volume * 2048;
-            _wave1Phase = (_wave1Phase + Math.Max(1, _channel1Frequency >> 8)) & 7;
+            var nextPhase = (_wave1Phase + Math.Max(1, _channel1Frequency >> 8)) & 7;
+            var nextHigh = ((DutyPatterns[duty] >> (7 - nextPhase)) & 1) != 0;
+            if (HasEarlyCgbPcmGlitch && high && !nextHigh) _pcm12Mask &= 0xF0;
+            _wave1Phase = nextPhase;
         }
         if (_channel2Enabled)
         {
             var duty = (_io[0x16] >> 6) & 0x03;
             var high = ((DutyPatterns[duty] >> (7 - _wave2Phase)) & 1) != 0;
             channels[1] = high ? _channel2Volume * 2048 : -_channel2Volume * 2048;
-            _wave2Phase = (_wave2Phase + Math.Max(1, _channel2Frequency >> 8)) & 7;
+            var nextPhase = (_wave2Phase + Math.Max(1, _channel2Frequency >> 8)) & 7;
+            var nextHigh = ((DutyPatterns[duty] >> (7 - nextPhase)) & 1) != 0;
+            if (HasEarlyCgbPcmGlitch && high && !nextHigh) _pcm12Mask &= 0x0F;
+            _wave2Phase = nextPhase;
         }
         if (_channel3Enabled)
         {
