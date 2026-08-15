@@ -16,21 +16,25 @@ internal sealed class JoypadDevice : ICycleParticipant
 {
     private readonly byte[] _io;
     private readonly GameBoyModel _model;
+    private readonly bool _bounceEnabled;
     private readonly bool[] _pressed = new bool[8];
+    private readonly int[] _bounceTiming = new int[8];
     private byte _select;
     private byte _activeSelect;
     private byte _pendingSelect;
     private int _switchingDelay;
 
-    public JoypadDevice(GameBoyModel model, byte[] io)
+    public JoypadDevice(GameBoyModel model, byte[] io, bool bounceEnabled)
     {
         _model = model;
         _io = io;
+        _bounceEnabled = bounceEnabled && !model.IsSuperGameBoy() && !model.IsGbp();
     }
 
     public void Reset()
     {
         Array.Clear(_pressed);
+        Array.Clear(_bounceTiming);
         _select = 0x30;
         _activeSelect = 0x30;
         _pendingSelect = 0x30;
@@ -63,6 +67,8 @@ internal sealed class JoypadDevice : ICycleParticipant
         if (player != 0)
             throw new ArgumentOutOfRangeException(nameof(player), "Only the primary joypad is available before SGB multiplayer support.");
         var previous = Read();
+        if (_bounceEnabled && pressed != _pressed[(int)button])
+            _bounceTiming[(int)button] = button is GameBoyButton.Start or GameBoyButton.Select ? 0x1FFF : 0x0FFF;
         _pressed[(int)button] = pressed;
         _io[0x00] = Read();
         RequestInterruptOnFallingEdge(previous);
@@ -72,6 +78,7 @@ internal sealed class JoypadDevice : ICycleParticipant
     {
         writer.Write(_pressed.Length);
         foreach (var pressed in _pressed) writer.Write(pressed);
+        foreach (var timing in _bounceTiming) writer.Write(timing);
         writer.Write(_select);
         writer.Write(_activeSelect);
         writer.Write(_pendingSelect);
@@ -80,9 +87,19 @@ internal sealed class JoypadDevice : ICycleParticipant
 
     public void AdvanceTCycle()
     {
-        if (_switchingDelay == 0) return;
-        if (--_switchingDelay != 0) return;
-        ApplySelection(_pendingSelect, Read());
+        var update = false;
+        if (_switchingDelay != 0 && --_switchingDelay == 0)
+        {
+            ApplySelection(_pendingSelect, Read());
+            update = true;
+        }
+        for (var index = 0; index < _bounceTiming.Length; index++)
+        {
+            if (_bounceTiming[index] == 0) continue;
+            _bounceTiming[index]--;
+            update = true;
+        }
+        if (update) _io[0x00] = Read();
     }
 
     private void ApplySelection(byte selection, byte previous)
@@ -110,21 +127,30 @@ internal sealed class JoypadDevice : ICycleParticipant
         var result = 0x0F;
         if ((_activeSelect & 0x10) == 0)
         {
-            if (_pressed[(int)GameBoyButton.Right]) result &= ~0x01;
-            if (_pressed[(int)GameBoyButton.Left]) result &= ~0x02;
-            if (_pressed[(int)GameBoyButton.Up]) result &= ~0x04;
-            if (_pressed[(int)GameBoyButton.Down]) result &= ~0x08;
+            if (IsPressed(GameBoyButton.Right)) result &= ~0x01;
+            if (IsPressed(GameBoyButton.Left)) result &= ~0x02;
+            if (IsPressed(GameBoyButton.Up)) result &= ~0x04;
+            if (IsPressed(GameBoyButton.Down)) result &= ~0x08;
             if ((result & 0x01) == 0) result |= 0x02;
             if ((result & 0x04) == 0) result |= 0x08;
         }
         if ((_activeSelect & 0x20) == 0)
         {
-            if (_pressed[(int)GameBoyButton.A]) result &= ~0x01;
-            if (_pressed[(int)GameBoyButton.B]) result &= ~0x02;
-            if (_pressed[(int)GameBoyButton.Select]) result &= ~0x04;
-            if (_pressed[(int)GameBoyButton.Start]) result &= ~0x08;
+            if (IsPressed(GameBoyButton.A)) result &= ~0x01;
+            if (IsPressed(GameBoyButton.B)) result &= ~0x02;
+            if (IsPressed(GameBoyButton.Select)) result &= ~0x04;
+            if (IsPressed(GameBoyButton.Start)) result &= ~0x08;
         }
         return (byte)result;
+    }
+
+    private bool IsPressed(GameBoyButton button)
+    {
+        var index = (int)button;
+        if (!_bounceEnabled || _bounceTiming[index] == 0 || (_bounceTiming[index] & 0x3FF) > 0x300)
+            return _pressed[index];
+        var sample = ((((index << 5) + _bounceTiming[index]) * 17) ^ ((_bounceTiming[index] ^ 0x5A5) * 13)) >> 3;
+        return _pressed[index] ^ ((sample & 0x7FF) < _bounceTiming[index]);
     }
 
     private void RequestInterruptOnFallingEdge(byte previous)
