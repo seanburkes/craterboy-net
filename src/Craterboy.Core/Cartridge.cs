@@ -16,6 +16,9 @@ internal abstract class Cartridge
     public abstract byte Read(ushort address);
     public abstract void Write(ushort address, byte value);
     protected void Dirty() => _batteryDirty = true;
+    public virtual BessRtc? SaveBessRtc() => null;
+    public virtual void ValidateBessRtc(BessRtc state) => throw new InvalidDataException("BESS RTC state is not supported by this cartridge.");
+    public virtual void LoadBessRtc(BessRtc state) => throw new InvalidDataException("BESS RTC state is not supported by this cartridge.");
     public virtual void WriteStateHash(BinaryWriter writer)
     {
         writer.Write(System.Security.Cryptography.SHA256.HashData(Rom));
@@ -126,6 +129,50 @@ internal sealed class Mbc3Cartridge(byte[] rom, int ramSize, ITimeProvider timeP
         _rtc.CopyTo(_latchedRtc, 0);
         _lastRtcUpdate = _timeProvider.UtcNow;
     }
+
+    public override BessRtc? SaveBessRtc()
+    {
+        UpdateClock();
+        return ToBessRtc();
+    }
+
+    public override void ValidateBessRtc(BessRtc state)
+    {
+        if (state.Seconds > 59 || state.Minutes > 59 || state.Hours > 23 ||
+            state.LatchedSeconds > 59 || state.LatchedMinutes > 59 || state.LatchedHours > 23 ||
+            (state.High & 0x3E) != 0 || (state.LatchedHigh & 0x3E) != 0)
+            throw new InvalidDataException("BESS MBC3 RTC fields are invalid.");
+
+        try
+        {
+            _ = DateTimeOffset.FromUnixTimeSeconds(checked((long)state.LastUnixSecond));
+        }
+        catch (Exception exception) when (exception is ArgumentOutOfRangeException or OverflowException)
+        {
+            throw new InvalidDataException("BESS MBC3 RTC timestamp is invalid.", exception);
+        }
+    }
+
+    public override void LoadBessRtc(BessRtc state)
+    {
+        ValidateBessRtc(state);
+        _rtc[0] = state.Seconds;
+        _rtc[1] = state.Minutes;
+        _rtc[2] = state.Hours;
+        _rtc[3] = state.Days;
+        _rtc[4] = state.High;
+        _latchedRtc[0] = state.LatchedSeconds;
+        _latchedRtc[1] = state.LatchedMinutes;
+        _latchedRtc[2] = state.LatchedHours;
+        _latchedRtc[3] = state.LatchedDays;
+        _latchedRtc[4] = state.LatchedHigh;
+        _lastRtcUpdate = DateTimeOffset.FromUnixTimeSeconds((long)state.LastUnixSecond);
+    }
+
+    private BessRtc ToBessRtc() => new(
+        _rtc[0], _rtc[1], _rtc[2], _rtc[3], _rtc[4],
+        _latchedRtc[0], _latchedRtc[1], _latchedRtc[2], _latchedRtc[3], _latchedRtc[4],
+        checked((ulong)_lastRtcUpdate.ToUnixTimeSeconds()));
 
     private void UpdateClock()
     {

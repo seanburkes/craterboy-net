@@ -120,7 +120,7 @@ public sealed class Emulator
             null,
             null,
             null,
-            null,
+            _cartridge?.SaveBessRtc(),
             null,
             null,
             null,
@@ -147,14 +147,20 @@ public sealed class Emulator
             throw new InvalidDataException($"BESS OAM must be exactly {_oam.Length} bytes.");
         if (buffers.Hram.Length != _hram.Length)
             throw new InvalidDataException($"BESS HRAM must be exactly {_hram.Length} bytes.");
-        if (snapshot.Info is not null || snapshot.Name is not null || snapshot.Rtc is not null ||
+        if (snapshot.Info is not null || snapshot.Name is not null ||
             snapshot.ExtraOam is not null || snapshot.Mbc7 is not null || snapshot.Huc3 is not null || snapshot.Tpp1 is not null ||
             snapshot.Sgb is not null || snapshot.SgbBuffers is not null)
-            throw new InvalidDataException("This BESS loader supports CORE and MBC state only; other device-specific blocks are not supported yet.");
+            throw new InvalidDataException("This BESS loader supports CORE, MBC, and MBC3 RTC state only; other device-specific blocks are not supported yet.");
         if (buffers.MbcRam.Length != 0 && _cartridge is null)
             throw new InvalidDataException("BESS battery data requires a loaded ROM.");
         if (snapshot.Mbc is not null && _cartridge is null)
             throw new InvalidDataException("BESS mapper state requires a loaded ROM.");
+        if (snapshot.Rtc is not null)
+        {
+            if (_cartridge is null)
+                throw new InvalidDataException("BESS RTC state requires a loaded ROM.");
+            _cartridge.ValidateBessRtc(snapshot.Rtc.Value);
+        }
 
         if (buffers.MbcRam.Length != 0)
             _cartridge!.LoadBattery(buffers.MbcRam.Span);
@@ -171,6 +177,8 @@ public sealed class Emulator
             foreach (var write in snapshot.Mbc)
                 _cartridge!.Write(write.Address, write.Value);
         }
+        if (snapshot.Rtc is not null)
+            _cartridge!.LoadBessRtc(snapshot.Rtc.Value);
 
         var cpu = _state.Cpu;
         cpu.PC = core.Pc;

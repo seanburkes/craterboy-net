@@ -207,8 +207,9 @@ and cartridge battery state into that managed snapshot boundary. The matching
 `Emulator.LoadBess` path rejects model or buffer-size mismatches and unsupported
 optional blocks before applying CORE CPU/I/O/memory/battery state. Parsed `MBC `
 mapper writes are then replayed in order after the core buffers are restored,
-preserving a transactional validation boundary; device timing and RTC/accessory
-state remain separate follow-up slices.
+and MBC3 live/latched RTC state is restored with timestamp and field validation,
+preserving a transactional validation boundary; other device state remains a
+separate follow-up slice.
 Both buffer-writing paths preflight model metadata and complete block ordering
 before writing external bytes, so rejected containers do not partially mutate
 the destination stream.
