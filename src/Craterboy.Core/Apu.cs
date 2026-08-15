@@ -451,6 +451,7 @@ internal sealed class ApuDevice : ICycleParticipant
             if (_noiseTimer-- <= 0)
             {
                 var feedback = (_noiseLfsr & 1) ^ ((_noiseLfsr >> 1) & 1);
+                if (HasEarlyCgbPcmGlitch && channels[3] == 0) _pcm34Mask &= 0x0F;
                 _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
                 if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
                 var divisor = (_io[0x22] & 0x07) switch { 0 => 8, 1 => 16, 2 => 32, 3 => 48, 4 => 64, 5 => 80, 6 => 96, _ => 112 };
