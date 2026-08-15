@@ -147,12 +147,14 @@ public sealed class Emulator
             throw new InvalidDataException($"BESS OAM must be exactly {_oam.Length} bytes.");
         if (buffers.Hram.Length != _hram.Length)
             throw new InvalidDataException($"BESS HRAM must be exactly {_hram.Length} bytes.");
-        if (snapshot.Info is not null || snapshot.Name is not null || snapshot.Mbc is not null || snapshot.Rtc is not null ||
+        if (snapshot.Info is not null || snapshot.Name is not null || snapshot.Rtc is not null ||
             snapshot.ExtraOam is not null || snapshot.Mbc7 is not null || snapshot.Huc3 is not null || snapshot.Tpp1 is not null ||
             snapshot.Sgb is not null || snapshot.SgbBuffers is not null)
-            throw new InvalidDataException("This BESS loader supports CORE state only; device-specific blocks are not supported yet.");
+            throw new InvalidDataException("This BESS loader supports CORE and MBC state only; other device-specific blocks are not supported yet.");
         if (buffers.MbcRam.Length != 0 && _cartridge is null)
             throw new InvalidDataException("BESS battery data requires a loaded ROM.");
+        if (snapshot.Mbc is not null && _cartridge is null)
+            throw new InvalidDataException("BESS mapper state requires a loaded ROM.");
 
         if (buffers.MbcRam.Length != 0)
             _cartridge!.LoadBattery(buffers.MbcRam.Span);
@@ -164,6 +166,11 @@ public sealed class Emulator
         buffers.Hram.Span.CopyTo(_hram);
         core.IoRegisters.Span.CopyTo(_io);
         _io[0x7F] = core.Ie;
+        if (snapshot.Mbc is not null)
+        {
+            foreach (var write in snapshot.Mbc)
+                _cartridge!.Write(write.Address, write.Value);
+        }
 
         var cpu = _state.Cpu;
         cpu.PC = core.Pc;

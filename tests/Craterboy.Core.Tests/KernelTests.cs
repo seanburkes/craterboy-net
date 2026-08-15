@@ -2890,6 +2890,40 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void EmulatorLoadsBessMapperWritesAfterCoreState()
+    {
+        var rom = MakeRom(type: 0x03, romSizeCode: 1, ramSizeCode: 2);
+        rom[0x4000] = 1;
+        rom[0x8000] = 2;
+        rom[0xC000] = 3;
+        var emulator = NewEmulator(rom);
+        using var saved = new MemoryStream();
+        emulator.SaveBess(saved);
+        saved.Position = 0;
+        var core = BessReader.ReadSnapshot(saved).Core;
+        var snapshot = new BessStateSnapshot(
+            core,
+            null,
+            null,
+            new[] { new BessMbcWrite(0x2000, 3) },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null);
+        using var withMapperState = new MemoryStream();
+        BessWriter.WriteSnapshot(withMapperState, snapshot);
+
+        emulator.WriteMemory(0x2000, 2);
+        Assert.Equal(2, emulator.ReadMemory(0x4000));
+        emulator.LoadBess(new MemoryStream(withMapperState.ToArray()));
+
+        Assert.Equal(3, emulator.ReadMemory(0x4000));
+    }
+
+    [Fact]
     public void BessBufferWritersPreflightOrderingBeforeWritingExternalData()
     {
         var core = new BessCore(1, 0, "GD  ", 0, 0, 0, 0, 0, 0, false, 0, 0, new byte[0x80], default, default, default, default, default, default, default);
