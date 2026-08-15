@@ -227,6 +227,16 @@ internal sealed class ApuDevice : ICycleParticipant
                     _wave2Phase = 0;
                     UpdateStatus();
                 }
+                if ((previousValue & 0x40) == 0 && (value & 0x80) == 0 && (_frameStep & 1) == 0 &&
+                    _channel2Length > 0 && ((value & 0x40) != 0 ||
+                    (_model.IsCgbRevision() && _model <= GameBoyModel.CgbB)))
+                {
+                    if (--_channel2Length == 0)
+                    {
+                        _channel2Enabled = false;
+                        UpdateStatus();
+                    }
+                }
                 break;
             case 0xFF1B:
                 _channel3Length = 256 - value;

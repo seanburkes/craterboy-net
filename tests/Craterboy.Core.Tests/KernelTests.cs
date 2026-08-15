@@ -1763,6 +1763,21 @@ public sealed class KernelTests
         Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.CgbB, (byte)0xF0)]
+    [InlineData(GameBoyModel.CgbC, (byte)0xF2)]
+    public void ApuChannelTwoLengthEnableCanConsumeTheDividerEdgeTick(GameBoyModel model, byte expectedStatus)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF17, 0xF0);
+        emulator.WriteMemory(0xFF16, 0x3F); // one length tick
+        emulator.WriteMemory(0xFF19, 0x80); // trigger without length
+        emulator.WriteMemory(0xFF19, 0x00); // clear length while divider bit is high
+
+        Assert.Equal(expectedStatus, emulator.PeekMemory(0xFF26));
+    }
+
     [Fact]
     public void ApuActivePulseRespondsToFrequencyWriteWithoutRetrigger()
     {
