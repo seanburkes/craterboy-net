@@ -230,9 +230,10 @@ public sealed class KernelTests
 
         emulator.RunCycles(16);
 
-        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF05));
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF05));
         Assert.Equal((byte)0x00, (byte)(emulator.PeekMemory(0xFF0F) & 0x04));
         emulator.RunCycles(4);
+        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF05));
         Assert.Equal((byte)0x04, (byte)(emulator.PeekMemory(0xFF0F) & 0x04));
     }
 
@@ -246,9 +247,9 @@ public sealed class KernelTests
         emulator.RunCycles(16);
 
         emulator.WriteMemory(0xFF06, 0xA5);
-        Assert.Equal((byte)0xA5, emulator.PeekMemory(0xFF05));
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF05));
         emulator.WriteMemory(0xFF05, 0x5A);
-        Assert.Equal((byte)0x5A, emulator.PeekMemory(0xFF05));
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF05));
 
         emulator.RunCycles(4);
         Assert.Equal((byte)0x5A, emulator.PeekMemory(0xFF05));

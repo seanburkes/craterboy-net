@@ -17,7 +17,8 @@ The current state kernel groups CPU registers and the master scheduler in
 `EmulatorState`. The scheduler advances registered participants one T-cycle at
 a time; the timer device is the first participant and owns DIV/TIMA/TMA/TAC
 edge behavior, including TAC/DIV write falling-edge increments and the delayed
-TIMA reload window. This keeps device timing deterministic and prevents
+TIMA reload window. TIMA reads return zero during the active reload phase,
+matching SameBoy's bus behavior. This keeps device timing deterministic and prevents
 individual devices from advancing themselves or consulting wall-clock time.
 The eleven SM83 illegal opcodes follow SameBoy's deterministic failure mode:
 they clear IE, halt the CPU, and consume the four-cycle instruction boundary
