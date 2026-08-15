@@ -1136,6 +1136,12 @@ public sealed class Emulator
 
     private byte Read(ushort address) => Read(address, false);
 
+    private byte ReadBlockedOam(ushort address)
+    {
+        _ppu.CorruptOamOnCpuAccess(address);
+        return 0xFF;
+    }
+
     private byte Read(ushort address, bool dmaTransfer)
     {
         if (!dmaTransfer && _dma.Active && !DmaCpuCanAccess(address)) return 0xFF;
@@ -1146,7 +1152,8 @@ public sealed class Emulator
             < 0xA000 => _ppu.CpuCanAccessVram ? _vram[(_vramBank * 0x2000) + address - 0x8000] : (byte)0xFF,
             < 0xC000 => _cartridge?.Read(address) ?? 0xFF,
             < 0xFE00 when address >= 0xC000 => _wram[WramOffset(address)],
-            < 0xFEA0 => _ppu.CpuCanAccessOam ? _oam[address - 0xFE00] : (byte)0xFF,
+            < 0xFEA0 => _ppu.CpuCanAccessOam ? _oam[address - 0xFE00] :
+                dmaTransfer ? (byte)0xFF : ReadBlockedOam(address),
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
             0xFF00 => _joypad.Read(),
@@ -1185,6 +1192,7 @@ public sealed class Emulator
             case < 0xFE00 when address >= 0xC000: _wram[WramOffset(address)] = value; break;
             case < 0xFEA0:
                 if (_ppu.CpuCanAccessOam) _oam[address - 0xFE00] = value;
+                else _ppu.CorruptOamOnCpuAccess(address);
                 break;
             case < 0xFF00: break;
             case >= 0xFF04 and <= 0xFF07:

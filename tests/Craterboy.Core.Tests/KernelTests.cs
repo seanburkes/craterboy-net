@@ -4280,6 +4280,33 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void DmgOamReadDuringSearchCorruptsTheActiveOamRow()
+    {
+        var emulator = NewEmulator(MakeRom());
+        byte[] firstRow = [0x34, 0x12, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0];
+        byte[] activeRow = [0xAA, 0x55, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66];
+        for (var i = 0; i < firstRow.Length; i++)
+        {
+            emulator.WriteMemory((ushort)(0xFE00 + i), firstRow[i]);
+            emulator.WriteMemory((ushort)(0xFE08 + i), activeRow[i]);
+        }
+
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.RunCycles(2); // first OAM-search row is active
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
+        emulator.WriteMemory(0xFF40, 0x00);
+
+        var current = (ushort)(activeRow[0] | (activeRow[1] << 8));
+        var previous = (ushort)(firstRow[0] | (firstRow[1] << 8));
+        var preceding = (ushort)(firstRow[4] | (firstRow[5] << 8));
+        var expected = (ushort)(((current ^ preceding) & (previous ^ preceding)) ^ preceding);
+        Assert.Equal((byte)expected, emulator.PeekMemory(0xFE08));
+        Assert.Equal((byte)(expected >> 8), emulator.PeekMemory(0xFE09));
+        for (var i = 2; i < 8; i++)
+            Assert.Equal(firstRow[i], emulator.PeekMemory((ushort)(0xFE08 + i)));
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();

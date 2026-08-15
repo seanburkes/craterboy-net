@@ -25,6 +25,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private bool _coincidence;
     private bool _statLine;
     private bool _paletteAccessBlocked;
+    private int _oamCorruptionRow;
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
@@ -53,6 +54,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _coincidence = false;
         _statLine = false;
         _paletteAccessBlocked = false;
+        _oamCorruptionRow = -1;
         Array.Clear(_frame);
         Array.Clear(_colorFrame);
         Array.Clear(_backgroundPaletteRam);
@@ -139,6 +141,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_coincidence);
         writer.Write(_statLine);
         writer.Write(_paletteAccessBlocked);
+        writer.Write(_oamCorruptionRow);
         writer.Write(_backgroundPaletteRam);
         writer.Write(_objectPaletteRam);
     }
@@ -149,6 +152,11 @@ internal sealed class PpuDevice : ICycleParticipant
         _lineCycles++;
         if (_line < 144)
         {
+            if (_mode == 2 && (_lineCycles & 1) == 0 && _lineCycles is > 0 and < 80)
+            {
+                var pair = _lineCycles / 2;
+                _oamCorruptionRow = Math.Min(0x98, ((pair & ~1) * 4) + 8);
+            }
             if (_lineCycles == 80) SetMode(3);
             else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
             else if (_lineCycles == Mode3End())
@@ -221,9 +229,26 @@ internal sealed class PpuDevice : ICycleParticipant
         }
         _mode = mode;
         if (mode != 3) _paletteAccessBlocked = false;
+        if (mode != 2) _oamCorruptionRow = -1;
         if (mode == 0 && _line < 144) _hblankStarted?.Invoke();
         UpdateStatLine();
     }
+
+    public void CorruptOamOnCpuAccess(ushort address)
+    {
+        if (_model.IsColor() || _mode != 2 || address >= 0xFEA0 || _oamCorruptionRow < 8) return;
+
+        var row = _oamCorruptionRow;
+        var current = ReadOamWord(row);
+        var previous = ReadOamWord(row - 8);
+        var preceding = ReadOamWord(row - 4);
+        var glitched = (ushort)(((current ^ preceding) & (previous ^ preceding)) ^ preceding);
+        _oam[row] = (byte)glitched;
+        _oam[row + 1] = (byte)(glitched >> 8);
+        for (var i = 2; i < 8; i++) _oam[row + i] = _oam[row - 8 + i];
+    }
+
+    private ushort ReadOamWord(int offset) => (ushort)(_oam[offset] | (_oam[offset + 1] << 8));
 
     private void UpdateCoincidence()
     {
