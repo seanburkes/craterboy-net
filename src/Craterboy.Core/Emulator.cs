@@ -36,7 +36,7 @@ public sealed class Emulator
         _options = options ?? new EmulatorOptions();
         _timer = new TimerDevice(_io);
         _dma = new OamDmaDevice(address => Read(address, true), (index, value) => _oam[index] = value);
-        _serial = new SerialDevice(_io, _options.SerialEndpoint);
+        _serial = new SerialDevice(_model, _io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_model, _io, _options.EmulateJoypadBouncing);
         _ppu = new PpuDevice(_model, _io, _vram, _oam, TransferCgbHblankBlock, CancelCgbHblankDma);
         _apu = new ApuDevice(_model, _io);
