@@ -401,6 +401,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void CgbSerialFastInternalClockCompletesInTwoHundredFiftySixTCycles()
+    {
+        var endpoint = new TestSerialEndpoint { Response = 0x3C };
+        var emulator = new Emulator(GameBoyModel.CgbE, new EmulatorOptions { SerialEndpoint = endpoint });
+        emulator.LoadRom(MakeRom());
+        emulator.WriteMemory(0xFF01, 0xA5);
+        emulator.WriteMemory(0xFF02, 0x83); // start, internal clock, CGB fast clock
+
+        emulator.RunCycles(255);
+        Assert.Equal((byte)0x80, (byte)(emulator.PeekMemory(0xFF02) & 0x80));
+        emulator.RunCycles(1);
+
+        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF01));
+        Assert.Equal((byte)0x00, (byte)(emulator.PeekMemory(0xFF02) & 0x80));
+        Assert.Equal((byte)0x08, (byte)(emulator.PeekMemory(0xFF0F) & 0x08));
+    }
+
+    [Fact]
     public void JoypadSelectionAndButtonPressUseActiveLowLines()
     {
         var emulator = NewEmulator(MakeRom());

@@ -94,10 +94,14 @@ internal sealed class SerialDevice : ICycleParticipant
     public void AdvanceTCycle()
     {
         if ((_io[0x02] & 0x81) != 0x81) return;
-        if (++_cycles < 512 * 8) return;
+        if (++_cycles < InternalTransferCycles) return;
         _cycles = 0;
         _io[0x01] = _endpoint?.Exchange(_io[0x01]) ?? 0xFF;
         _io[0x02] &= 0x7F;
         _io[0x0F] |= 0x08;
     }
+
+    private int InternalTransferCycles => _model.IsColor() && (_io[0x02] & 0x02) != 0
+        ? 32 * 8
+        : 512 * 8;
 }
