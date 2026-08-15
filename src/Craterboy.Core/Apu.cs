@@ -242,7 +242,15 @@ internal sealed class ApuDevice : ICycleParticipant
                 if (!_model.IsColor() && _channel3Enabled && _wave3Phase != 0)
                 {
                     var offset = ((_wave3Phase + 1) >> 1) & 0x0F;
-                    if (offset < 4) _io[0x30] = _io[0x30 + offset];
+                    if (offset < 4 && _model != GameBoyModel.Mgb)
+                    {
+                        _io[0x30] = _io[0x30 + offset];
+                    }
+                    else
+                    {
+                        var group = offset & ~3;
+                        for (var i = 0; i < 4; i++) _io[0x30 + i] = _io[0x30 + group + i];
+                    }
                 }
                 if (_channel3Length == 0) _channel3Length = 256;
                 _channel3Frequency = (_channel3Frequency & 0x0FF) | ((value & 0x07) << 8);
