@@ -50,8 +50,9 @@ Round-trip coverage now exercises every typed optional persistence section.
 `Emulator.SaveBess` emits live register, I/O, memory, and cartridge battery
 state through the managed BESS snapshot path. `Emulator.LoadBess` now validates
 the model, required buffer sizes, and unsupported optional blocks before
-resetting and applying CORE CPU/I/O/memory/battery state; device timing and
-mapper-register replay remain separate follow-up work.
+resetting and applying CORE CPU/I/O/memory/battery state, then replays ordered
+`MBC ` mapper writes; device timing and RTC/accessory state remain separate
+follow-up work.
 Writer preflight rejects invalid ordering before emitting external data,
 preserving the transactional write boundary.
 
