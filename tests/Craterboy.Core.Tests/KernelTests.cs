@@ -1795,6 +1795,33 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuNoiseFrequencyWriteRestartsTheNoiseCadence()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var liveWrite = NewEmulator(rom);
+        var unchanged = NewEmulator(rom);
+        ConfigureNoise(liveWrite, 0x70);
+        ConfigureNoise(unchanged, 0x70);
+
+        liveWrite.RunCycles(95);
+        liveWrite.WriteMemory(0xFF22, 0x00);
+        unchanged.RunCycles(95);
+
+        var discarded = new short[1];
+        Assert.Equal(1, liveWrite.CopyAudioSamples(discarded));
+        Assert.Equal(1, unchanged.CopyAudioSamples(discarded));
+        liveWrite.RunCycles(95 * 128);
+        unchanged.RunCycles(95 * 128);
+
+        var actual = new short[128];
+        var baseline = new short[128];
+        Assert.Equal(128, liveWrite.CopyAudioSamples(actual));
+        Assert.Equal(128, unchanged.CopyAudioSamples(baseline));
+        Assert.NotEqual(baseline, actual);
+    }
+
+    [Fact]
     public void ApuMixerHonorsNr51RoutingAndNr50Volume()
     {
         var rom = MakeRom();
@@ -4303,6 +4330,14 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF12, 0xF3);
         emulator.WriteMemory(0xFF13, 0x40);
         emulator.WriteMemory(0xFF14, 0x80);
+    }
+
+    private static void ConfigureNoise(Emulator emulator, byte nr43)
+    {
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF21, 0xF0);
+        emulator.WriteMemory(0xFF22, nr43);
+        emulator.WriteMemory(0xFF23, 0x80);
     }
 
     private static Emulator NewEmulator(byte[] rom, GameBoyModel model = GameBoyModel.DmgB)

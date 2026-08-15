@@ -242,6 +242,9 @@ internal sealed class ApuDevice : ICycleParticipant
             case 0xFF20:
                 _channel4Length = 64 - (value & 0x3F);
                 break;
+            case 0xFF22:
+                _noiseTimer = 0;
+                break;
             case 0xFF21 when (value & 0xF8) == 0:
                 _channel4Enabled = false;
                 UpdateStatus();
