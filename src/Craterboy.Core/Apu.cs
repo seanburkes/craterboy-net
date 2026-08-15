@@ -329,7 +329,13 @@ internal sealed class ApuDevice : ICycleParticipant
         }
         if (_frameStep == 7 && _channel2Enabled && (_io[0x17] & 0x07) != 0 && --_channel2EnvelopeTimer == 0)
         {
-            if (HasEarlyCgbPcmGlitch) _pcm12Mask &= (byte)((_channel2Volume << 4) | 0x3F);
+            if (HasEarlyCgbPcmGlitch)
+            {
+                var mask = _model == GameBoyModel.Cgb0 && _channel2Volume == 1 && (_io[0x17] & 0x08) != 0
+                    ? 0x1F
+                    : 0x3F;
+                _pcm12Mask &= (byte)((_channel2Volume << 4) | mask);
+            }
             if ((_io[0x17] & 0x08) != 0 && _channel2Volume < 15) _channel2Volume++;
             else if ((_io[0x17] & 0x08) == 0 && _channel2Volume > 0) _channel2Volume--;
             _io[0x17] = (byte)((_io[0x17] & 0x0F) | (_channel2Volume << 4));
