@@ -153,6 +153,8 @@ frequency registers, keeping their duty waveforms independent. Active channels
 also apply high-frequency register writes without requiring a retrigger.
 NR50 master volume and NR51 per-channel routing now shape the emitted PCM.
 Channel 1, channel 2, and channel 4 envelopes clock on frame-sequencer step 7.
+Channel 1 length-enable writes model the divider-edge tick, including the
+older-CGB revision exception.
 Length counters clock on frame-sequencer steps 0, 2, 4, and 6.
 Channel 3 frequency registers now drive its managed wave phase progression.
 Channel 4 NR43 divisor and shift fields control the deterministic LFSR cadence;
