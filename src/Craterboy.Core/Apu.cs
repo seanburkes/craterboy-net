@@ -291,14 +291,27 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel4Enabled = false;
                 UpdateStatus();
                 break;
-            case 0xFF23 when (value & 0x80) != 0:
-                if (_channel4Length == 0) _channel4Length = 64;
-                _channel4Volume = _io[0x21] >> 4;
-                _channel4EnvelopeTimer = (_io[0x21] & 0x07) == 0 ? 8 : (_io[0x21] & 0x07);
-                _channel4Enabled = (_io[0x21] & 0xF8) != 0;
-                _noiseLfsr = 0x7FFF;
-                _noiseTimer = 0;
-                UpdateStatus();
+            case 0xFF23:
+                if ((value & 0x80) != 0)
+                {
+                    if (_channel4Length == 0) _channel4Length = 64;
+                    _channel4Volume = _io[0x21] >> 4;
+                    _channel4EnvelopeTimer = (_io[0x21] & 0x07) == 0 ? 8 : (_io[0x21] & 0x07);
+                    _channel4Enabled = (_io[0x21] & 0xF8) != 0;
+                    _noiseLfsr = 0x7FFF;
+                    _noiseTimer = 0;
+                    UpdateStatus();
+                }
+                if ((previousValue & 0x40) == 0 && (value & 0x80) == 0 && (_frameStep & 1) == 0 &&
+                    _channel4Length > 0 && ((value & 0x40) != 0 ||
+                    (_model.IsCgbRevision() && _model <= GameBoyModel.CgbB)))
+                {
+                    if (--_channel4Length == 0)
+                    {
+                        _channel4Enabled = false;
+                        UpdateStatus();
+                    }
+                }
                 break;
             case 0xFF14:
                 _channel1Frequency = (_channel1Frequency & 0x0FF) | ((value & 0x07) << 8);
