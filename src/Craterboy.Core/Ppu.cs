@@ -239,6 +239,11 @@ internal sealed class PpuDevice : ICycleParticipant
         if (_model.IsColor() || _mode != 2 || address >= 0xFEA0 || _oamCorruptionRow < 8) return;
 
         var row = _oamCorruptionRow;
+        if (row == 0x80)
+        {
+            for (var i = 0; i < 8; i++) _oam[i] = _oam[row + i];
+            return;
+        }
         var current = ReadOamWord(row);
         var previous = ReadOamWord(row - 8);
         var preceding = ReadOamWord(row - 4);
