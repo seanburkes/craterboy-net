@@ -4292,7 +4292,7 @@ public sealed class KernelTests
         }
 
         emulator.WriteMemory(0xFF40, 0x80);
-        emulator.RunCycles(2); // first OAM-search row is active
+        emulator.RunCycles(4); // first two OAM-search pairs still use row 0x08
         Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
         emulator.WriteMemory(0xFF40, 0x00);
 
