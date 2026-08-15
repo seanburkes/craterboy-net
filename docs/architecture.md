@@ -106,7 +106,8 @@ across CGB, AGB, and GBP models.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. On DMG, a blocked CPU OAM access during the
 first OAM-search rows applies SameBoy's row-copy and bitwise-glitch behavior;
-color models do not corrupt OAM. STAT sources share edge-triggered line logic so
+the row-0x80 access copies that row into the first OAM row, and color models do
+not corrupt OAM. STAT sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
 Disabling the LCD resets LY/timing state and blanks the raw frame buffer.
 

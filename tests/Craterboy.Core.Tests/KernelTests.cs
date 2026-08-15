@@ -4307,6 +4307,25 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void DmgOamReadAtRowEightZeroCopiesThatRowToTheStart()
+    {
+        var emulator = NewEmulator(MakeRom());
+        for (var i = 0; i < 8; i++)
+        {
+            emulator.WriteMemory((ushort)(0xFE00 + i), (byte)(0x10 + i));
+            emulator.WriteMemory((ushort)(0xFE80 + i), (byte)(0xA0 + i));
+        }
+
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.RunCycles(62); // OAM search reaches row 0x80
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
+        emulator.WriteMemory(0xFF40, 0x00);
+
+        for (var i = 0; i < 8; i++)
+            Assert.Equal((byte)(0xA0 + i), emulator.PeekMemory((ushort)(0xFE00 + i)));
+    }
+
+    [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {
         var clock = new TestTimeProvider();
