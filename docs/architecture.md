@@ -43,6 +43,9 @@ delay; MGB uses the shorter model-specific delay. Selection changes or button
 presses request the joypad interrupt on a high-to-low line transition.
 Optional bounce emulation applies SameBoy's per-key settling windows on DMG,
 MGB, and AGB while remaining disabled by default and on SGB/GBP models.
+Faux analog input is exposed as an opt-in normalized axis API; SameBoy's
+seven-step directional dithering advances once per frame, and digital direction
+presses take precedence.
 Opposing direction inputs are filtered to the hardware-compatible
 single-direction result; SGB multiplayer input is deferred.
 

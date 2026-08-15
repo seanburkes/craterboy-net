@@ -271,6 +271,10 @@ public sealed class Emulator
     public void SetButtonState(GameBoyButton button, bool pressed, int player = 0) =>
         _joypad.SetButtonState(button, pressed, player);
 
+    public void SetFauxAnalogInput(double x, double y) => _joypad.SetFauxAnalogInput(x, y);
+
+    public void DisableFauxAnalogInput() => _joypad.DisableFauxAnalogInput();
+
     public void ClockSerialBit() => _serial.ClockExternalBit();
 
     public void CopyFrame(Span<byte> destination) => _ppu.CopyFrame(destination);

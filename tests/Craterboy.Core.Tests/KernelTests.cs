@@ -491,6 +491,21 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void FauxAnalogInputUsesDigitalOverrideAndDirectionalStrength()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF00, 0x20);
+        emulator.SetButtonState(GameBoyButton.Right, true);
+        emulator.SetFauxAnalogInput(0, 0);
+        Assert.Equal(0x0F, emulator.ReadMemory(0xFF00) & 0x0F);
+
+        emulator.SetFauxAnalogInput(1, 0);
+        Assert.Equal(0x0E, emulator.ReadMemory(0xFF00) & 0x0F);
+        emulator.DisableFauxAnalogInput();
+        Assert.Equal(0x0F, emulator.ReadMemory(0xFF00) & 0x0F);
+    }
+
+    [Fact]
     public void PpuCyclesThroughDmgVisibleLineModesAndIncrementsLy()
     {
         var rom = MakeRom();
