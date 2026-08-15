@@ -203,9 +203,11 @@ and selects the CORE-only or CORE+SGB layout automatically.
 The snapshot round-trip covers the typed RTC, XOAM, MBC7, HUC3, TPP1, and SGB
 sections alongside mapper and identity metadata.
 `Emulator.SaveBess` now projects the live CPU, I/O, work RAM, VRAM, OAM, HRAM,
-and cartridge battery state into that managed snapshot boundary. The matching
+and cartridge battery state into that managed snapshot boundary, including ROM
+INFO metadata and the Craterboy producer NAME. The matching
 `Emulator.LoadBess` path rejects model or buffer-size mismatches and unsupported
-optional blocks before applying CORE CPU/I/O/memory/battery state. Parsed `MBC `
+optional blocks before applying CORE CPU/I/O/memory/battery state; matching INFO
+metadata is validated against the loaded ROM while NAME is informational. Parsed `MBC `
 mapper writes are then replayed in order after the core buffers are restored,
 and MBC3 live/latched RTC state is restored with timestamp and field validation,
 preserving a transactional validation boundary; other device state remains a
