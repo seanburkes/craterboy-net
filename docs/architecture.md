@@ -77,6 +77,8 @@ DMG/MGB APU channel phases, frame-sequencer state, and queued samples are
 included too.
 APU mixer volumes and channel routing are included in deterministic hashes too.
 Serial internal-clock and external-bit transfer progress are included as well.
+SC readback preserves SameBoy's fixed high bits and forces the DMG clock-source
+bit high while retaining the CGB-selected clock bit.
 OAM DMA source, phase, and byte progress are included too.
 Joypad button and model-specific delayed-selection state are included as well;
 DMG-B/MGB selection switching is delayed, while CGB-family selection changes are

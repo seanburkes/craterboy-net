@@ -389,6 +389,17 @@ public sealed class KernelTests
         Assert.Equal((byte)0xA5, endpoint.Outgoing);
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB, (byte)0xFE)]
+    [InlineData(GameBoyModel.CgbE, (byte)0xFC)]
+    public void SerialControlReadbackAppliesModelSpecificFixedBits(GameBoyModel model, byte expected)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF02, 0x80); // external-clock transfer
+
+        Assert.Equal(expected, emulator.PeekMemory(0xFF02));
+    }
+
     [Fact]
     public void JoypadSelectionAndButtonPressUseActiveLowLines()
     {

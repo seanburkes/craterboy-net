@@ -49,13 +49,15 @@ internal sealed class OamDmaDevice : ICycleParticipant
 
 internal sealed class SerialDevice : ICycleParticipant
 {
+    private readonly GameBoyModel _model;
     private readonly byte[] _io;
     private readonly ISerialEndpoint? _endpoint;
     private int _cycles;
     private int _externalBits;
 
-    public SerialDevice(byte[] io, ISerialEndpoint? endpoint)
+    public SerialDevice(GameBoyModel model, byte[] io, ISerialEndpoint? endpoint)
     {
+        _model = model;
         _io = io;
         _endpoint = endpoint;
     }
@@ -68,7 +70,7 @@ internal sealed class SerialDevice : ICycleParticipant
 
     public void WriteControl(byte value)
     {
-        _io[0x02] = (byte)(value & 0x83);
+        _io[0x02] = (byte)((value & 0x83) | (_model.IsColor() ? 0x7C : 0x7E));
         if ((_io[0x02] & 0x81) == 0x81) _cycles = 0;
         if ((_io[0x02] & 0x80) != 0 && (_io[0x02] & 1) == 0) _externalBits = 0;
     }
