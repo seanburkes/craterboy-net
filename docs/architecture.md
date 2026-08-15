@@ -70,6 +70,9 @@ Joypad button and model-specific delayed-selection state are included as well;
 DMG-B/MGB selection switching is delayed, while CGB-family selection changes are
 immediate.
 Cartridge mapper bank, enable, latch, and RTC control state are included too.
+MBC1 multicarts are detected using SameBoy's repeated-header heuristic and use
+the four-bit multicart bank wiring while ordinary MBC1 cartridges retain the
+standard five-bit mapping.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP

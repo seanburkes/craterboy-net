@@ -160,6 +160,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void Mbc1MulticartUsesFourBitBankWiring()
+    {
+        var rom = MakeRom(type: 0x03, romSizeCode: 5, ramSizeCode: 2);
+        rom.AsSpan(0x104, 0x30).CopyTo(rom.AsSpan(0x40104, 0x30));
+        rom[0x12 * 0x4000] = 0x12;
+        rom[0x10 * 0x4000] = 0x10;
+        var emulator = NewEmulator(rom);
+
+        emulator.WriteMemory(0x2000, 2);
+        emulator.WriteMemory(0x4000, 1);
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0x4000));
+        emulator.WriteMemory(0x6000, 1);
+        Assert.Equal((byte)0x10, emulator.PeekMemory(0x0000));
+    }
+
+    [Fact]
     public void EchoRamMirrorsWorkRam()
     {
         var emulator = NewEmulator(MakeRom());
