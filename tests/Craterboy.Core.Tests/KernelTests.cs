@@ -31,6 +31,31 @@ public sealed class KernelTests
         Assert.Equal((byte)0xB0, registers.F);
     }
 
+    [Theory]
+    [InlineData(0xD3)]
+    [InlineData(0xDB)]
+    [InlineData(0xDD)]
+    [InlineData(0xE3)]
+    [InlineData(0xE4)]
+    [InlineData(0xEB)]
+    [InlineData(0xEC)]
+    [InlineData(0xED)]
+    [InlineData(0xF4)]
+    [InlineData(0xFC)]
+    [InlineData(0xFD)]
+    public void IllegalSm83OpcodesHaltTheCpuLikeSameBoy(byte opcode)
+    {
+        var rom = MakeRom();
+        rom[0x0100] = opcode;
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFFFF, 0x1F);
+
+        Assert.Equal(4, emulator.StepInstruction());
+        Assert.True(emulator.Registers.Halted);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xFFFF));
+        Assert.Equal((ushort)0x0101, emulator.Registers.ProgramCounter);
+    }
+
     [Fact]
     public void EnableInterruptsTakesEffectAfterTheFollowingInstruction()
     {

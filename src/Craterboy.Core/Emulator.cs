@@ -481,14 +481,14 @@ public sealed class Emulator
         0xC9 => Return(),
         0xCD => Call(),
         0x76 => Halt(),
-        _ => throw new NotSupportedException($"SM83 opcode 0x{opcode:X2} at 0x{_state.Cpu.PC - 1:X4} is not ported yet."),
+        _ => IllegalOpcode(),
     };
 
     private int PredictNextInstructionCycles()
     {
         if (_state.Cpu.Halted) return ScaledCycles(4, _doubleSpeed);
         var opcode = Read(_state.Cpu.PC);
-        var cycles = opcode switch
+        var cycles = IsIllegalOpcode(opcode) ? 4 : opcode switch
         {
             0x00 or 0x10 or 0x76 => 4,
             0xCB => PredictCbCycles(Read((ushort)(_state.Cpu.PC + 1))),
@@ -536,6 +536,16 @@ public sealed class Emulator
         };
         return ScaledCycles(cycles, _doubleSpeed);
     }
+
+    private int IllegalOpcode()
+    {
+        _io[0x7F] = 0;
+        _state.Cpu.Halted = true;
+        return 4;
+    }
+
+    private static bool IsIllegalOpcode(byte opcode) => opcode is
+        0xD3 or 0xDB or 0xDD or 0xE3 or 0xE4 or 0xEB or 0xEC or 0xED or 0xF4 or 0xFC or 0xFD;
 
     private int ExecuteCb(byte opcode)
     {

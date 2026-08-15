@@ -19,6 +19,9 @@ a time; the timer device is the first participant and owns DIV/TIMA/TMA/TAC
 edge behavior, including TAC/DIV write falling-edge increments and the delayed
 TIMA reload window. This keeps device timing deterministic and prevents
 individual devices from advancing themselves or consulting wall-clock time.
+The eleven SM83 illegal opcodes follow SameBoy's deterministic failure mode:
+they clear IE, halt the CPU, and consume the four-cycle instruction boundary
+instead of escaping into a host exception.
 
 OAM DMA and serial transfer devices are also scheduler participants. DMA copies
 one byte per four T-cycles for 160 bytes, while the serial endpoint completes an
