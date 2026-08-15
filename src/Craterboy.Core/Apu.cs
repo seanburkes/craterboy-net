@@ -44,6 +44,8 @@ internal sealed class ApuDevice : ICycleParticipant
     private ushort _noiseLfsr;
     private int _noiseTimer;
     private bool _mixerConfigured;
+    private byte _pcm12Mask;
+    private byte _pcm34Mask;
     private int _sampleCycles;
     private readonly short[] _samples = new short[4096];
     private int _sampleRead;
@@ -87,6 +89,8 @@ internal sealed class ApuDevice : ICycleParticipant
         _noiseLfsr = 0x7FFF;
         _noiseTimer = 0;
         _mixerConfigured = false;
+        _pcm12Mask = 0xFF;
+        _pcm34Mask = 0xFF;
         _sampleCycles = 0;
         _sampleRead = 0;
         _sampleWrite = 0;
@@ -149,6 +153,8 @@ internal sealed class ApuDevice : ICycleParticipant
                 _noiseLfsr = 0x7FFF;
                 _noiseTimer = 0;
                 _mixerConfigured = false;
+                _pcm12Mask = 0xFF;
+                _pcm34Mask = 0xFF;
                 _sampleCycles = 0;
                 _sampleRead = 0;
                 _sampleWrite = 0;
@@ -291,6 +297,8 @@ internal sealed class ApuDevice : ICycleParticipant
         if (++_frameCycles < 8192) return;
         _frameCycles = 0;
         _frameStep = (_frameStep + 1) & 7;
+        _pcm12Mask = 0xFF;
+        _pcm34Mask = 0xFF;
         if (_frameStep is 0 or 2 or 4 or 6 && (_io[0x14] & 0x40) != 0 && _channel1Enabled && _channel1Length > 0 && --_channel1Length == 0)
         {
             _channel1Enabled = false;
@@ -313,6 +321,7 @@ internal sealed class ApuDevice : ICycleParticipant
         }
         if (_frameStep == 7 && _channel1Enabled && (_io[0x12] & 0x07) != 0 && --_envelopeTimer == 0)
         {
+            if (HasEarlyCgbPcmGlitch) _pcm12Mask &= (byte)(_channel1Volume | 0xF1);
             if ((_io[0x12] & 0x08) != 0 && _channel1Volume < 15) _channel1Volume++;
             else if ((_io[0x12] & 0x08) == 0 && _channel1Volume > 0) _channel1Volume--;
             _io[0x12] = (byte)((_io[0x12] & 0x0F) | (_channel1Volume << 4));
@@ -320,6 +329,7 @@ internal sealed class ApuDevice : ICycleParticipant
         }
         if (_frameStep == 7 && _channel2Enabled && (_io[0x17] & 0x07) != 0 && --_channel2EnvelopeTimer == 0)
         {
+            if (HasEarlyCgbPcmGlitch) _pcm12Mask &= (byte)((_channel2Volume << 4) | 0x3F);
             if ((_io[0x17] & 0x08) != 0 && _channel2Volume < 15) _channel2Volume++;
             else if ((_io[0x17] & 0x08) == 0 && _channel2Volume > 0) _channel2Volume--;
             _io[0x17] = (byte)((_io[0x17] & 0x0F) | (_channel2Volume << 4));
@@ -327,6 +337,7 @@ internal sealed class ApuDevice : ICycleParticipant
         }
         if (_frameStep == 7 && _channel4Enabled && (_io[0x21] & 0x07) != 0 && --_channel4EnvelopeTimer == 0)
         {
+            if (HasEarlyCgbPcmGlitch) _pcm34Mask &= (byte)((_channel4Volume << 4) | 0x1F);
             if ((_io[0x21] & 0x08) != 0 && _channel4Volume < 15) _channel4Volume++;
             else if ((_io[0x21] & 0x08) == 0 && _channel4Volume > 0) _channel4Volume--;
             _io[0x21] = (byte)((_io[0x21] & 0x0F) | (_channel4Volume << 4));
@@ -396,6 +407,7 @@ internal sealed class ApuDevice : ICycleParticipant
         writer.Write(_channel4Volume); writer.Write(_channel4EnvelopeTimer);
         writer.Write(_noiseLfsr); writer.Write(_noiseTimer);
         writer.Write(_mixerConfigured); writer.Write(_sampleCycles);
+        writer.Write(_pcm12Mask); writer.Write(_pcm34Mask);
         writer.Write(_sampleRead); writer.Write(_sampleWrite); writer.Write(_sampleCount);
         foreach (var sample in _samples) writer.Write(sample);
     }
@@ -471,8 +483,8 @@ internal sealed class ApuDevice : ICycleParticipant
         var channel3 = CurrentWaveSample();
         var channel4 = _channel4Enabled && (_noiseLfsr & 1) == 0 ? _channel4Volume : 0;
         return address == 0xFF76
-            ? (byte)((channel2 << 4) | channel1)
-            : (byte)((channel4 << 4) | channel3);
+            ? (byte)(((channel2 << 4) | channel1) & (HasEarlyCgbPcmGlitch ? _pcm12Mask : 0xFF))
+            : (byte)(((channel4 << 4) | channel3) & (HasEarlyCgbPcmGlitch ? _pcm34Mask : 0xFF));
     }
 
     private static int CurrentPulseSample(int phase, byte register, int volume, bool enabled)
@@ -492,6 +504,8 @@ internal sealed class ApuDevice : ICycleParticipant
     }
 
     private bool AllowsActiveWaveRamAccess() => _model is >= GameBoyModel.Cgb0 and <= GameBoyModel.CgbE;
+
+    private bool HasEarlyCgbPcmGlitch => _model is >= GameBoyModel.Cgb0 and <= GameBoyModel.CgbC;
 
     private ushort CurrentWaveRamAddress => (ushort)(0xFF30 + ((_wave3Phase & 0x1F) >> 1));
 }
