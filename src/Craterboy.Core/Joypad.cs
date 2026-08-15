@@ -14,11 +14,16 @@ public enum GameBoyButton
 
 internal sealed class JoypadDevice : ICycleParticipant
 {
+    private static readonly byte[] AnalogPatterns = { 0x01, 0x11, 0x94, 0x55, 0x6D, 0x77, 0x7F };
     private readonly byte[] _io;
     private readonly GameBoyModel _model;
     private readonly bool _bounceEnabled;
     private readonly bool[] _pressed = new bool[8];
     private readonly int[] _bounceTiming = new int[8];
+    private readonly sbyte[] _analog = new sbyte[2];
+    private bool _fauxAnalogEnabled;
+    private byte _analogTicks;
+    private int _frameCycles;
     private byte _select;
     private byte _activeSelect;
     private byte _pendingSelect;
@@ -35,6 +40,10 @@ internal sealed class JoypadDevice : ICycleParticipant
     {
         Array.Clear(_pressed);
         Array.Clear(_bounceTiming);
+        Array.Clear(_analog);
+        _fauxAnalogEnabled = false;
+        _analogTicks = 0;
+        _frameCycles = 0;
         _select = 0x30;
         _activeSelect = 0x30;
         _pendingSelect = 0x30;
@@ -74,11 +83,57 @@ internal sealed class JoypadDevice : ICycleParticipant
         RequestInterruptOnFallingEdge(previous);
     }
 
+    public void SetFauxAnalogInput(double x, double y)
+    {
+        x = Math.Clamp(x, -1, 1);
+        y = Math.Clamp(y, -1, 1);
+        var absoluteX = Math.Abs(x);
+        var absoluteY = Math.Abs(y);
+        if (absoluteX <= 0.1) x = absoluteX = 0;
+        if (absoluteY <= 0.1) y = absoluteY = 0;
+        if (x == 0 && y == 0)
+        {
+            _analog[0] = _analog[1] = 0;
+        }
+        else
+        {
+            if (x != 0)
+            {
+                absoluteX = (absoluteX - 0.1) / 0.9;
+                x = x > 0 ? absoluteX : -absoluteX;
+            }
+            if (y != 0)
+            {
+                absoluteY = (absoluteY - 0.1) / 0.9;
+                y = y > 0 ? absoluteY : -absoluteY;
+            }
+            var distance = Math.Min(Math.Sqrt(x * x + y * y), 1);
+            var multiplier = 8 * distance / Math.Max(absoluteX, absoluteY);
+            _analog[0] = (sbyte)Math.Clamp((int)Math.Round(x * multiplier, MidpointRounding.AwayFromZero), -8, 8);
+            _analog[1] = (sbyte)Math.Clamp((int)Math.Round(y * multiplier, MidpointRounding.AwayFromZero), -8, 8);
+        }
+        Array.Clear(_pressed, 0, 4);
+        _fauxAnalogEnabled = true;
+        _io[0x00] = Read();
+    }
+
+    public void DisableFauxAnalogInput()
+    {
+        _fauxAnalogEnabled = false;
+        _analog[0] = _analog[1] = 0;
+        _io[0x00] = Read();
+    }
+
     public void WriteStateHash(BinaryWriter writer)
     {
         writer.Write(_pressed.Length);
         foreach (var pressed in _pressed) writer.Write(pressed);
         foreach (var timing in _bounceTiming) writer.Write(timing);
+        writer.Write(_fauxAnalogEnabled);
+        writer.Write((sbyte)_analog[0]);
+        writer.Write((sbyte)_analog[1]);
+        writer.Write(_analogTicks);
+        writer.Write(_frameCycles);
         writer.Write(_select);
         writer.Write(_activeSelect);
         writer.Write(_pendingSelect);
@@ -100,6 +155,12 @@ internal sealed class JoypadDevice : ICycleParticipant
             update = true;
         }
         if (update) _io[0x00] = Read();
+        if (++_frameCycles == 70_224)
+        {
+            _frameCycles = 0;
+            _analogTicks++;
+            _io[0x00] = Read();
+        }
     }
 
     private void ApplySelection(byte selection, byte previous)
@@ -147,6 +208,22 @@ internal sealed class JoypadDevice : ICycleParticipant
     private bool IsPressed(GameBoyButton button)
     {
         var index = (int)button;
+        if (_fauxAnalogEnabled && index <= (int)GameBoyButton.Down && _pressed[index]) return true;
+        if (_fauxAnalogEnabled && index <= (int)GameBoyButton.Down)
+        {
+            var input = index switch
+            {
+                (int)GameBoyButton.Right => _analog[0],
+                (int)GameBoyButton.Left => -_analog[0],
+                (int)GameBoyButton.Up => -_analog[1],
+                _ => _analog[1],
+            };
+            if (input <= 0) return false;
+            if (input >= 8) return true;
+            var pattern = AnalogPatterns[input - 1];
+            var offset = index is (int)GameBoyButton.Up or (int)GameBoyButton.Down ? 2 : 0;
+            return (pattern & (1 << ((_analogTicks + offset) & 6))) != 0;
+        }
         if (!_bounceEnabled || _bounceTiming[index] == 0 || (_bounceTiming[index] & 0x3FF) > 0x300)
             return _pressed[index];
         var sample = ((((index << 5) + _bounceTiming[index]) * 17) ^ ((_bounceTiming[index] ^ 0x5A5) * 13)) >> 3;
