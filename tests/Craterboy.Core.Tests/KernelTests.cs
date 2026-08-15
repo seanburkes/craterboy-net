@@ -3615,6 +3615,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void DmgWaveRetriggerCopiesTheCurrentSampleGroupToWaveByteZero()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF30, 0x10);
+        emulator.WriteMemory(0xFF31, 0x20);
+        emulator.WriteMemory(0xFF1A, 0x80);
+        emulator.WriteMemory(0xFF1D, 0x00);
+        emulator.WriteMemory(0xFF1E, 0x81);
+
+        emulator.RunCycles(95 * 2);
+        emulator.WriteMemory(0xFF1E, 0x81);
+        emulator.WriteMemory(0xFF1A, 0x00);
+
+        Assert.Equal((byte)0x20, emulator.PeekMemory(0xFF30));
+    }
+
+    [Fact]
     public void StateHashIncludesCartridgeBatteryState()
     {
         var rom = MakeRom(type: 0x03, romSizeCode: 1, ramSizeCode: 2);
