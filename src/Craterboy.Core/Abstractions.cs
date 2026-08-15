@@ -21,6 +21,7 @@ public sealed class EmulatorOptions
     public IEntropyProvider EntropyProvider { get; init; } = SystemEntropy.Instance;
     public ISerialEndpoint? SerialEndpoint { get; init; }
     public bool SkipBootRom { get; init; } = true;
+    public bool EmulateJoypadBouncing { get; init; }
 }
 
 internal sealed class SystemEmulationTime : ITimeProvider

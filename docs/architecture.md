@@ -41,6 +41,8 @@ The joypad is an active-low, scheduler-owned bus device with explicit button
 state injection. DMG/MGB FF00 selection changes model their hardware switching
 delay; MGB uses the shorter model-specific delay. Selection changes or button
 presses request the joypad interrupt on a high-to-low line transition.
+Optional bounce emulation applies SameBoy's per-key settling windows on DMG,
+MGB, and AGB while remaining disabled by default and on SGB/GBP models.
 Opposing direction inputs are filtered to the hardware-compatible
 single-direction result; SGB multiplayer input is deferred.
 

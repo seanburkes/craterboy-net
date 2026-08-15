@@ -471,6 +471,26 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void OptionalJoypadBouncingSettlesAfterTheSameBoyWindow()
+    {
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { EmulateJoypadBouncing = true });
+        emulator.LoadRom(MakeRom());
+        emulator.WriteMemory(0xFF00, 0x10);
+        emulator.SetButtonState(GameBoyButton.A, true);
+        Assert.Equal(0, emulator.ReadMemory(0xFF00) & 1);
+
+        var bounced = false;
+        for (var cycle = 0; cycle < 0x0FFF; cycle++)
+        {
+            emulator.RunCycles(1);
+            bounced |= (emulator.ReadMemory(0xFF00) & 1) != 0;
+        }
+
+        Assert.True(bounced);
+        Assert.Equal(0, emulator.ReadMemory(0xFF00) & 1);
+    }
+
+    [Fact]
     public void PpuCyclesThroughDmgVisibleLineModesAndIncrementsLy()
     {
         var rom = MakeRom();
