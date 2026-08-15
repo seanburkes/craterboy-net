@@ -65,6 +65,9 @@ CGB SVBK selects the active 4 KiB D000-DFFF work-RAM bank and its echo; banked
 work-RAM state is included in deterministic hashes.
 CGB-family BG/OBJ palette RAM is also included in deterministic hashes so color state
 changes are visible to replay checkpoints.
+CGB-family palette data reads and writes are blocked after the initial five
+mode-3 cycles, while auto-incrementing palette indices still advance on blocked
+writes.
 PPU timing, LCD mode, coincidence, and window-line state are included alongside
 the palette state.
 DMG BGP palette-register state is included in deterministic hashes as well.
