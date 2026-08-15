@@ -154,8 +154,8 @@ internal sealed class PpuDevice : ICycleParticipant
         {
             if (_mode == 2 && (_lineCycles & 1) == 0 && _lineCycles is > 0 and < 80)
             {
-                var pair = _lineCycles / 2;
-                _oamCorruptionRow = Math.Min(0x98, ((pair & ~1) * 4) + 8);
+                var searchIndex = (_lineCycles / 2) - 1;
+                _oamCorruptionRow = Math.Min(0x98, ((searchIndex & ~1) * 4) + 8);
             }
             if (_lineCycles == 80) SetMode(3);
             else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
