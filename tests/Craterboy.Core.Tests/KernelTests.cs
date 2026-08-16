@@ -779,6 +779,25 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void EarlyCgbDoubleSpeedClosesMode2OamWindows()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbC);
+
+        emulator.WriteMemory(0xFF4D, 0x01);
+        emulator.StepInstruction();
+        emulator.WriteMemory(0xFF40, 0x80); // LCD on: mode 2
+        emulator.WriteMemory(0xFE00, 0x5A);
+        emulator.RunCycles(70); // CGB OAM writes close here at double speed
+        emulator.WriteMemory(0xFE00, 0xA5);
+        Assert.Equal((byte)0x5A, emulator.ReadMemory(0xFE00));
+
+        emulator.RunCycles(6); // early-CGB OAM reads close at 76 T-cycles
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
+    }
+
+    [Fact]
     public void DmgDoesNotExposeCgbKey1()
     {
         var emulator = NewEmulator(MakeRom());
