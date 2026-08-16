@@ -17,6 +17,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly byte[] _objectPaletteRam = new byte[0x40];
     private readonly Action? _hblankStarted;
     private readonly Action? _lcdDisabled;
+    private readonly Func<bool> _isDoubleSpeed;
     private bool _enabled;
     private int _lineCycles;
     private byte _line;
@@ -30,7 +31,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
     public PpuDevice(GameBoyModel model, byte[] io, byte[] vram, byte[] oam,
-        Action? hblankStarted = null, Action? lcdDisabled = null)
+        Action? hblankStarted = null, Action? lcdDisabled = null, Func<bool>? isDoubleSpeed = null)
     {
         _model = model;
         _io = io;
@@ -38,11 +39,16 @@ internal sealed class PpuDevice : ICycleParticipant
         _oam = oam;
         _hblankStarted = hblankStarted;
         _lcdDisabled = lcdDisabled;
+        _isDoubleSpeed = isDoubleSpeed ?? (() => false);
     }
 
     public bool CpuCanAccessVram => !_enabled || _mode != 3;
 
-    public bool CpuCanAccessOam => !_enabled || (_mode != 2 && _mode != 3);
+    public bool CpuCanReadOam => !_enabled || _mode != 2 && _mode != 3 ||
+        _mode == 2 && _isDoubleSpeed() && _model <= GameBoyModel.CgbC;
+
+    public bool CpuCanWriteOam => !_enabled || _mode != 2 && _mode != 3 ||
+        _mode == 2 && _isDoubleSpeed() && _model.IsColor();
 
     public bool IsVisibleHblank => _enabled && _line < Height && _mode == 0;
 

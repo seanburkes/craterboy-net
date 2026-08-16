@@ -759,6 +759,25 @@ public sealed class KernelTests
         Assert.Equal(10, emulator.CycleCount);
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.Cgb0)]
+    [InlineData(GameBoyModel.CgbA)]
+    [InlineData(GameBoyModel.CgbB)]
+    [InlineData(GameBoyModel.CgbC)]
+    public void EarlyCgbDoubleSpeedAllowsMode2OamAccess(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, model);
+
+        emulator.WriteMemory(0xFF4D, 0x01);
+        emulator.StepInstruction();
+        emulator.WriteMemory(0xFF40, 0x80); // LCD on: mode 2
+        emulator.WriteMemory(0xFE00, 0x5A);
+
+        Assert.Equal((byte)0x5A, emulator.ReadMemory(0xFE00));
+    }
+
     [Fact]
     public void DmgDoesNotExposeCgbKey1()
     {

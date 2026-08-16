@@ -38,7 +38,8 @@ public sealed class Emulator
         _dma = new OamDmaDevice(address => Read(address, true), (index, value) => _oam[index] = value);
         _serial = new SerialDevice(_model, _io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_model, _io, _options.EmulateJoypadBouncing);
-        _ppu = new PpuDevice(_model, _io, _vram, _oam, TransferCgbHblankBlock, CancelCgbHblankDma);
+        _ppu = new PpuDevice(_model, _io, _vram, _oam, TransferCgbHblankBlock, CancelCgbHblankDma,
+            () => _doubleSpeed);
         _apu = new ApuDevice(_model, _io);
         _state.Scheduler.Register(_timer);
         _state.Scheduler.Register(_dma);
@@ -1152,7 +1153,7 @@ public sealed class Emulator
             < 0xA000 => _ppu.CpuCanAccessVram ? _vram[(_vramBank * 0x2000) + address - 0x8000] : (byte)0xFF,
             < 0xC000 => _cartridge?.Read(address) ?? 0xFF,
             < 0xFE00 when address >= 0xC000 => _wram[WramOffset(address)],
-            < 0xFEA0 => _ppu.CpuCanAccessOam ? _oam[address - 0xFE00] :
+            < 0xFEA0 => _ppu.CpuCanReadOam ? _oam[address - 0xFE00] :
                 dmaTransfer ? (byte)0xFF : ReadBlockedOam(address),
             < 0xFF00 when !_model.IsColor() => 0,
             < 0xFF00 => 0xFF,
@@ -1191,7 +1192,7 @@ public sealed class Emulator
             case < 0xC000: _cartridge?.Write(address, value); break;
             case < 0xFE00 when address >= 0xC000: _wram[WramOffset(address)] = value; break;
             case < 0xFEA0:
-                if (_ppu.CpuCanAccessOam) _oam[address - 0xFE00] = value;
+                if (_ppu.CpuCanWriteOam) _oam[address - 0xFE00] = value;
                 else _ppu.CorruptOamOnCpuAccess(address);
                 break;
             case < 0xFF00: break;
