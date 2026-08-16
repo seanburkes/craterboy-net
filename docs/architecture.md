@@ -89,6 +89,7 @@ mode-3 cycles, while auto-incrementing palette indices still advance on blocked
 writes.
 PPU timing, LCD mode, coincidence, and window-line state are included alongside
 the palette state.
+LY is read-only at FF44; writes are ignored without disturbing scanline timing.
 DMG BGP palette-register state is included in deterministic hashes as well.
 Timer divider precision and delayed reload state are included as well.
 Entering STOP resets DIV through the timer's normal write path, then DIV/TIMA

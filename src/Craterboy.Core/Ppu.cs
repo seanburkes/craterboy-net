@@ -121,10 +121,7 @@ internal sealed class PpuDevice : ICycleParticipant
             case 0xFF6B when _model.IsColor():
                 WritePaletteData(_objectPaletteRam, 0x6A, value);
                 break;
-            case 0xFF44:
-                _line = 0;
-                _lineCycles = 0;
-                UpdateCoincidence();
+            case 0xFF44: // LY is read-only.
                 break;
             case 0xFF45:
                 _io[0x45] = value;
