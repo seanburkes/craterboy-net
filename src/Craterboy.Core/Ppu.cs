@@ -45,10 +45,10 @@ internal sealed class PpuDevice : ICycleParticipant
     public bool CpuCanAccessVram => !_enabled || _mode != 3;
 
     public bool CpuCanReadOam => !_enabled || _mode != 2 && _mode != 3 ||
-        _mode == 2 && _isDoubleSpeed() && _model <= GameBoyModel.CgbC;
+        _mode == 2 && _isDoubleSpeed() && _model <= GameBoyModel.CgbC && _lineCycles < 76;
 
     public bool CpuCanWriteOam => !_enabled || _mode != 2 && _mode != 3 ||
-        _mode == 2 && _isDoubleSpeed() && _model.IsColor();
+        _mode == 2 && _isDoubleSpeed() && _model.IsColor() && _lineCycles < 70;
 
     public bool IsVisibleHblank => _enabled && _line < Height && _mode == 0;
 
