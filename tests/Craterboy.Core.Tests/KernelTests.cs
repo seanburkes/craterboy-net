@@ -1441,6 +1441,23 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyDmaReadsIoSources(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF70, 1);
+        emulator.WriteMemory(0xFF51, 0xFF);
+        emulator.WriteMemory(0xFF52, 0x70);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF55, 0x00); // one immediate block from I/O
+
+        Assert.Equal((byte)0xF9, emulator.PeekMemory(0x8000)); // FF70 read mask
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyHblankDmaCopiesOneBlockPerVisibleHblank(GameBoyModel model)
     {
         var emulator = NewEmulator(MakeRom(), model);

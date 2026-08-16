@@ -41,6 +41,7 @@ HDMA destinations wrap within the selected 8 KiB VRAM bank at the 9FFF/8000
 boundary.
 HDMA source reads also cover the high-RAM and interrupt-enable pages.
 They also read the usable OAM page when the LCD is disabled.
+I/O-page source reads use the same model-specific register masks as CPU reads.
 Active HBlank transfers cancel on an FF55 stop request or LCD disable. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
 High RAM state is included as well so checkpoint data covers the complete
