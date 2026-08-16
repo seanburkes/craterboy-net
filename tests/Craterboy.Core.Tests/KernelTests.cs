@@ -95,6 +95,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StopPreservesPaddingByteWhenInterruptIsPending()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFFFF, 0x01);
+        emulator.WriteMemory(0xFF0F, 0x01);
+
+        Assert.Equal(4, emulator.StepInstruction());
+        Assert.Equal((ushort)0x101, emulator.Registers.ProgramCounter);
+        Assert.True(emulator.Registers.Halted);
+
+        emulator.StepInstruction();
+        Assert.Equal((ushort)0x102, emulator.Registers.ProgramCounter);
+        Assert.False(emulator.Registers.Halted);
+    }
+
+    [Fact]
     public void StopExitsImmediatelyWhenJoypadLineIsLow()
     {
         var rom = MakeRom();
