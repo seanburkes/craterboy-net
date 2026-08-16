@@ -23,6 +23,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private byte _line;
     private int _windowLine;
     private int _mode;
+    private bool _hblankBusBlocked;
     private bool _coincidence;
     private bool _statLine;
     private bool _paletteAccessBlocked;
@@ -42,13 +43,13 @@ internal sealed class PpuDevice : ICycleParticipant
         _isDoubleSpeed = isDoubleSpeed ?? (() => false);
     }
 
-    public bool CpuCanAccessVram => !_enabled || _mode != 3;
+    public bool CpuCanAccessVram => !_enabled || !_hblankBusBlocked && _mode != 3;
 
-    public bool CpuCanReadOam => !_enabled || _mode != 2 && _mode != 3 ||
-        _mode == 2 && _isDoubleSpeed() && _model <= GameBoyModel.CgbC && _lineCycles < 76;
+    public bool CpuCanReadOam => !_enabled || !_hblankBusBlocked &&
+        (_mode != 2 && _mode != 3 || _mode == 2 && _isDoubleSpeed() && _model <= GameBoyModel.CgbC && _lineCycles < 76);
 
-    public bool CpuCanWriteOam => !_enabled || _mode != 2 && _mode != 3 ||
-        _mode == 2 && _isDoubleSpeed() && _model.IsColor() && _lineCycles < 70;
+    public bool CpuCanWriteOam => !_enabled || !_hblankBusBlocked &&
+        (_mode != 2 && _mode != 3 || _mode == 2 && _isDoubleSpeed() && _model.IsColor() && _lineCycles < 70);
 
     public bool IsVisibleHblank => _enabled && _line < Height && _mode == 0;
 
@@ -59,6 +60,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _line = 0;
         _windowLine = 0;
         _mode = 0;
+        _hblankBusBlocked = false;
         _coincidence = false;
         _statLine = false;
         _paletteAccessBlocked = false;
@@ -146,6 +148,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_line);
         writer.Write(_windowLine);
         writer.Write(_mode);
+        writer.Write(_hblankBusBlocked);
         writer.Write(_coincidence);
         writer.Write(_statLine);
         writer.Write(_paletteAccessBlocked);
@@ -157,6 +160,7 @@ internal sealed class PpuDevice : ICycleParticipant
     public void AdvanceTCycle()
     {
         if (!_enabled) return;
+        if (_hblankBusBlocked) _hblankBusBlocked = false;
         _lineCycles++;
         if (_line < 144)
         {
@@ -220,6 +224,7 @@ internal sealed class PpuDevice : ICycleParticipant
             _line = 0;
             _lineCycles = 0;
             _windowLine = 0;
+            _hblankBusBlocked = false;
             Array.Clear(_frame);
             Array.Clear(_colorFrame);
             _io[0x44] = 0;
@@ -236,6 +241,7 @@ internal sealed class PpuDevice : ICycleParticipant
             return;
         }
         _mode = mode;
+        _hblankBusBlocked = _enabled && mode == 0 && _isDoubleSpeed();
         if (mode != 3) _paletteAccessBlocked = false;
         if (mode != 2) _oamCorruptionRow = -1;
         if (mode == 0 && _line < 144) _hblankStarted?.Invoke();
