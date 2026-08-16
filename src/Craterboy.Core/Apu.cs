@@ -167,7 +167,7 @@ internal sealed class ApuDevice : ICycleParticipant
             return;
         }
 
-        if (!_powered || address is < 0xFF10 or > 0xFF3F) return;
+        if (address is < 0xFF10 or > 0xFF3F || !_powered && address < 0xFF30) return;
         if (address >= 0xFF30)
         {
             if (_channel3Enabled)

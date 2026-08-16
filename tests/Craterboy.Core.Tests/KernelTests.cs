@@ -2191,6 +2191,20 @@ public sealed class KernelTests
         Assert.Equal((byte)0xF0, emulator.PeekMemory(0xFF26));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void ApuWaveRamWritesRemainAvailableWhilePoweredOff(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF30, 0xA5);
+        emulator.WriteMemory(0xFF26, 0x80);
+
+        Assert.Equal((byte)0xA5, emulator.PeekMemory(0xFF30));
+    }
+
     [Fact]
     public void ApuChannelFourNoiseTriggersAndExpiresByLength()
     {
