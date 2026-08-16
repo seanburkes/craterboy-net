@@ -18,7 +18,7 @@ internal sealed class CpuState
 {
     public byte A, F, B, C, D, E, H, L;
     public ushort SP, PC;
-    public bool Ime, ImeEnablePending, Halted;
+    public bool Ime, ImeEnablePending, Halted, HaltBug;
 
     public CpuRegisterSnapshot Snapshot => new(
         A, F, B, C, D, E, H, L, SP, PC, Ime, Halted);

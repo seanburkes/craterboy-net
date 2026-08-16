@@ -231,7 +231,7 @@ public sealed class Emulator
         cpu.F = 0xB0; cpu.B = 0; cpu.C = 0x13; cpu.D = 0; cpu.E = 0xD8;
         cpu.H = 0x01; cpu.L = 0x4D; cpu.SP = 0xFFFE;
         cpu.PC = _bootMapped ? (ushort)0 : (ushort)0x100;
-        cpu.Ime = false; cpu.ImeEnablePending = false; cpu.Halted = false;
+        cpu.Ime = false; cpu.ImeEnablePending = false; cpu.Halted = false; cpu.HaltBug = false;
         _io[0x50] = _bootMapped ? (byte)0 : (byte)1;
     }
 
@@ -254,7 +254,7 @@ public sealed class Emulator
             writer.Write(_state.Cpu.D); writer.Write(_state.Cpu.E);
             writer.Write(_state.Cpu.H); writer.Write(_state.Cpu.L);
             writer.Write(_state.Cpu.SP); writer.Write(_state.Cpu.PC);
-            writer.Write(_state.Cpu.Ime); writer.Write(_state.Cpu.ImeEnablePending); writer.Write(_state.Cpu.Halted);
+            writer.Write(_state.Cpu.Ime); writer.Write(_state.Cpu.ImeEnablePending); writer.Write(_state.Cpu.Halted); writer.Write(_state.Cpu.HaltBug);
             writer.Write(_vram); writer.Write(_wram); writer.Write(_oam);
             writer.Write(_vramBank); writer.Write(_wramBank);
             writer.Write(_doubleSpeed); writer.Write(_speedSwitchPrepared);
@@ -306,7 +306,9 @@ public sealed class Emulator
             return haltedCycles;
         }
         var wasDoubleSpeed = _doubleSpeed;
-        var opcode = Read(cpu.PC++);
+        var opcode = Read(cpu.PC);
+        if (cpu.HaltBug) cpu.HaltBug = false;
+        else cpu.PC++;
         var enableImeAfterInstruction = cpu.ImeEnablePending;
         cpu.ImeEnablePending = false;
         var cycles = Execute(opcode);
@@ -963,6 +965,18 @@ public sealed class Emulator
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
     private int Halt()
     {
+        if (PendingInterrupts() != 0)
+        {
+            if (_state.Cpu.Ime)
+            {
+                _state.Cpu.PC--;
+            }
+            else
+            {
+                _state.Cpu.HaltBug = true;
+            }
+            return 4;
+        }
         _state.Cpu.Halted = true;
         _cgbDmaOnWake = !_ppu.IsVisibleHblank;
         return 4;
