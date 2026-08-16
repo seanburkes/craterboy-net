@@ -183,6 +183,24 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void HaltBugSuppressesTheFollowingOpcodePcIncrement()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x76, 0x3E, 0x12 }.CopyTo(rom, 0x100); // HALT, LD A,d8
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFFFF, 0x01);
+        emulator.WriteMemory(0xFF0F, 0x01);
+
+        emulator.StepInstruction();
+        Assert.False(emulator.Registers.Halted);
+        Assert.Equal((ushort)0x101, emulator.Registers.ProgramCounter);
+
+        emulator.StepInstruction();
+        Assert.Equal((byte)0x3E, emulator.Registers.A);
+        Assert.Equal((ushort)0x102, emulator.Registers.ProgramCounter);
+    }
+
+    [Fact]
     public void InterruptRegisterHighBitsDoNotWakeOrDispatchCpu()
     {
         var rom = MakeRom();

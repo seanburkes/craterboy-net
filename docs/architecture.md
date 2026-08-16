@@ -28,6 +28,8 @@ individual devices from advancing themselves or consulting wall-clock time.
 The eleven SM83 illegal opcodes follow SameBoy's deterministic failure mode:
 they clear IE, halt the CPU, and consume the four-cycle instruction boundary
 instead of escaping into a host exception.
+HALT with IME disabled and a pending interrupt preserves the HALT bug's
+suppressed following-opcode PC increment.
 
 OAM DMA and serial transfer devices are also scheduler participants. DMA copies
 one byte per four T-cycles for 160 bytes, while the serial endpoint completes an
