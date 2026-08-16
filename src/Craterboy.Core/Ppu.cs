@@ -24,6 +24,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _windowLine;
     private int _mode;
     private bool _hblankBusBlocked;
+    private bool _mode3EndPending;
     private bool _coincidence;
     private bool _statLine;
     private bool _paletteAccessBlocked;
@@ -61,6 +62,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _windowLine = 0;
         _mode = 0;
         _hblankBusBlocked = false;
+        _mode3EndPending = false;
         _coincidence = false;
         _statLine = false;
         _paletteAccessBlocked = false;
@@ -149,6 +151,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_windowLine);
         writer.Write(_mode);
         writer.Write(_hblankBusBlocked);
+        writer.Write(_mode3EndPending);
         writer.Write(_coincidence);
         writer.Write(_statLine);
         writer.Write(_paletteAccessBlocked);
@@ -160,7 +163,14 @@ internal sealed class PpuDevice : ICycleParticipant
     public void AdvanceTCycle()
     {
         if (!_enabled) return;
-        if (_hblankBusBlocked) _hblankBusBlocked = false;
+        var transitionedToHblank = false;
+        if (_mode3EndPending)
+        {
+            _mode3EndPending = false;
+            SetMode(0);
+            transitionedToHblank = true;
+        }
+        if (_hblankBusBlocked && !transitionedToHblank) _hblankBusBlocked = false;
         _lineCycles++;
         if (_line < 144)
         {
@@ -174,7 +184,8 @@ internal sealed class PpuDevice : ICycleParticipant
             else if (_lineCycles == Mode3End())
             {
                 RenderBackgroundLine(_line);
-                SetMode(0);
+                if (_isDoubleSpeed()) _mode3EndPending = true;
+                else SetMode(0);
             }
         }
         if (_lineCycles < 456) return;
@@ -225,6 +236,7 @@ internal sealed class PpuDevice : ICycleParticipant
             _lineCycles = 0;
             _windowLine = 0;
             _hblankBusBlocked = false;
+            _mode3EndPending = false;
             Array.Clear(_frame);
             Array.Clear(_colorFrame);
             _io[0x44] = 0;

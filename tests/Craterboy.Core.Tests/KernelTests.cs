@@ -814,7 +814,7 @@ public sealed class KernelTests
 
         Assert.Equal((byte)0xFF, emulator.ReadMemory(0x8000));
         emulator.WriteMemory(0x8000, 0x34);
-        emulator.RunCycles(1);
+        emulator.RunCycles(2);
         Assert.Equal((byte)0x12, emulator.ReadMemory(0x8000));
         emulator.WriteMemory(0x8000, 0x34);
         Assert.Equal((byte)0x34, emulator.ReadMemory(0x8000));
@@ -837,6 +837,25 @@ public sealed class KernelTests
         Assert.Equal((byte)0x5A, emulator.ReadMemory(0xFE00));
         emulator.RunCycles(76);
         Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyDoubleSpeedDelaysMode3StatTransition(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, model);
+        emulator.WriteMemory(0xFF4D, 0x01);
+        emulator.StepInstruction();
+        emulator.WriteMemory(0xFF40, 0x80);
+
+        emulator.RunCycles(252);
+        Assert.Equal((byte)3, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
     }
 
     [Fact]
