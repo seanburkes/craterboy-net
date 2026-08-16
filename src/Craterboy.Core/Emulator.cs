@@ -755,6 +755,7 @@ public sealed class Emulator
             return 4;
         }
         _state.Cpu.Halted = true;
+        _cgbDmaOnWake = !_ppu.IsVisibleHblank;
         return 4;
     }
 

@@ -47,7 +47,7 @@ Active HBlank transfers cancel on an FF55 stop request or LCD disable from HBlan
 pending requests transfer one block when LCD is disabled outside HBlank. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
 Pending HBlank blocks remain queued while the CPU is halted and transfer on a
-wake during HBlank when HALT was entered outside HBlank.
+wake during HBlank when HALT or STOP was entered outside HBlank.
 High RAM state is included as well so checkpoint data covers the complete
 FF80-FFFE scratch range.
 
