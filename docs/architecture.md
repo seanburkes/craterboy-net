@@ -37,6 +37,8 @@ Starting HBlank DMA during an already-active visible HBlank transfers that
 line's block immediately.
 HDMA source pages in the E000-EFFF range follow SameBoy's F000-FFFF echo-RAM
 normalization.
+HDMA destinations wrap within the selected 8 KiB VRAM bank at the 9FFF/8000
+boundary.
 Active HBlank transfers cancel on an FF55 stop request or LCD disable. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
 High RAM state is included as well so checkpoint data covers the complete
