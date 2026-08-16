@@ -752,10 +752,16 @@ public sealed class Emulator
     private int Stop()
     {
         _ = Read(_state.Cpu.PC++);
-        if (_model.IsColor() && _speedSwitchPrepared)
+        var exitByJoypad = (_joypad.Read() & 0x0F) != 0x0F;
+        if (_model.IsColor() && _speedSwitchPrepared && !exitByJoypad)
         {
             _doubleSpeed = !_doubleSpeed;
             _speedSwitchPrepared = false;
+            _stopped = false;
+            return 4;
+        }
+        if (exitByJoypad)
+        {
             _stopped = false;
             return 4;
         }
