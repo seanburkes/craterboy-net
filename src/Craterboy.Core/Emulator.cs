@@ -756,6 +756,7 @@ public sealed class Emulator
         var exitByJoypad = (_joypad.Read() & 0x0F) != 0x0F;
         if (_model.IsColor() && _speedSwitchPrepared && !exitByJoypad)
         {
+            _timer.Write(0xFF04, 0);
             _doubleSpeed = !_doubleSpeed;
             _speedSwitchPrepared = false;
             _stopped = false;
