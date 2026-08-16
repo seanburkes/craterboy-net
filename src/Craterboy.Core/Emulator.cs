@@ -1300,7 +1300,7 @@ public sealed class Emulator
             {
                 var source = (ushort)(_cgbDmaSource + offset);
                 var destination = (ushort)(_cgbDmaDestination + offset);
-                _vram[(_vramBank * 0x2000) + destination - 0x8000] = ReadCgbDmaSource(source);
+                _vram[(_vramBank * 0x2000) + CgbDmaVramOffset(destination)] = ReadCgbDmaSource(source);
             }
 
             _cgbDmaSource = (ushort)(_cgbDmaSource + 0x10);
@@ -1318,7 +1318,7 @@ public sealed class Emulator
         {
             var source = (ushort)(_cgbDmaSource + offset);
             var destination = (ushort)(_cgbDmaDestination + offset);
-            _vram[(_vramBank * 0x2000) + destination - 0x8000] = ReadCgbDmaSource(source);
+            _vram[(_vramBank * 0x2000) + CgbDmaVramOffset(destination)] = ReadCgbDmaSource(source);
         }
 
         _cgbDmaSource = (ushort)(_cgbDmaSource + 0x10);
@@ -1339,6 +1339,8 @@ public sealed class Emulator
         _cgbDmaHblankActive = false;
         _cgbDmaStatus = 0xFF;
     }
+
+    private static int CgbDmaVramOffset(ushort address) => (address - 0x8000) & 0x1FFF;
 
     private byte ReadCgbDmaSource(ushort address) => address switch
     {
