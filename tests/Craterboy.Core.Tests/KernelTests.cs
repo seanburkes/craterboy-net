@@ -95,6 +95,38 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void StopExitsImmediatelyWhenJoypadLineIsLow()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+
+        emulator.WriteMemory(0xFF00, 0x10); // select action buttons
+        emulator.SetButtonState(GameBoyButton.A, true);
+
+        Assert.Equal(4, emulator.StepInstruction());
+        Assert.Equal((ushort)0x102, emulator.Registers.ProgramCounter);
+        Assert.False(emulator.Registers.Halted);
+    }
+
+    [Fact]
+    public void JoypadExitTakesPrecedenceOverCgbSpeedSwitch()
+    {
+        var rom = MakeRom();
+        rom[0x100] = 0x10;
+        var emulator = NewEmulator(rom, GameBoyModel.CgbE);
+
+        emulator.WriteMemory(0xFF00, 0x10); // select action buttons
+        emulator.SetButtonState(GameBoyButton.A, true);
+        emulator.WriteMemory(0xFF4D, 0x01);
+
+        emulator.StepInstruction();
+
+        Assert.Equal((byte)0x7F, emulator.PeekMemory(0xFF4D));
+        Assert.False(emulator.Registers.Halted);
+    }
+
+    [Fact]
     public void PendingInterruptServicesHighestPriorityVector()
     {
         var rom = MakeRom();

@@ -12,6 +12,9 @@ on enum ordering.
 Joypad selection timing consumes the DMG/MGB predicates directly: DMG and MGB
 retain their delayed transitions, while color and SGB families switch
 immediately.
+STOP observes the active-low JOYP line before entering stopped mode. A low
+line exits STOP immediately, and on CGB-family models it also suppresses a
+prepared speed switch, matching SameBoy's STOP wake precedence.
 
 The current state kernel groups CPU registers and the master scheduler in
 `EmulatorState`. The scheduler advances registered participants one T-cycle at
