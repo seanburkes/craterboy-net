@@ -1629,7 +1629,7 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
-    public void CgbFamilyHblankDmaWaitsWhileCpuIsHalted(GameBoyModel model)
+    public void CgbFamilyHblankDmaTransfersWhenStopWakesDuringHblank(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0x10, 0x00, 0x00 }.CopyTo(rom, 0x100); // STOP, then NOP
@@ -1650,7 +1650,6 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFFFF, 0x01);
         emulator.WriteMemory(0xFF0F, 0x01); // wake the halted CPU without servicing
         emulator.StepInstruction();
-        emulator.RunCycles(456 + 252); // next visible HBlank
 
         Assert.Equal((byte)0x5A, emulator.PeekMemory(0x8000));
         Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
