@@ -44,6 +44,8 @@ internal sealed class PpuDevice : ICycleParticipant
 
     public bool CpuCanAccessOam => !_enabled || (_mode != 2 && _mode != 3);
 
+    public bool IsVisibleHblank => _enabled && _line < Height && _mode == 0;
+
     public void Reset()
     {
         _enabled = false;

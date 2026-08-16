@@ -33,6 +33,8 @@ link endpoints. CGB-family general DMA transfers immediate 16-byte blocks, while
 HBlank DMA transfers one 16-byte block at each visible-line HBlank for the
 CGB-family models, from the
 CPU address space into the selected VRAM bank through FF51-FF55.
+Starting HBlank DMA during an already-active visible HBlank transfers that
+line's block immediately.
 Active HBlank transfers cancel on an FF55 stop request or LCD disable. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
 High RAM state is included as well so checkpoint data covers the complete
