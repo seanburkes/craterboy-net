@@ -1351,8 +1351,8 @@ public sealed class Emulator
         >= 0xE000 and < 0xF000 => _wram[WramOffset((ushort)(address | 0xF000))],
         < 0xFE00 => _wram[WramOffset(address)],
         >= 0xFE00 and < 0xFEA0 => _oam[address - 0xFE00],
+        >= 0xFEA0 and < 0xFF80 => Read(address, true),
         >= 0xFF80 and < 0xFFFF => _hram[address - 0xFF80],
         0xFFFF => _io[0x7F],
-        _ => 0xFF,
     };
 }
