@@ -352,6 +352,7 @@ public sealed class KernelTests
         emulator.StepInstruction();
         emulator.RunCycles(8); // the selected divider bit would fall here
 
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF04));
         Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF05));
     }
 

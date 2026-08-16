@@ -24,7 +24,8 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | SGB, debugger, cheats, rewind | extended services | deferred | — |
 
 The APU mapping now also covers SameBoy's writable wave RAM while the APU is powered off.
-Timer mapping now also covers DIV/TIMA pause during STOP and resumption on wake.
+Timer mapping now also covers the DIV reset on STOP entry, DIV/TIMA pause during
+STOP, and resumption on wake.
 The CPU mapping also covers SameBoy's immediate STOP exit when the active-low
 JOYP line is already asserted, including suppression of a prepared CGB speed
 switch.
