@@ -308,6 +308,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void TimerStopsAdvancingDuringStop()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00, 0x00 }.CopyTo(rom, 0x100); // STOP, then NOP
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF05, 0x00);
+        emulator.RunCycles(8); // selected divider bit is high
+        emulator.WriteMemory(0xFF07, 0x05);
+
+        emulator.StepInstruction();
+        emulator.RunCycles(8); // the selected divider bit would fall here
+
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF05));
+    }
+
+    [Fact]
     public void OamDmaCopiesOneHundredSixtyBytesInSixHundredFortyTCycles()
     {
         var rom = MakeRom();

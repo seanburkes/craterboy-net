@@ -16,6 +16,7 @@ public sealed class Emulator
     private byte _wramBank;
     private bool _doubleSpeed;
     private bool _speedSwitchPrepared;
+    private bool _stopped;
     private ushort _cgbDmaSource;
     private ushort _cgbDmaDestination;
     private byte _cgbDmaStatus = 0xFF;
@@ -35,7 +36,7 @@ public sealed class Emulator
     {
         _model = model;
         _options = options ?? new EmulatorOptions();
-        _timer = new TimerDevice(_io);
+        _timer = new TimerDevice(_io, () => _stopped);
         _dma = new OamDmaDevice(address => Read(address, true), (index, value) => _oam[index] = value);
         _serial = new SerialDevice(_model, _io, _options.SerialEndpoint);
         _joypad = new JoypadDevice(_model, _io, _options.EmulateJoypadBouncing);
@@ -212,6 +213,7 @@ public sealed class Emulator
         _wramBank = 1;
         _doubleSpeed = false;
         _speedSwitchPrepared = false;
+        _stopped = false;
         _cgbDmaSource = 0;
         _cgbDmaDestination = 0x8000;
         _cgbDmaStatus = 0xFF;
@@ -256,6 +258,7 @@ public sealed class Emulator
             writer.Write(_vram); writer.Write(_wram); writer.Write(_oam);
             writer.Write(_vramBank); writer.Write(_wramBank);
             writer.Write(_doubleSpeed); writer.Write(_speedSwitchPrepared);
+            writer.Write(_stopped);
             writer.Write(_cgbDmaSource); writer.Write(_cgbDmaDestination);
             writer.Write(_cgbDmaStatus); writer.Write(_cgbDmaHblankActive);
             writer.Write(_cgbDmaOnWake);
@@ -293,6 +296,7 @@ public sealed class Emulator
         if (cpu.Halted && PendingInterrupts() != 0)
         {
             cpu.Halted = false;
+            _stopped = false;
             TransferCgbHblankOnWake();
         }
         if (cpu.Halted)
@@ -752,9 +756,11 @@ public sealed class Emulator
         {
             _doubleSpeed = !_doubleSpeed;
             _speedSwitchPrepared = false;
+            _stopped = false;
             return 4;
         }
         _state.Cpu.Halted = true;
+        _stopped = true;
         _cgbDmaOnWake = !_ppu.IsVisibleHblank;
         return 4;
     }
@@ -933,6 +939,7 @@ public sealed class Emulator
         _io[0x0F] &= (byte)~mask;
         var wasHalted = cpu.Halted;
         cpu.Halted = false;
+        _stopped = false;
         if (wasHalted) TransferCgbHblankOnWake();
         cpu.Ime = false;
         cpu.ImeEnablePending = false;
