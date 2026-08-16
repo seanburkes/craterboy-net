@@ -1313,7 +1313,7 @@ public sealed class Emulator
 
     private void TransferCgbHblankBlock()
     {
-        if (!_cgbDmaHblankActive) return;
+        if (!_cgbDmaHblankActive || _state.Cpu.Halted) return;
 
         for (var offset = 0; offset < 0x10; offset++)
         {
