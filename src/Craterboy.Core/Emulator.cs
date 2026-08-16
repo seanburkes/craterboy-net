@@ -20,6 +20,7 @@ public sealed class Emulator
     private ushort _cgbDmaDestination;
     private byte _cgbDmaStatus = 0xFF;
     private bool _cgbDmaHblankActive;
+    private bool _cgbDmaOnWake;
     private TimerDevice _timer = null!;
     private OamDmaDevice _dma = null!;
     private SerialDevice _serial = null!;
@@ -215,6 +216,7 @@ public sealed class Emulator
         _cgbDmaDestination = 0x8000;
         _cgbDmaStatus = 0xFF;
         _cgbDmaHblankActive = false;
+        _cgbDmaOnWake = false;
         _timer.Reset();
         _dma.Reset();
         _serial.Reset();
@@ -256,6 +258,7 @@ public sealed class Emulator
             writer.Write(_doubleSpeed); writer.Write(_speedSwitchPrepared);
             writer.Write(_cgbDmaSource); writer.Write(_cgbDmaDestination);
             writer.Write(_cgbDmaStatus); writer.Write(_cgbDmaHblankActive);
+            writer.Write(_cgbDmaOnWake);
             writer.Write(_io); writer.Write(_hram);
             _ppu.WriteStateHash(writer);
             _timer.WriteStateHash(writer);
@@ -287,7 +290,11 @@ public sealed class Emulator
         EnsureRom();
         var cpu = _state.Cpu;
         if (TryServiceInterrupt()) return ScaledCycles(20, _doubleSpeed);
-        if (cpu.Halted && PendingInterrupts() != 0) cpu.Halted = false;
+        if (cpu.Halted && PendingInterrupts() != 0)
+        {
+            cpu.Halted = false;
+            TransferCgbHblankOnWake();
+        }
         if (cpu.Halted)
         {
             var haltedCycles = ScaledCycles(4, _doubleSpeed);
@@ -923,7 +930,9 @@ public sealed class Emulator
             _ => ((byte)0x10, (ushort)0x0060),
         };
         _io[0x0F] &= (byte)~mask;
+        var wasHalted = cpu.Halted;
         cpu.Halted = false;
+        if (wasHalted) TransferCgbHblankOnWake();
         cpu.Ime = false;
         cpu.ImeEnablePending = false;
         Push(cpu.PC);
@@ -935,7 +944,12 @@ public sealed class Emulator
     private static int ScaledCycles(int cycles, bool doubleSpeed) =>
         doubleSpeed ? Math.Max(1, cycles / 2) : cycles;
     private int Jump() { var lo = Read(_state.Cpu.PC); var hi = Read((ushort)(_state.Cpu.PC + 1)); _state.Cpu.PC = (ushort)(lo | hi << 8); return 16; }
-    private int Halt() { _state.Cpu.Halted = true; return 4; }
+    private int Halt()
+    {
+        _state.Cpu.Halted = true;
+        _cgbDmaOnWake = !_ppu.IsVisibleHblank;
+        return 4;
+    }
     private int WritePair(ushort address) { Write(address, _state.Cpu.A); return 8; }
     private int ReadPair(ushort address) { _state.Cpu.A = Read(address); return 8; }
     private int Increment(Func<byte> getter, Action<byte> setter)
@@ -1333,6 +1347,13 @@ public sealed class Emulator
         {
             _cgbDmaStatus--;
         }
+    }
+
+    private void TransferCgbHblankOnWake()
+    {
+        if (_cgbDmaOnWake && _ppu.IsVisibleHblank)
+            TransferCgbHblankBlock();
+        _cgbDmaOnWake = false;
     }
 
     private void CancelCgbHblankDma(bool lcdWasNotInHblank)
