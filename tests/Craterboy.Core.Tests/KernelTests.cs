@@ -828,13 +828,18 @@ public sealed class KernelTests
     public void CgbFamilyStopWithPreparedKey1TogglesSpeedAndDoesNotHalt(GameBoyModel model)
     {
         var rom = MakeRom();
-        new byte[] { 0x10, 0x00, 0x10, 0x00 }.CopyTo(rom, 0x100);
+        new byte[] { 0x00, 0x00, 0x10, 0x00, 0x10, 0x00 }.CopyTo(rom, 0x100);
         var emulator = NewEmulator(rom, model);
 
+        emulator.StepInstruction();
+        emulator.StepInstruction();
+        emulator.WriteMemory(0xFF05, 0x00);
+        emulator.WriteMemory(0xFF07, 0x05); // selected divider bit is high
         emulator.WriteMemory(0xFF4D, 0x01);
         emulator.StepInstruction();
         Assert.False(emulator.Registers.Halted);
         Assert.Equal((byte)0xFE, emulator.PeekMemory(0xFF4D));
+        Assert.Equal((byte)0x01, emulator.PeekMemory(0xFF05));
 
         emulator.WriteMemory(0xFF4D, 0x01);
         emulator.StepInstruction();
