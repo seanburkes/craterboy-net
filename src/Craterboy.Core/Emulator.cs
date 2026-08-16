@@ -1335,8 +1335,14 @@ public sealed class Emulator
         }
     }
 
-    private void CancelCgbHblankDma()
+    private void CancelCgbHblankDma(bool lcdWasNotInHblank)
     {
+        if (lcdWasNotInHblank && _cgbDmaHblankActive)
+        {
+            TransferCgbHblankBlock();
+            return;
+        }
+
         _cgbDmaHblankActive = false;
         _cgbDmaStatus = 0xFF;
     }

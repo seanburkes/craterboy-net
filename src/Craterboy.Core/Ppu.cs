@@ -16,7 +16,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
     private readonly byte[] _objectPaletteRam = new byte[0x40];
     private readonly Action? _hblankStarted;
-    private readonly Action? _lcdDisabled;
+    private readonly Action<bool>? _lcdDisabled;
     private readonly Func<bool> _isDoubleSpeed;
     private bool _enabled;
     private int _lineCycles;
@@ -33,7 +33,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
     public PpuDevice(GameBoyModel model, byte[] io, byte[] vram, byte[] oam,
-        Action? hblankStarted = null, Action? lcdDisabled = null, Func<bool>? isDoubleSpeed = null)
+        Action? hblankStarted = null, Action<bool>? lcdDisabled = null, Func<bool>? isDoubleSpeed = null)
     {
         _model = model;
         _io = io;
@@ -231,7 +231,7 @@ internal sealed class PpuDevice : ICycleParticipant
         }
         else if (wasEnabled && !_enabled)
         {
-            _lcdDisabled?.Invoke();
+            _lcdDisabled?.Invoke(_mode != 0);
             _line = 0;
             _lineCycles = 0;
             _windowLine = 0;
