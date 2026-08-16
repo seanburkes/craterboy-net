@@ -1289,6 +1289,7 @@ public sealed class Emulator
         {
             _cgbDmaHblankActive = true;
             _cgbDmaStatus = (byte)(value & 0x7F);
+            if (_ppu.IsVisibleHblank) TransferCgbHblankBlock();
             return;
         }
 

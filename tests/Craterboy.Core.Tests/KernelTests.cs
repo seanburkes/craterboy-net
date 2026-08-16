@@ -1388,6 +1388,28 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyHblankDmaStartsImmediatelyWhenRequestedInHblank(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        for (var index = 0; index < 0x10; index++)
+            emulator.WriteMemory((ushort)(0xC000 + index), (byte)(index + 1));
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.RunCycles(252); // enter line 0 HBlank
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x00);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF55, 0x80); // one block, started in active HBlank
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
+        for (var index = 0; index < 0x10; index++)
+            Assert.Equal((byte)(index + 1), emulator.PeekMemory((ushort)(0x8000 + index)));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyHblankDmaCancelsOnRequestOrLcdDisable(GameBoyModel model)
     {
         var emulator = NewEmulator(MakeRom(), model);
@@ -1404,6 +1426,7 @@ public sealed class KernelTests
         Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
         Assert.Equal((byte)0x00, emulator.PeekMemory(0x8000));
 
+        emulator.RunCycles(204); // leave line 0 HBlank before re-arming
         emulator.WriteMemory(0xFF55, 0x80);
         emulator.WriteMemory(0xFF40, 0x00); // LCD disable cancels pending HBlank DMA
         emulator.RunCycles(456);
