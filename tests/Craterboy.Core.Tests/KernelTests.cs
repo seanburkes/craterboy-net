@@ -629,6 +629,24 @@ public sealed class KernelTests
         Assert.Equal((byte)0x12, emulator.PeekMemory(0xFF69));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyDelaysPaletteDataUntilHblankOpens(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF68, 0x00);
+        emulator.WriteMemory(0xFF69, 0x12);
+        emulator.WriteMemory(0xFF40, 0x80);
+
+        emulator.RunCycles(252); // enter HBlank
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF69));
+
+        emulator.RunCycles(4);
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0xFF69));
+    }
+
     [Fact]
     public void DmgDoesNotExposeCgbPaletteRam()
     {

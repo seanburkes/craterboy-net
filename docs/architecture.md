@@ -129,6 +129,8 @@ their OAM read block takes effect.
 At double speed, VRAM and OAM remain bus-blocked for the first T-cycle after
 mode 3 ends before HBlank access opens.
 The STAT mode-3-to-mode-0 transition is delayed by that same T-cycle.
+On CGB-family models at normal speed, palette data remains blocked for the
+first four HBlank T-cycles; double-speed palette access opens immediately.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. On DMG, a blocked CPU OAM access during the
 first OAM-search rows applies SameBoy's row-copy and bitwise-glitch behavior;

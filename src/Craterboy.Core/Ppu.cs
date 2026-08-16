@@ -25,6 +25,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _mode;
     private bool _hblankBusBlocked;
     private bool _mode3EndPending;
+    private int _paletteHblankCycles;
     private bool _coincidence;
     private bool _statLine;
     private bool _paletteAccessBlocked;
@@ -63,6 +64,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _mode = 0;
         _hblankBusBlocked = false;
         _mode3EndPending = false;
+        _paletteHblankCycles = 0;
         _coincidence = false;
         _statLine = false;
         _paletteAccessBlocked = false;
@@ -152,6 +154,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_mode);
         writer.Write(_hblankBusBlocked);
         writer.Write(_mode3EndPending);
+        writer.Write(_paletteHblankCycles);
         writer.Write(_coincidence);
         writer.Write(_statLine);
         writer.Write(_paletteAccessBlocked);
@@ -172,6 +175,8 @@ internal sealed class PpuDevice : ICycleParticipant
         }
         if (_hblankBusBlocked && !transitionedToHblank) _hblankBusBlocked = false;
         _lineCycles++;
+        if (_paletteHblankCycles > 0 && --_paletteHblankCycles == 0)
+            _paletteAccessBlocked = false;
         if (_line < 144)
         {
             if (_mode == 2 && (_lineCycles & 1) == 0 && _lineCycles is > 0 and < 80)
@@ -254,7 +259,16 @@ internal sealed class PpuDevice : ICycleParticipant
         }
         _mode = mode;
         _hblankBusBlocked = _enabled && mode == 0 && _isDoubleSpeed();
-        if (mode != 3) _paletteAccessBlocked = false;
+        if (mode == 0 && _enabled && _model.IsColor() && !_isDoubleSpeed())
+        {
+            _paletteAccessBlocked = true;
+            _paletteHblankCycles = 4;
+        }
+        else if (mode != 3)
+        {
+            _paletteAccessBlocked = false;
+            _paletteHblankCycles = 0;
+        }
         if (mode != 2) _oamCorruptionRow = -1;
         if (mode == 0 && _line < 144) _hblankStarted?.Invoke();
         UpdateStatLine();
