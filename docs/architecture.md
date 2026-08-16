@@ -121,6 +121,8 @@ across CGB, AGB, and GBP models.
 Early CGB revisions allow mode-2 OAM reads and writes during the initial
 double-speed access window; OAM writes close at 70 T-cycles and early-CGB
 reads at 76 T-cycles, while later color revisions retain their OAM read block.
+At double speed, VRAM and OAM remain bus-blocked for the first T-cycle after
+mode 3 ends before HBlank access opens.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. On DMG, a blocked CPU OAM access during the
 first OAM-search rows applies SameBoy's row-copy and bitwise-glitch behavior;
