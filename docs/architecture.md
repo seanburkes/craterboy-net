@@ -97,7 +97,8 @@ separate stopped and halted CPU states.
 DMG/MGB APU channel phases, frame-sequencer state, and queued samples are
 included too.
 APU mixer volumes and channel routing are included in deterministic hashes too.
-Serial internal-clock and external-bit transfer progress are included as well.
+Serial internal-clock and external-bit transfer progress are included as well;
+each SC control write resets partial transfer progress, matching SameBoy.
 SC readback preserves SameBoy's fixed high bits and forces the DMG clock-source
 bit high while retaining the CGB-selected clock bit.
 CGB internal-clock transfers use the fast 256-T-cycle cadence when SC bit 1 is

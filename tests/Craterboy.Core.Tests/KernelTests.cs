@@ -456,6 +456,22 @@ public sealed class KernelTests
         Assert.Equal((byte)0xA5, endpoint.Outgoing);
     }
 
+    [Fact]
+    public void SerialControlWriteResetsPartialTransferProgress()
+    {
+        var first = NewEmulator(MakeRom());
+        var second = NewEmulator(MakeRom());
+
+        first.WriteMemory(0xFF02, 0x80); // start external-clock transfer
+        first.ClockSerialBit();
+        first.ClockSerialBit();
+        first.ClockSerialBit();
+        first.WriteMemory(0xFF02, 0x00); // stop and reset the transfer
+        second.WriteMemory(0xFF02, 0x00);
+
+        Assert.Equal(second.ComputeStateHash(), first.ComputeStateHash());
+    }
+
     [Theory]
     [InlineData(GameBoyModel.DmgB, (byte)0xFE)]
     [InlineData(GameBoyModel.CgbE, (byte)0xFC)]
