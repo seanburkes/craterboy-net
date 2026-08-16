@@ -24,6 +24,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _windowLine;
     private int _mode;
     private bool _hblankBusBlocked;
+    private bool _hblankOamReadBlocked;
     private bool _mode3EndPending;
     private int _paletteHblankCycles;
     private bool _coincidence;
@@ -47,7 +48,7 @@ internal sealed class PpuDevice : ICycleParticipant
 
     public bool CpuCanAccessVram => !_enabled || !_hblankBusBlocked && _mode != 3;
 
-    public bool CpuCanReadOam => !_enabled || !_hblankBusBlocked &&
+    public bool CpuCanReadOam => !_enabled || !_hblankBusBlocked && !_hblankOamReadBlocked &&
         (_mode != 2 && _mode != 3 || _mode == 2 && _isDoubleSpeed() && _model.IsColor() && _lineCycles < 76);
 
     public bool CpuCanWriteOam => !_enabled || !_hblankBusBlocked &&
@@ -63,6 +64,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _windowLine = 0;
         _mode = 0;
         _hblankBusBlocked = false;
+        _hblankOamReadBlocked = false;
         _mode3EndPending = false;
         _paletteHblankCycles = 0;
         _coincidence = false;
@@ -153,6 +155,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_windowLine);
         writer.Write(_mode);
         writer.Write(_hblankBusBlocked);
+        writer.Write(_hblankOamReadBlocked);
         writer.Write(_mode3EndPending);
         writer.Write(_paletteHblankCycles);
         writer.Write(_coincidence);
@@ -174,6 +177,7 @@ internal sealed class PpuDevice : ICycleParticipant
             transitionedToHblank = true;
         }
         if (_hblankBusBlocked && !transitionedToHblank) _hblankBusBlocked = false;
+        if (_hblankOamReadBlocked) _hblankOamReadBlocked = false;
         _lineCycles++;
         if (_paletteHblankCycles > 0 && --_paletteHblankCycles == 0)
             _paletteAccessBlocked = false;
@@ -259,6 +263,7 @@ internal sealed class PpuDevice : ICycleParticipant
         }
         _mode = mode;
         _hblankBusBlocked = _enabled && mode == 0 && _isDoubleSpeed();
+        _hblankOamReadBlocked = mode == 0 && _enabled && IsLaterCgbRevision() && !_isDoubleSpeed();
         if (mode == 0 && _enabled && _model.IsColor() && !_isDoubleSpeed())
         {
             _paletteAccessBlocked = true;
@@ -273,6 +278,8 @@ internal sealed class PpuDevice : ICycleParticipant
         if (mode == 0 && _line < 144) _hblankStarted?.Invoke();
         UpdateStatLine();
     }
+
+    private bool IsLaterCgbRevision() => _model is GameBoyModel.CgbD or GameBoyModel.CgbE or GameBoyModel.AgbA or GameBoyModel.GbpA;
 
     public void CorruptOamOnCpuAccess(ushort address)
     {
