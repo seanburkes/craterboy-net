@@ -125,6 +125,7 @@ Later color revisions share the same initial double-speed read window before
 their OAM read block takes effect.
 At double speed, VRAM and OAM remain bus-blocked for the first T-cycle after
 mode 3 ends before HBlank access opens.
+The STAT mode-3-to-mode-0 transition is delayed by that same T-cycle.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. On DMG, a blocked CPU OAM access during the
 first OAM-search rows applies SameBoy's row-copy and bitwise-glitch behavior;
