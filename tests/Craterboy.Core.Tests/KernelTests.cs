@@ -1772,6 +1772,43 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyHblankDmaDoesNotTransferWhenHaltWakesInHblank(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        rom[0x13F] = 0x76; // HALT
+        rom[0x140] = 0x00; // NOP
+
+        var emulator = NewEmulator(rom, model);
+        emulator.WriteMemory(0xC000, 0x5A);
+        emulator.WriteMemory(0xC010, 0xA5);
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.RunCycles(252); // enter line 0 HBlank
+
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x00);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF55, 0x81); // two blocks
+
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF55));
+        Assert.Equal((byte)0x5A, emulator.PeekMemory(0x8000));
+
+        emulator.StepInstruction(); // HALT during HBlank
+        Assert.True(emulator.Registers.Halted);
+
+        emulator.WriteMemory(0xFFFF, 0x01);
+        emulator.WriteMemory(0xFF0F, 0x01);
+        emulator.StepInstruction(); // wake HALT during HBlank
+
+        Assert.False(emulator.Registers.Halted);
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF55)); // second block pending
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0x8010)); // second block did not transfer
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyHblankDmaTransfersWhenStopWakesDuringHblank(GameBoyModel model)
     {
         var rom = MakeRom();
