@@ -1629,6 +1629,37 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyHblankDmaWaitsWhileCpuIsHalted(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00, 0x00 }.CopyTo(rom, 0x100); // STOP, then NOP
+        var emulator = NewEmulator(rom, model);
+        emulator.WriteMemory(0xC000, 0x5A);
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x00);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.WriteMemory(0xFF55, 0x80);
+
+        emulator.StepInstruction(); // enter STOP at cycle 4
+        emulator.RunCycles(248); // line 0 HBlank while halted
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0x8000));
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF55));
+
+        emulator.WriteMemory(0xFFFF, 0x01);
+        emulator.WriteMemory(0xFF0F, 0x01); // wake the halted CPU without servicing
+        emulator.StepInstruction();
+        emulator.RunCycles(456 + 252); // next visible HBlank
+
+        Assert.Equal((byte)0x5A, emulator.PeekMemory(0x8000));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyHblankDmaCancelsOnRequestOrLcdDisable(GameBoyModel model)
     {
         var emulator = NewEmulator(MakeRom(), model);

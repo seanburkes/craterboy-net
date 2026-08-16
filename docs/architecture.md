@@ -45,6 +45,7 @@ I/O-page source reads use the same model-specific register masks as CPU reads.
 Mapped boot-ROM bytes take precedence for CGB DMA sources, matching CPU reads.
 Active HBlank transfers cancel on an FF55 stop request or LCD disable. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
+Pending HBlank blocks remain queued while the CPU is halted.
 High RAM state is included as well so checkpoint data covers the complete
 FF80-FFFE scratch range.
 
