@@ -37,8 +37,13 @@ internal sealed class TimerDevice : ICycleParticipant
     private ushort _divider;
     private int _timaReloadState;
     private int _timaReloadCycles;
+    private readonly Func<bool> _isStopped;
 
-    public TimerDevice(byte[] io) => _io = io;
+    public TimerDevice(byte[] io, Func<bool>? isStopped = null)
+    {
+        _io = io;
+        _isStopped = isStopped ?? (() => false);
+    }
 
     public void Reset()
     {
@@ -94,6 +99,7 @@ internal sealed class TimerDevice : ICycleParticipant
 
     public void AdvanceTCycle()
     {
+        if (_isStopped()) return;
         AdvanceTimaReload();
         var oldSignal = TimerSignal(_divider, _io[0x07]);
         _divider++;

@@ -24,6 +24,7 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | SGB, debugger, cheats, rewind | extended services | deferred | — |
 
 The APU mapping now also covers SameBoy's writable wave RAM while the APU is powered off.
+Timer mapping now also covers DIV/TIMA pause during STOP and resumption on wake.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
 The display mapping also covers SameBoy's later-CGB normal-speed first-HBlank
 OAM-read block; OAM writes remain available during that one-T-cycle window.
