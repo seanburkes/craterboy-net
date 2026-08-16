@@ -46,7 +46,8 @@ Mapped boot-ROM bytes take precedence for CGB DMA sources, matching CPU reads.
 Active HBlank transfers cancel on an FF55 stop request or LCD disable from HBlank;
 pending requests transfer one block when LCD is disabled outside HBlank. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
-Pending HBlank blocks remain queued while the CPU is halted.
+Pending HBlank blocks remain queued while the CPU is halted and transfer on a
+wake during HBlank when HALT was entered outside HBlank.
 High RAM state is included as well so checkpoint data covers the complete
 FF80-FFFE scratch range.
 
