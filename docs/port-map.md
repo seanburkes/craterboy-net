@@ -30,7 +30,7 @@ The CPU mapping also covers SameBoy's immediate STOP exit when the active-low
 JOYP line is already asserted, including suppression of a prepared CGB speed
 switch, and preserves the STOP padding byte when an interrupt is pending.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
-The display mapping also covers SameBoy's later-CGB normal-speed first-HBlank
+The display mapping also covers SameBoy's read-only LY register and later-CGB normal-speed first-HBlank
 OAM-read block; OAM writes remain available during that one-T-cycle window.
 
 No SameBoy private native-state compatibility is planned. BESS will be the

@@ -4890,6 +4890,18 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PpuIgnoresWritesToReadOnlyLyRegister()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF40, 0x80); // enable LCD
+        emulator.RunCycles(456); // advance to line 1
+
+        Assert.Equal((byte)1, emulator.PeekMemory(0xFF44));
+        emulator.WriteMemory(0xFF44, 0x99);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xFF44));
+    }
+
+    [Fact]
     public void DmgOamReadDuringSearchCorruptsTheActiveOamRow()
     {
         var emulator = NewEmulator(MakeRom());
