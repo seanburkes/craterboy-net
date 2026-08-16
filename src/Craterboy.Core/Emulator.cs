@@ -1345,6 +1345,8 @@ public sealed class Emulator
         < 0x8000 => _cartridge?.Read(address) ?? 0xFF,
         < 0xA000 => _vram[(_vramBank * 0x2000) + address - 0x8000],
         < 0xC000 => _cartridge?.Read(address) ?? 0xFF,
+        < 0xE000 => _wram[WramOffset(address)],
+        >= 0xE000 and < 0xF000 => _wram[WramOffset((ushort)(address | 0xF000))],
         < 0xFE00 => _wram[WramOffset(address)],
         _ => 0xFF,
     };

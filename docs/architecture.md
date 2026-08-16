@@ -35,6 +35,8 @@ CGB-family models, from the
 CPU address space into the selected VRAM bank through FF51-FF55.
 Starting HBlank DMA during an already-active visible HBlank transfers that
 line's block immediately.
+HDMA source pages in the E000-EFFF range follow SameBoy's F000-FFFF echo-RAM
+normalization.
 Active HBlank transfers cancel on an FF55 stop request or LCD disable. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
 High RAM state is included as well so checkpoint data covers the complete
