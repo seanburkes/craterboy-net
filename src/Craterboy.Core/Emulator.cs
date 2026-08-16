@@ -765,6 +765,7 @@ public sealed class Emulator
             _stopped = false;
             return 4;
         }
+        _timer.Write(0xFF04, 0);
         _state.Cpu.Halted = true;
         _stopped = true;
         _cgbDmaOnWake = !_ppu.IsVisibleHblank;
