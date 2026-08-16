@@ -167,7 +167,10 @@ internal sealed class ApuDevice : ICycleParticipant
             return;
         }
 
-        if (address is < 0xFF10 or > 0xFF3F || !_powered && address < 0xFF30) return;
+        if (address is < 0xFF10 or > 0xFF3F ||
+            !_powered && address < 0xFF30 &&
+            (_model.IsColor() || address is not (0xFF11 or 0xFF16 or 0xFF1B or 0xFF20))) return;
+        if (!_powered && address is (0xFF11 or 0xFF16 or 0xFF20)) value &= 0x3F;
         if (address >= 0xFF30)
         {
             if (_channel3Enabled)

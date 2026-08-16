@@ -153,6 +153,8 @@ MGB follows the DMG-class channel and power-control behavior; CGB-family PCM
 register behavior remains model-specific.
 Wave RAM remains writable while the APU is powered off, matching SameBoy's
 un-gated wave-memory access.
+On DMG and MGB, the four channel-length registers retain the same powered-off
+write exception; CGB-family channel registers remain gated.
 Clearing a channel DAC control immediately disables that channel and updates
 NR52 status.
 APU register reads apply SameBoy’s fixed high-bit and write-only masks, including

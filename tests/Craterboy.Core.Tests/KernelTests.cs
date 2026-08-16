@@ -2205,6 +2205,24 @@ public sealed class KernelTests
         Assert.Equal((byte)0xA5, emulator.PeekMemory(0xFF30));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB, 0xF0)]
+    [InlineData(GameBoyModel.Mgb, 0xF0)]
+    [InlineData(GameBoyModel.CgbE, 0xF1)]
+    [InlineData(GameBoyModel.AgbA, 0xF1)]
+    [InlineData(GameBoyModel.GbpA, 0xF1)]
+    public void ApuPoweredOffLengthWritesFollowModelRules(GameBoyModel model, byte expectedStatus)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF11, 0x3F); // one-step length while powered off
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF14, 0xC0); // trigger with length enabled
+        emulator.RunCycles(16_384); // frame-sequencer step 2 clocks length
+
+        Assert.Equal(expectedStatus, emulator.PeekMemory(0xFF26));
+    }
+
     [Fact]
     public void ApuChannelFourNoiseTriggersAndExpiresByLength()
     {
