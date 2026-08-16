@@ -1342,8 +1342,13 @@ public sealed class Emulator
 
     private static int CgbDmaVramOffset(ushort address) => (address - 0x8000) & 0x1FFF;
 
-    private byte ReadCgbDmaSource(ushort address) => address switch
+    private byte ReadCgbDmaSource(ushort address)
     {
+        if (_bootMapped && _bootRom is not null && address < _bootRom.Length)
+            return _bootRom[address];
+
+        return address switch
+        {
         < 0x8000 => _cartridge?.Read(address) ?? 0xFF,
         < 0xA000 => _vram[(_vramBank * 0x2000) + address - 0x8000],
         < 0xC000 => _cartridge?.Read(address) ?? 0xFF,
@@ -1354,5 +1359,6 @@ public sealed class Emulator
         >= 0xFEA0 and < 0xFF80 => Read(address, true),
         >= 0xFF80 and < 0xFFFF => _hram[address - 0xFF80],
         0xFFFF => _io[0x7F],
-    };
+        };
+    }
 }
