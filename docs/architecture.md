@@ -15,6 +15,8 @@ immediately.
 STOP observes the active-low JOYP line before entering stopped mode. A low
 line exits STOP immediately, and on CGB-family models it also suppresses a
 prepared speed switch, matching SameBoy's STOP wake precedence.
+When a maskable interrupt is pending at the STOP boundary, the padding byte is
+preserved for execution when the stopped CPU wakes.
 
 The current state kernel groups CPU registers and the master scheduler in
 `EmulatorState`. The scheduler advances registered participants one T-cycle at
