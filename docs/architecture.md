@@ -118,6 +118,8 @@ nonzero background pixels honor both the CGB BG-priority attribute and the sprit
 behind-background attribute against sprites across CGB, AGB, and GBP models. CGB
 sprite fetches consume the OAM tile-bank, X/Y-flip, and palette-index attributes
 across CGB, AGB, and GBP models.
+Early CGB revisions allow mode-2 OAM reads and writes during double speed,
+while later color revisions retain their OAM read block.
 CPU-visible VRAM and OAM access is blocked during the DMG transfer modes and
 restored during HBlank/VBlank. On DMG, a blocked CPU OAM access during the
 first OAM-search rows applies SameBoy's row-copy and bitwise-glitch behavior;
