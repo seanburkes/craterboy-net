@@ -749,6 +749,31 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyBlocksPaletteWritesDuringInitialHblankButAdvancesIndex(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF68, 0x80); // BG palette byte 0, auto-increment
+        emulator.WriteMemory(0xFF69, 0x12);
+        emulator.WriteMemory(0xFF40, 0x80);
+
+        emulator.RunCycles(252); // enter HBlank
+        emulator.WriteMemory(0xFF69, 0x34); // blocked, but index still advances
+
+        Assert.Equal((byte)0xC2, emulator.PeekMemory(0xFF68));
+        emulator.WriteMemory(0xFF68, 0x00);
+
+        emulator.RunCycles(4);
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0xFF69));
+        emulator.WriteMemory(0xFF68, 0x81);
+        emulator.WriteMemory(0xFF69, 0x56);
+        emulator.WriteMemory(0xFF68, 0x01);
+        Assert.Equal((byte)0x56, emulator.PeekMemory(0xFF69));
+    }
+
+    [Theory]
     [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
