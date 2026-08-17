@@ -1892,6 +1892,31 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyHblankDmaResumesAtTheNextVisibleHblankAfterVblank(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xC000, 0x5A);
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x00);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF40, 0x80);
+
+        emulator.RunCycles(456 * 144); // enter VBlank
+        emulator.WriteMemory(0xFF55, 0x80);
+        emulator.RunCycles(456 * 10); // return to line 0
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0x8000));
+
+        emulator.RunCycles(252); // enter the next visible HBlank
+
+        Assert.Equal((byte)0x5A, emulator.PeekMemory(0x8000));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyHblankDmaCancelsOnRequestOrTransfersOnLcdDisable(GameBoyModel model)
     {
         var emulator = NewEmulator(MakeRom(), model);
