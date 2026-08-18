@@ -707,10 +707,14 @@ public sealed class KernelTests
         Assert.Equal((byte)0xC0, emulator.PeekMemory(0xFF68));
     }
 
-    [Fact]
-    public void CgbPpuBlocksPaletteDataAfterModeThreeStarts()
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void CgbPpuBlocksPaletteDataAfterModeThreeStarts(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF68, 0x80);
         emulator.WriteMemory(0xFF69, 0x12);
         emulator.WriteMemory(0xFF68, 0x00);
