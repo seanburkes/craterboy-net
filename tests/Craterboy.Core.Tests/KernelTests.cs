@@ -1420,6 +1420,7 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyModelsExposeIndexedColorFrames(GameBoyModel model)
