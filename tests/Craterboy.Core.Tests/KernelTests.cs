@@ -2379,7 +2379,7 @@ public sealed class KernelTests
     }
 
     [Fact]
-    public void ApuEmitsDeterministicSamplesIntoCallerOwnedBuffer()
+    public void ApuEmitsDeterministicStereoFramesIntoCallerOwnedBuffer()
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
@@ -2391,9 +2391,36 @@ public sealed class KernelTests
         emulator.RunCycles(95);
 
         var samples = new short[2];
-        Assert.Equal(1, emulator.CopyAudioSamples(samples));
+        Assert.Equal(1, emulator.CopyAudioFrames(samples));
         Assert.NotEqual((short)0, samples[0]);
-        Assert.Equal(0, emulator.CopyAudioSamples(samples));
+        Assert.Equal(samples[0], samples[1]);
+        Assert.Equal(0, emulator.CopyAudioFrames(samples));
+        Assert.Throws<ArgumentException>(() => emulator.CopyAudioFrames(new short[1]));
+    }
+
+    [Fact]
+    public void ApuStereoEmissionAndDrainAreAllocationFreeAfterWarmup()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF12, 0xF0);
+        emulator.WriteMemory(0xFF14, 0x80);
+        var samples = new short[2];
+        for (var i = 0; i < 16; i++)
+        {
+            emulator.RunCycles(95);
+            emulator.CopyAudioFrames(samples);
+        }
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        emulator.RunCycles(95);
+        var frames = emulator.CopyAudioFrames(samples);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(1, frames);
+        Assert.Equal(0, allocated);
     }
 
     [Fact]
@@ -2416,11 +2443,11 @@ public sealed class KernelTests
 
         lowFrequency.RunCycles(95 * 2);
         highFrequency.RunCycles(95 * 2);
-        var lowSamples = new short[2];
-        var highSamples = new short[2];
-        Assert.Equal(2, lowFrequency.CopyAudioSamples(lowSamples));
-        Assert.Equal(2, highFrequency.CopyAudioSamples(highSamples));
-        Assert.NotEqual(lowSamples[1], highSamples[1]);
+        var lowSamples = new short[4];
+        var highSamples = new short[4];
+        Assert.Equal(2, lowFrequency.CopyAudioFrames(lowSamples));
+        Assert.Equal(2, highFrequency.CopyAudioFrames(highSamples));
+        Assert.NotEqual(lowSamples[2], highSamples[2]);
     }
 
     [Fact]
@@ -2467,14 +2494,14 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF17, 0xF0); // DAC and volume
         emulator.WriteMemory(0xFF19, 0x80); // trigger at low frequency
         emulator.RunCycles(95);
-        var first = new short[1];
-        Assert.Equal(1, emulator.CopyAudioSamples(first));
+        var first = new short[2];
+        Assert.Equal(1, emulator.CopyAudioFrames(first));
 
         emulator.WriteMemory(0xFF19, 0x87); // update frequency, no trigger
         emulator.RunCycles(95 * 2);
-        var following = new short[2];
-        Assert.Equal(2, emulator.CopyAudioSamples(following));
-        Assert.NotEqual(first[0], following[1]);
+        var following = new short[4];
+        Assert.Equal(2, emulator.CopyAudioFrames(following));
+        Assert.NotEqual(first[0], following[2]);
         Assert.Equal((byte)0xF2, emulator.PeekMemory(0xFF26));
     }
 
@@ -2493,8 +2520,8 @@ public sealed class KernelTests
         Assert.Equal((byte)0xF4, emulator.PeekMemory(0xFF26));
 
         emulator.RunCycles(95);
-        var samples = new short[1];
-        Assert.Equal(1, emulator.CopyAudioSamples(samples));
+        var samples = new short[2];
+        Assert.Equal(1, emulator.CopyAudioFrames(samples));
         Assert.NotEqual((short)0, samples[0]);
         emulator.RunCycles(8192 - 95);
         Assert.Equal((byte)0xF4, emulator.PeekMemory(0xFF26));
@@ -2549,8 +2576,8 @@ public sealed class KernelTests
         Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF22));
 
         emulator.RunCycles(95);
-        var samples = new short[1];
-        Assert.Equal(1, emulator.CopyAudioSamples(samples));
+        var samples = new short[2];
+        Assert.Equal(1, emulator.CopyAudioFrames(samples));
         Assert.NotEqual((short)0, samples[0]);
         emulator.RunCycles(8192 - 95);
         Assert.Equal((byte)0xF8, emulator.PeekMemory(0xFF26));
@@ -2587,16 +2614,16 @@ public sealed class KernelTests
         liveWrite.WriteMemory(0xFF22, 0x00);
         unchanged.RunCycles(95);
 
-        var discarded = new short[1];
-        Assert.Equal(1, liveWrite.CopyAudioSamples(discarded));
-        Assert.Equal(1, unchanged.CopyAudioSamples(discarded));
+        var discarded = new short[2];
+        Assert.Equal(1, liveWrite.CopyAudioFrames(discarded));
+        Assert.Equal(1, unchanged.CopyAudioFrames(discarded));
         liveWrite.RunCycles(95 * 128);
         unchanged.RunCycles(95 * 128);
 
-        var actual = new short[128];
-        var baseline = new short[128];
-        Assert.Equal(128, liveWrite.CopyAudioSamples(actual));
-        Assert.Equal(128, unchanged.CopyAudioSamples(baseline));
+        var actual = new short[256];
+        var baseline = new short[256];
+        Assert.Equal(128, liveWrite.CopyAudioFrames(actual));
+        Assert.Equal(128, unchanged.CopyAudioFrames(baseline));
         Assert.NotEqual(baseline, actual);
     }
 
@@ -2612,14 +2639,30 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF25, 0x00); // explicit mute
         emulator.WriteMemory(0xFF24, 0x77);
         emulator.RunCycles(95);
-        var samples = new short[1];
-        emulator.CopyAudioSamples(samples);
+        var samples = new short[2];
+        emulator.CopyAudioFrames(samples);
         Assert.Equal((short)0, samples[0]);
+        Assert.Equal((short)0, samples[1]);
 
         emulator.WriteMemory(0xFF25, 0x11); // channel 1 to both sides
+        emulator.WriteMemory(0xFF24, 0x70); // full left volume, minimum right volume
         emulator.RunCycles(95);
-        emulator.CopyAudioSamples(samples);
+        emulator.CopyAudioFrames(samples);
+        Assert.True(Math.Abs((int)samples[0]) > Math.Abs((int)samples[1]));
+        Assert.NotEqual((short)0, samples[1]);
+
+        emulator.WriteMemory(0xFF25, 0x10); // channel 1 to left only
+        emulator.WriteMemory(0xFF24, 0x77);
+        emulator.RunCycles(95);
+        emulator.CopyAudioFrames(samples);
         Assert.NotEqual((short)0, samples[0]);
+        Assert.Equal((short)0, samples[1]);
+
+        emulator.WriteMemory(0xFF25, 0x01); // channel 1 to right only
+        emulator.RunCycles(95);
+        emulator.CopyAudioFrames(samples);
+        Assert.Equal((short)0, samples[0]);
+        Assert.NotEqual((short)0, samples[1]);
     }
 
     [Fact]
@@ -2633,10 +2676,10 @@ public sealed class KernelTests
 
         dmg.RunCycles(95);
         mgb.RunCycles(95);
-        var dmgSamples = new short[1];
-        var mgbSamples = new short[1];
-        Assert.Equal(1, dmg.CopyAudioSamples(dmgSamples));
-        Assert.Equal(1, mgb.CopyAudioSamples(mgbSamples));
+        var dmgSamples = new short[2];
+        var mgbSamples = new short[2];
+        Assert.Equal(1, dmg.CopyAudioFrames(dmgSamples));
+        Assert.Equal(1, mgb.CopyAudioFrames(mgbSamples));
         Assert.Equal(dmgSamples, mgbSamples);
         Assert.Equal((byte)0xF1, dmg.PeekMemory(0xFF26));
         Assert.Equal(dmg.PeekMemory(0xFF26), mgb.PeekMemory(0xFF26));
@@ -2706,9 +2749,10 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1E, 0x80);
         emulator.RunCycles(95);
 
-        var samples = new short[1];
-        Assert.Equal(1, emulator.CopyAudioSamples(samples));
+        var samples = new short[2];
+        Assert.Equal(1, emulator.CopyAudioFrames(samples));
         Assert.Equal((short)0, samples[0]);
+        Assert.Equal((short)0, samples[1]);
     }
 
     [Fact]
