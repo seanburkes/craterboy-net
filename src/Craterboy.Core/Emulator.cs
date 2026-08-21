@@ -286,7 +286,7 @@ public sealed class Emulator
 
     public void CopyFrame(Span<byte> destination) => _ppu.CopyFrame(destination);
     public void CopyColorFrame(Span<ushort> destination) => _ppu.CopyColorFrame(destination);
-    public int CopyAudioSamples(Span<short> destination) => _apu.CopySamples(destination);
+    public int CopyAudioFrames(Span<short> interleavedStereo) => _apu.CopyFrames(interleavedStereo);
 
     public int StepInstruction()
     {

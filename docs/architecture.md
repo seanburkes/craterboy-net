@@ -175,9 +175,11 @@ Channel 1 frequency sweep updates are clocked on frame-sequencer steps 2 and
 6, with the NR10 period selecting the number of sweep events between
 updates; an NR10 period of zero uses the hardware eight-step interval; live NR10 writes reconfigure active sweep timing, and trigger-time
 overflow disables the channel. The sweep shadow frequency remains tied to the
-trigger while live NR13/NR14 writes update playback. The core emits channel
-samples into a bounded managed ring and exposes
-caller-owned buffer draining; host playback remains outside the core.
+trigger while live NR13/NR14 writes update playback. The core emits left/right
+channel frames into a preallocated bounded managed ring and exposes caller-owned
+interleaved-stereo draining through `Emulator.CopyAudioFrames`. NR51 routing
+and NR50 volume are applied independently to each side, and the returned count
+is measured in complete stereo frames; host playback remains outside the core.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present.

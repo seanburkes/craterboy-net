@@ -2,6 +2,7 @@ namespace Craterboy;
 
 internal sealed class ApuDevice : ICycleParticipant
 {
+    private const int AudioFrameCapacity = 4096;
     private static readonly byte[] DutyPatterns = [0b00000001, 0b10000001, 0b10000111, 0b01111110];
     private static readonly byte[] RegisterReadMasks =
     [
@@ -47,7 +48,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private byte _pcm12Mask;
     private byte _pcm34Mask;
     private int _sampleCycles;
-    private readonly short[] _samples = new short[4096];
+    private readonly short[] _samples = new short[AudioFrameCapacity * 2];
     private int _sampleRead;
     private int _sampleWrite;
     private int _sampleCount;
@@ -444,16 +445,23 @@ internal sealed class ApuDevice : ICycleParticipant
             : _channel1SweepFrequency + delta;
     }
 
-    public int CopySamples(Span<short> destination)
+    public int CopyFrames(Span<short> interleavedStereo)
     {
-        var copied = 0;
-        while (copied < destination.Length && _sampleCount > 0)
+        if ((interleavedStereo.Length & 1) != 0)
+            throw new ArgumentException("Audio destination must contain complete interleaved stereo frames.", nameof(interleavedStereo));
+
+        var copiedFrames = 0;
+        while (copiedFrames < interleavedStereo.Length / 2 && _sampleCount > 0)
         {
-            destination[copied++] = _samples[_sampleRead];
-            _sampleRead = (_sampleRead + 1) % _samples.Length;
+            var source = _sampleRead * 2;
+            var destination = copiedFrames * 2;
+            interleavedStereo[destination] = _samples[source];
+            interleavedStereo[destination + 1] = _samples[source + 1];
+            _sampleRead = (_sampleRead + 1) % AudioFrameCapacity;
             _sampleCount--;
+            copiedFrames++;
         }
-        return copied;
+        return copiedFrames;
     }
 
     public void WriteStateHash(BinaryWriter writer)
@@ -536,15 +544,17 @@ internal sealed class ApuDevice : ICycleParticipant
         }
         var rightVolume = _mixerConfigured ? (_io[0x24] & 0x07) + 1 : 8;
         var leftVolume = _mixerConfigured ? ((_io[0x24] >> 4) & 0x07) + 1 : 8;
-        var sample = (left * leftVolume + right * rightVolume) / 16;
-        sample = Math.Clamp(sample, short.MinValue, short.MaxValue);
-        if (_sampleCount == _samples.Length)
+        var leftSample = (short)Math.Clamp(left * leftVolume / 8, short.MinValue, short.MaxValue);
+        var rightSample = (short)Math.Clamp(right * rightVolume / 8, short.MinValue, short.MaxValue);
+        if (_sampleCount == AudioFrameCapacity)
         {
-            _sampleRead = (_sampleRead + 1) % _samples.Length;
+            _sampleRead = (_sampleRead + 1) % AudioFrameCapacity;
             _sampleCount--;
         }
-        _samples[_sampleWrite] = (short)sample;
-        _sampleWrite = (_sampleWrite + 1) % _samples.Length;
+        var destination = _sampleWrite * 2;
+        _samples[destination] = leftSample;
+        _samples[destination + 1] = rightSample;
+        _sampleWrite = (_sampleWrite + 1) % AudioFrameCapacity;
         _sampleCount++;
     }
 
