@@ -246,3 +246,6 @@ their hashes; library consumers must not need RGBDS installed.
   reconciliation updates the mapping document and golden results.
 - Correctness changes are kept separate from optimization changes so oracle
   mismatches remain diagnosable.
+- Frontend adapters, including libretro, are deferred until Craterboy reaches
+  its documented playable milestone and receives a fresh explicit go decision.
+  They must not drive emulator sequencing or enter `Craterboy.Core`.

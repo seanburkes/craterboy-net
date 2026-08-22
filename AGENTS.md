@@ -40,3 +40,15 @@ produce setup warnings; the test result must still be checked explicitly.
 - Update `docs/port-map.md` and `docs/architecture.md` when a port layer gains
   meaningful coverage.
 - Keep the shipping core dependency-free and managed-only.
+
+## Future frontend boundary
+
+- The Craterboy port plan is the sole authority for emulator priorities.
+  External frontend or framework roadmaps must not reorder it.
+- Do not create a libretro publishing project, add a libretro dependency, or
+  introduce native ABI entry points or frontend lifecycle concepts before the
+  documented playable milestone and a fresh explicit go decision.
+- Accept host-neutral public APIs only when they are independently useful to
+  Craterboy and justified by the current emulator subsystem.
+- Any future libretro adapter belongs in this repository as a separate
+  publishing project; `Craterboy.Core` remains frontend-independent.
