@@ -463,6 +463,67 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void Mbc7BanksRomAndRequiresBothRegisterEnables()
+    {
+        var rom = MakeRom(type: 0x22, romSizeCode: 2);
+        rom[0x8000] = 0x42;
+        var emulator = NewEmulator(rom);
+
+        emulator.WriteMemory(0x2000, 2);
+        Assert.Equal((byte)0x42, emulator.PeekMemory(0x4000));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xA020));
+        emulator.WriteMemory(0x0000, 0x0A);
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xA020));
+        emulator.WriteMemory(0x4000, 0x40);
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xA060));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xB000));
+    }
+
+    [Fact]
+    public void Mbc7LatchesCallerProvidedMotion()
+    {
+        var motion = new TestMotionProvider { X = 1.0, Y = -1.0 };
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { MotionProvider = motion });
+        emulator.LoadRom(MakeRom(type: 0x22, romSizeCode: 1));
+        emulator.WriteMemory(0x0000, 0x0A);
+        emulator.WriteMemory(0x4000, 0x40);
+
+        emulator.WriteMemory(0xA000, 0x55);
+        emulator.WriteMemory(0xA010, 0xAA);
+
+        Assert.Equal((byte)0x40, emulator.PeekMemory(0xA020));
+        Assert.Equal((byte)0x82, emulator.PeekMemory(0xA030));
+        Assert.Equal((byte)0x60, emulator.PeekMemory(0xA040));
+        Assert.Equal((byte)0x81, emulator.PeekMemory(0xA050));
+    }
+
+    [Fact]
+    public void Mbc7EepromWriteReadAndBessStateRoundTrip()
+    {
+        var rom = MakeRom(type: 0x22, romSizeCode: 1);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0x0000, 0x0A);
+        emulator.WriteMemory(0x4000, 0x40);
+
+        SendMbc7Command(emulator, 0x4C0);
+        SendMbc7Command(emulator, 0x505);
+        SendMbc7Bits(emulator, 0xA55A, 16);
+        Assert.True(emulator.BatteryDirty);
+        SendMbc7Command(emulator, 0x605);
+        Assert.Equal((ushort)0xA55A, ReadMbc7Bits(emulator, 16));
+
+        using var state = new MemoryStream();
+        emulator.SaveBess(state);
+        state.Position = 0;
+        var restored = NewEmulator(rom);
+        restored.LoadBess(state);
+        restored.WriteMemory(0x0000, 0x0A);
+        restored.WriteMemory(0x4000, 0x40);
+        SendMbc7Command(restored, 0x605);
+        Assert.Equal((ushort)0xA55A, ReadMbc7Bits(restored, 16));
+    }
+
+    [Fact]
     public void EchoRamMirrorsWorkRam()
     {
         var emulator = NewEmulator(MakeRom());
@@ -5626,6 +5687,35 @@ public sealed class KernelTests
         rom[0x14D] = checksum;
     }
 
+    private static void SendMbc7Command(Emulator emulator, ushort command)
+    {
+        emulator.WriteMemory(0xA080, 0);
+        emulator.WriteMemory(0xA080, 0x80);
+        SendMbc7Bits(emulator, command, 11);
+    }
+
+    private static void SendMbc7Bits(Emulator emulator, ushort value, int count)
+    {
+        for (var bit = count - 1; bit >= 0; bit--)
+        {
+            var input = (value & (1 << bit)) != 0 ? (byte)2 : (byte)0;
+            emulator.WriteMemory(0xA080, (byte)(0x80 | input));
+            emulator.WriteMemory(0xA080, (byte)(0xC0 | input));
+        }
+    }
+
+    private static ushort ReadMbc7Bits(Emulator emulator, int count)
+    {
+        ushort value = 0;
+        for (var bit = 0; bit < count; bit++)
+        {
+            emulator.WriteMemory(0xA080, 0x80);
+            emulator.WriteMemory(0xA080, 0xC0);
+            value = (ushort)((value << 1) | (emulator.PeekMemory(0xA080) & 1));
+        }
+        return value;
+    }
+
     private sealed class TestTimeProvider : ITimeProvider
     {
         public DateTimeOffset UtcNow { get; private set; } = DateTimeOffset.UnixEpoch;
@@ -5649,6 +5739,12 @@ public sealed class KernelTests
             Output = enabled;
             OutputChanges++;
         }
+    }
+
+    private sealed class TestMotionProvider : IMotionProvider
+    {
+        public double X { get; init; }
+        public double Y { get; init; }
     }
 
     private sealed class NonSeekableReadStream(byte[] data) : Stream

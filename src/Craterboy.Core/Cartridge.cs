@@ -24,6 +24,9 @@ internal abstract class Cartridge
     public virtual BessHuc3? SaveBessHuc3() => null;
     public virtual void ValidateBessHuc3(BessHuc3 state) => throw new InvalidDataException("BESS HuC3 state is not supported by this cartridge.");
     public virtual void LoadBessHuc3(BessHuc3 state) => throw new InvalidDataException("BESS HuC3 state is not supported by this cartridge.");
+    public virtual BessMbc7? SaveBessMbc7() => null;
+    public virtual void ValidateBessMbc7(BessMbc7 state) => throw new InvalidDataException("BESS MBC7 state is not supported by this cartridge.");
+    public virtual void LoadBessMbc7(BessMbc7 state) => throw new InvalidDataException("BESS MBC7 state is not supported by this cartridge.");
     public virtual void WriteStateHash(BinaryWriter writer)
     {
         writer.Write(System.Security.Cryptography.SHA256.HashData(Rom));
@@ -45,7 +48,8 @@ internal abstract class Cartridge
     }
 
     public static Cartridge Create(
-        byte[] rom, RomHeader header, ITimeProvider timeProvider, IInfraredEndpoint? infraredEndpoint) =>
+        byte[] rom, RomHeader header, ITimeProvider timeProvider, IInfraredEndpoint? infraredEndpoint,
+        IMotionProvider? motionProvider) =>
         header.CartridgeType switch
     {
         0x00 or 0x08 or 0x09 => new RomOnlyCartridge(rom, header.RamSize),
@@ -55,6 +59,7 @@ internal abstract class Cartridge
         0x0F or 0x10 or 0x11 or 0x12 or 0x13 => new Mbc3Cartridge(rom, header.RamSize, timeProvider),
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         0x20 => new Mbc6Cartridge(rom, header.RamSize),
+        0x22 => new Mbc7Cartridge(rom, motionProvider),
         0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
         0xFE => new Huc3Cartridge(rom, header.RamSize, timeProvider, infraredEndpoint),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
@@ -71,6 +76,233 @@ internal abstract class Cartridge
         Ram[index % Ram.Length] = value;
         Dirty();
     }
+}
+
+internal sealed class Mbc7Cartridge : Cartridge
+{
+    private readonly IMotionProvider? _motionProvider;
+    private bool _ramEnabled;
+    private bool _secondaryRamEnabled;
+    private int _romBank = 1;
+    private ushort _xLatch = 0x8000;
+    private ushort _yLatch = 0x8000;
+    private bool _latchReady = true;
+    private bool _eepromDo = true;
+    private bool _eepromDi;
+    private bool _eepromClock;
+    private bool _eepromChipSelect;
+    private bool _eepromWriteEnabled;
+    private ushort _eepromCommand;
+    private ushort _readBits = 0xFFFF;
+    private byte _argumentBitsLeft;
+
+    public Mbc7Cartridge(byte[] rom, IMotionProvider? motionProvider) : base(rom, 0x100)
+    {
+        _motionProvider = motionProvider;
+        Array.Fill(Ram, (byte)0xFF);
+    }
+
+    public override byte Read(ushort address) => address switch
+    {
+        < 0x4000 => ReadRom(address),
+        < 0x8000 => ReadRom(_romBank * 0x4000 + address - 0x4000),
+        >= 0xA000 and < 0xB000 when _ramEnabled && _secondaryRamEnabled => ReadRegister(address),
+        _ => 0xFF,
+    };
+
+    public override void Write(ushort address, byte value)
+    {
+        switch (address)
+        {
+            case < 0x2000: _ramEnabled = value == 0x0A; break;
+            case < 0x4000: _romBank = value; break;
+            case < 0x6000: _secondaryRamEnabled = value == 0x40; break;
+            case >= 0xA000 and < 0xB000 when _ramEnabled && _secondaryRamEnabled:
+                WriteRegister(address, value);
+                break;
+        }
+    }
+
+    public override BessMbc7? SaveBessMbc7() => new(
+        (byte)((_latchReady ? 1 : 0) |
+            (_eepromDo ? 2 : 0) |
+            (_eepromDi ? 4 : 0) |
+            (_eepromClock ? 8 : 0) |
+            (_eepromChipSelect ? 0x10 : 0) |
+            (_eepromWriteEnabled ? 0x20 : 0)),
+        _argumentBitsLeft, _eepromCommand, _readBits, _xLatch, _yLatch);
+
+    public override void ValidateBessMbc7(BessMbc7 state)
+    {
+        if ((state.Flags & 0xC0) != 0 || state.ArgumentBitsLeft > 16 || state.EepromCommand > 0x7FF)
+            throw new InvalidDataException("BESS MBC7 state is invalid.");
+    }
+
+    public override void LoadBessMbc7(BessMbc7 state)
+    {
+        ValidateBessMbc7(state);
+        _latchReady = (state.Flags & 1) != 0;
+        _eepromDo = (state.Flags & 2) != 0;
+        _eepromDi = (state.Flags & 4) != 0;
+        _eepromClock = (state.Flags & 8) != 0;
+        _eepromChipSelect = (state.Flags & 0x10) != 0;
+        _eepromWriteEnabled = (state.Flags & 0x20) != 0;
+        _argumentBitsLeft = state.ArgumentBitsLeft;
+        _eepromCommand = state.EepromCommand;
+        _readBits = state.PendingReadBits;
+        _xLatch = state.LatchedGyroX;
+        _yLatch = state.LatchedGyroY;
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_ramEnabled);
+        writer.Write(_secondaryRamEnabled);
+        writer.Write(_romBank);
+        writer.Write(_xLatch);
+        writer.Write(_yLatch);
+        writer.Write(_latchReady);
+        writer.Write(_eepromDo);
+        writer.Write(_eepromDi);
+        writer.Write(_eepromClock);
+        writer.Write(_eepromChipSelect);
+        writer.Write(_eepromWriteEnabled);
+        writer.Write(_eepromCommand);
+        writer.Write(_readBits);
+        writer.Write(_argumentBitsLeft);
+        writer.Write(_motionProvider?.X ?? 0);
+        writer.Write(_motionProvider?.Y ?? 0);
+    }
+
+    private byte ReadRegister(ushort address) => ((address >> 4) & 0x0F) switch
+    {
+        2 => (byte)_xLatch,
+        3 => (byte)(_xLatch >> 8),
+        4 => (byte)_yLatch,
+        5 => (byte)(_yLatch >> 8),
+        6 => 0,
+        8 => (byte)((_eepromDo ? 1 : 0) |
+            (_eepromDi ? 2 : 0) |
+            (_eepromClock ? 0x40 : 0) |
+            (_eepromChipSelect ? 0x80 : 0)),
+        _ => 0xFF,
+    };
+
+    private void WriteRegister(ushort address, byte value)
+    {
+        switch ((address >> 4) & 0x0F)
+        {
+            case 0 when value == 0x55:
+                _latchReady = true;
+                _xLatch = _yLatch = 0x8000;
+                break;
+            case 1 when value == 0xAA:
+                _latchReady = false;
+                _xLatch = MotionValue(_motionProvider?.X ?? 0);
+                _yLatch = MotionValue(_motionProvider?.Y ?? 0);
+                break;
+            case 8:
+                ClockEeprom(value);
+                break;
+        }
+    }
+
+    private void ClockEeprom(byte value)
+    {
+        _eepromChipSelect = (value & 0x80) != 0;
+        _eepromDi = (value & 2) != 0;
+        if (_eepromChipSelect && !_eepromClock && (value & 0x40) != 0)
+        {
+            _eepromDo = (_readBits & 0x8000) != 0;
+            _readBits = (ushort)((_readBits << 1) | 1);
+            if (_argumentBitsLeft == 0) ShiftCommandBit();
+            else ShiftArgumentBit();
+        }
+        _eepromClock = (value & 0x40) != 0;
+    }
+
+    private void ShiftCommandBit()
+    {
+        _eepromCommand = (ushort)((_eepromCommand << 1) | (_eepromDi ? 1 : 0));
+        if ((_eepromCommand & 0x400) == 0) return;
+        switch ((_eepromCommand >> 6) & 0x0F)
+        {
+            case >= 8 and <= 0x0B:
+                _readBits = ReadEepromWord(_eepromCommand & 0x7F);
+                _eepromCommand = 0;
+                break;
+            case 3:
+                _eepromWriteEnabled = true;
+                _eepromCommand = 0;
+                break;
+            case 0:
+                _eepromWriteEnabled = false;
+                _eepromCommand = 0;
+                break;
+            case >= 4 and <= 7:
+                if (_eepromWriteEnabled) WriteEepromWord(_eepromCommand & 0x7F, 0);
+                _argumentBitsLeft = 16;
+                break;
+            case >= 0x0C:
+                if (_eepromWriteEnabled)
+                {
+                    WriteEepromWord(_eepromCommand & 0x7F, 0xFFFF);
+                    _readBits = 0x3FFF;
+                }
+                _eepromCommand = 0;
+                break;
+            case 2:
+                if (_eepromWriteEnabled)
+                {
+                    Array.Fill(Ram, (byte)0xFF);
+                    Dirty();
+                    _readBits = 0x00FF;
+                }
+                _eepromCommand = 0;
+                break;
+            case 1:
+                if (_eepromWriteEnabled)
+                {
+                    Array.Clear(Ram);
+                    Dirty();
+                }
+                _argumentBitsLeft = 16;
+                break;
+        }
+    }
+
+    private void ShiftArgumentBit()
+    {
+        _argumentBitsLeft--;
+        _eepromDo = true;
+        if (_eepromDi)
+        {
+            var bit = (ushort)(1 << _argumentBitsLeft);
+            if ((_eepromCommand & 0x100) != 0)
+                WriteEepromWord(_eepromCommand & 0x7F, (ushort)(ReadEepromWord(_eepromCommand & 0x7F) | bit));
+            else
+                for (var index = 0; index < 0x7F; index++)
+                    WriteEepromWord(index, (ushort)(ReadEepromWord(index) | bit));
+        }
+        if (_argumentBitsLeft == 0)
+        {
+            var writingWord = (_eepromCommand & 0x100) != 0;
+            _eepromCommand = 0;
+            _readBits = writingWord ? (ushort)0x00FF : (ushort)0x3FFF;
+        }
+    }
+
+    private ushort ReadEepromWord(int address) =>
+        BinaryPrimitives.ReadUInt16LittleEndian(Ram.AsSpan(address * 2, 2));
+
+    private void WriteEepromWord(int address, ushort value)
+    {
+        BinaryPrimitives.WriteUInt16LittleEndian(Ram.AsSpan(address * 2, 2), value);
+        Dirty();
+    }
+
+    private static ushort MotionValue(double value) => unchecked((ushort)(int)(0x81D0 + 0x70 * value));
 }
 
 internal sealed class Mbc6Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ramSize)
