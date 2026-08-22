@@ -4478,12 +4478,17 @@ public sealed class KernelTests
         Assert.Equal((byte)0x60, emulator.PeekMemory(0xFF31));
     }
 
-    [Fact]
-    public void StateHashIncludesCartridgeBatteryState()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void StateHashIncludesCartridgeBatteryState(GameBoyModel model)
     {
         var rom = MakeRom(type: 0x03, romSizeCode: 1, ramSizeCode: 2);
-        var first = NewEmulator(rom);
-        var second = NewEmulator(rom);
+        var first = NewEmulator(rom, model);
+        var second = NewEmulator(rom, model);
         first.WriteMemory(0, 0x0A);
         second.WriteMemory(0, 0x0A);
         first.WriteMemory(0xA000, 0x5A);
