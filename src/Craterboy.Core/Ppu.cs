@@ -13,6 +13,8 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly ushort[] _colorFrame = new ushort[Width * Height];
     private readonly byte[] _backgroundColors = new byte[Width];
     private readonly bool[] _backgroundPriority = new bool[Width];
+    private readonly bool[] _spriteWritten = new bool[Width];
+    private readonly SpriteCandidate[] _spriteCandidates = new SpriteCandidate[10];
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
     private readonly byte[] _objectPaletteRam = new byte[0x40];
     private readonly Action? _hblankStarted;
@@ -55,6 +57,8 @@ internal sealed class PpuDevice : ICycleParticipant
         (_mode != 2 && _mode != 3 || _mode == 2 && _isDoubleSpeed() && _model.IsColor() && _lineCycles < 70);
 
     public bool IsVisibleHblank => _enabled && _line < Height && _mode == 0;
+
+    public ReadOnlySpan<ushort> RawFrame => _colorFrame;
 
     public void Reset()
     {
@@ -393,9 +397,10 @@ internal sealed class PpuDevice : ICycleParticipant
     private void RenderSprites(byte line, int output)
     {
         if ((_io[0x40] & 0x02) == 0) return;
-        var written = new bool[Width];
+        Array.Clear(_spriteWritten);
+        var written = _spriteWritten;
         var height = (_io[0x40] & 0x04) != 0 ? 16 : 8;
-        var candidates = new SpriteCandidate[10];
+        var candidates = _spriteCandidates;
         var selected = 0;
         for (var sprite = 0; sprite < 40 && selected < candidates.Length; sprite++)
         {

@@ -78,7 +78,13 @@ renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
 overlap priority; FIFO behavior remains separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
-are modeled at the bus boundary and feed a caller-owned raw RGB15 color frame.
+are modeled at the bus boundary and feed a raw RGB15 color frame. The public
+`Emulator.RawFrame` span exposes the same stable 160×144 backing buffer without
+a copy: DMG-class models report hardware shades 0 through 3 and color models
+report RGB15 through `Emulator.FrameFormat`. Presentation palette conversion
+remains a frontend concern. Sprite selection and overlap scratch buffers are
+preallocated, so warmed frame execution and raw-frame access allocate no
+managed memory.
 CGB VBK selects the active 8 KiB CPU VRAM bank; bank-aware tile composition
 remains deferred with the rest of the color renderer, and its selection is
 included in deterministic hashes.

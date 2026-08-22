@@ -1,5 +1,11 @@
 namespace Craterboy;
 
+public enum GameBoyFrameFormat
+{
+    MonochromeShade,
+    Rgb15,
+}
+
 public interface ITimeProvider
 {
     DateTimeOffset UtcNow { get; }

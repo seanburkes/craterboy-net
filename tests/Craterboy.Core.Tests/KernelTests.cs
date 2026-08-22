@@ -5008,10 +5008,75 @@ public sealed class KernelTests
     public void RawFrameBufferHasStableManagedSize()
     {
         var emulator = NewEmulator(MakeRom());
-        var frame = new byte[160 * 144];
+        var frame = new byte[Emulator.FramePixelCount];
+        Assert.Equal(160, Emulator.FrameWidth);
+        Assert.Equal(144, Emulator.FrameHeight);
+        Assert.Equal(160 * 144, Emulator.FramePixelCount);
         emulator.CopyFrame(frame);
         Assert.All(frame, pixel => Assert.Equal((byte)0, pixel));
         Assert.Throws<ArgumentException>(() => emulator.CopyFrame(new byte[10]));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.DmgB, GameBoyFrameFormat.MonochromeShade, 0x0001)]
+    [InlineData(GameBoyModel.CgbE, GameBoyFrameFormat.Rgb15, 0x0BCD)]
+    public void RawFrameExposesStableModelNativePixels(
+        GameBoyModel model,
+        GameBoyFrameFormat expectedFormat,
+        ushort expectedPixel)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        var frame = emulator.RawFrame;
+        Assert.Equal(Emulator.FramePixelCount, frame.Length);
+        Assert.Equal(expectedFormat, emulator.FrameFormat);
+        Assert.Equal((ushort)0, frame[0]);
+
+        emulator.WriteMemory(0x8000, 0x80); // tile 0 row 0: color 1 at x=0
+        emulator.WriteMemory(0x9800, 0);
+        if (model.IsColor())
+        {
+            emulator.WriteMemory(0xFF68, 2); // palette 0, color 1 low byte
+            emulator.WriteMemory(0xFF69, 0xCD);
+            emulator.WriteMemory(0xFF68, 3);
+            emulator.WriteMemory(0xFF69, 0x0B);
+        }
+        else
+        {
+            emulator.WriteMemory(0xFF47, 0xE4); // identity DMG palette
+        }
+        emulator.WriteMemory(0xFF40, 0x91); // LCD, background, unsigned tiles
+        emulator.RunCycles(252);
+
+        Assert.Equal(expectedPixel, frame[0]);
+        Assert.Equal(expectedPixel, emulator.RawFrame[0]);
+
+        emulator.Reset();
+        Assert.Equal((ushort)0, frame[0]);
+        Assert.Equal(expectedFormat, emulator.FrameFormat);
+    }
+
+    [Fact]
+    public void FrameExecutionAndRawAccessAreAllocationFreeAfterWarmup()
+    {
+        var rom = MakeRom();
+        new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0x8000, 0x80);
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, 8);
+        emulator.WriteMemory(0xFE02, 0);
+        emulator.WriteMemory(0xFF48, 0x04);
+        emulator.WriteMemory(0xFF40, 0x92); // LCD and sprites
+        for (var i = 0; i < 3; i++) emulator.RunFrame();
+        _ = emulator.RawFrame[0];
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        emulator.RunFrame();
+        var pixel = emulator.RawFrame[0];
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal((ushort)1, pixel);
+        Assert.Equal(0, allocated);
     }
 
     [Fact]
