@@ -4819,6 +4819,7 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
