@@ -4660,6 +4660,7 @@ public sealed class KernelTests
     [Theory]
     [InlineData(GameBoyModel.DmgB, true)]
     [InlineData(GameBoyModel.Mgb, true)]
+    [InlineData(GameBoyModel.CgbD, false)]
     [InlineData(GameBoyModel.CgbE, false)]
     [InlineData(GameBoyModel.AgbA, false)]
     [InlineData(GameBoyModel.GbpA, false)]
