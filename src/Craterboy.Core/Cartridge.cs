@@ -60,6 +60,7 @@ internal abstract class Cartridge
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         0x20 => new Mbc6Cartridge(rom, header.RamSize),
         0x22 => new Mbc7Cartridge(rom, motionProvider),
+        0xFD => new Tama5Cartridge(rom),
         0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
         0xFE => new Huc3Cartridge(rom, header.RamSize, timeProvider, infraredEndpoint),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
@@ -75,6 +76,71 @@ internal abstract class Cartridge
         if (Ram.Length == 0) return;
         Ram[index % Ram.Length] = value;
         Dirty();
+    }
+}
+
+internal sealed class Tama5Cartridge : Cartridge
+{
+    private readonly byte[] _registers = new byte[8];
+    private int _romBank = 1;
+    private byte _selectedRegister;
+
+    public Tama5Cartridge(byte[] rom) : base(rom, 0x20)
+    {
+        Array.Fill(Ram, (byte)0xFF);
+    }
+
+    public override byte Read(ushort address) => address switch
+    {
+        < 0x4000 => ReadRom(address),
+        < 0x8000 => ReadRom(_romBank * 0x4000 + address - 0x4000),
+        0xA000 => ReadData(),
+        _ => 0xFF,
+    };
+
+    public override void Write(ushort address, byte value)
+    {
+        if (address == 0xA001)
+        {
+            _selectedRegister = value;
+            return;
+        }
+        if (address != 0xA000 || _selectedRegister >= _registers.Length)
+            return;
+
+        _registers[_selectedRegister] = (byte)(value & 0x0F);
+        switch (_selectedRegister)
+        {
+            case 0:
+            case 1:
+                _romBank = _registers[0] | (_registers[1] << 4);
+                break;
+            case 7 when (_registers[6] >> 1) == 0:
+                WriteRam(EepromAddress, (byte)(_registers[4] | (_registers[5] << 4)));
+                break;
+        }
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_romBank);
+        writer.Write(_selectedRegister);
+        writer.Write(_registers);
+        writer.Write(Ram);
+    }
+
+    private int EepromAddress => ((_registers[6] << 4) & 0x10) | _registers[7];
+
+    private byte ReadData()
+    {
+        if (_selectedRegister == 0x0A)
+            return 0xF1;
+        if (_selectedRegister is not (0x0C or 0x0D) || (_registers[6] >> 1) != 1)
+            return 0xF1;
+
+        var value = ReadRam(EepromAddress);
+        return (byte)(0xF0 | (_selectedRegister == 0x0C ? value & 0x0F : value >> 4));
     }
 }
 
