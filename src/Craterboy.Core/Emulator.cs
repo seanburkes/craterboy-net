@@ -72,7 +72,8 @@ public sealed class Emulator
         if (header.RomSize != 0 && rom.Length < header.RomSize)
             throw new ArgumentException($"ROM header declares {header.RomSize} bytes but only {rom.Length} were supplied.", nameof(rom));
         var owned = rom.ToArray();
-        _cartridge = Cartridge.Create(owned, header, _options.TimeProvider, _options.InfraredEndpoint);
+        _cartridge = Cartridge.Create(
+            owned, header, _options.TimeProvider, _options.InfraredEndpoint, _options.MotionProvider);
         RomHeader = header;
         Reset();
     }
@@ -135,7 +136,7 @@ public sealed class Emulator
             null,
             _cartridge?.SaveBessRtc(),
             null,
-            null,
+            _cartridge?.SaveBessMbc7(),
             _cartridge?.SaveBessHuc3(),
             null,
             null,
@@ -160,9 +161,9 @@ public sealed class Emulator
             throw new InvalidDataException($"BESS OAM must be exactly {_oam.Length} bytes.");
         if (buffers.Hram.Length != _hram.Length)
             throw new InvalidDataException($"BESS HRAM must be exactly {_hram.Length} bytes.");
-        if (snapshot.ExtraOam is not null || snapshot.Mbc7 is not null || snapshot.Tpp1 is not null ||
+        if (snapshot.ExtraOam is not null || snapshot.Tpp1 is not null ||
             snapshot.Sgb is not null || snapshot.SgbBuffers is not null)
-            throw new InvalidDataException("This BESS loader supports CORE, INFO, NAME, MBC, MBC3 RTC, and HuC3 state only; other device-specific blocks are not supported yet.");
+            throw new InvalidDataException("This BESS loader supports CORE, INFO, NAME, MBC, MBC3 RTC, MBC7, and HuC3 state only; other device-specific blocks are not supported yet.");
         if (snapshot.Info is not null && RomHeader is not null)
         {
             var expectedTitle = System.Text.Encoding.ASCII.GetBytes(RomHeader.Title.PadRight(16)[..16]);
@@ -186,6 +187,12 @@ public sealed class Emulator
                 throw new InvalidDataException("BESS HuC3 state requires a loaded ROM.");
             _cartridge.ValidateBessHuc3(snapshot.Huc3.Value);
         }
+        if (snapshot.Mbc7 is not null)
+        {
+            if (_cartridge is null)
+                throw new InvalidDataException("BESS MBC7 state requires a loaded ROM.");
+            _cartridge.ValidateBessMbc7(snapshot.Mbc7.Value);
+        }
 
         if (buffers.MbcRam.Length != 0)
             _cartridge!.LoadBattery(buffers.MbcRam.Span);
@@ -206,6 +213,8 @@ public sealed class Emulator
             _cartridge!.LoadBessRtc(snapshot.Rtc.Value);
         if (snapshot.Huc3 is not null)
             _cartridge!.LoadBessHuc3(snapshot.Huc3.Value);
+        if (snapshot.Mbc7 is not null)
+            _cartridge!.LoadBessMbc7(snapshot.Mbc7.Value);
 
         var cpu = _state.Cpu;
         cpu.PC = core.Pc;

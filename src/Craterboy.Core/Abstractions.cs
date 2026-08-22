@@ -27,12 +27,19 @@ public interface IInfraredEndpoint
     void SetOutput(bool enabled);
 }
 
+public interface IMotionProvider
+{
+    double X { get; }
+    double Y { get; }
+}
+
 public sealed class EmulatorOptions
 {
     public ITimeProvider TimeProvider { get; init; } = SystemEmulationTime.Instance;
     public IEntropyProvider EntropyProvider { get; init; } = SystemEntropy.Instance;
     public ISerialEndpoint? SerialEndpoint { get; init; }
     public IInfraredEndpoint? InfraredEndpoint { get; init; }
+    public IMotionProvider? MotionProvider { get; init; }
     public bool SkipBootRom { get; init; } = true;
     public bool EmulateJoypadBouncing { get; init; }
 }

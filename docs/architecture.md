@@ -131,6 +131,12 @@ MBC6 implements its independently selected 8 KiB ROM windows and 4 KiB SRAM
 windows from the documented hardware register map. Flash selection and control
 state are hashed, but flash reads remain open bus until the MX29F008 command
 engine and persistence are ported; pinned SameBoy 1.0.3 has no MBC6 oracle.
+MBC7 exposes caller-owned two-axis motion through `IMotionProvider`, implements
+the dual register enable and accelerometer latch, and ports SameBoy's serial
+EEPROM read/write/erase command state with battery and BESS persistence. The
+cartridge-type label mentions rumble, but neither pinned SameBoy nor the
+documented MBC7 register map defines a rumble control, so no speculative bit is
+exposed as one.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP
@@ -307,9 +313,9 @@ INFO metadata and the Craterboy producer NAME. The matching
 optional blocks before applying CORE CPU/I/O/memory/battery state; matching INFO
 metadata is validated against the loaded ROM while NAME is informational. Parsed `MBC `
 mapper writes are then replayed in order after the core buffers are restored,
-and MBC3 live/latched RTC or HuC3 clock/alarm state is restored with timestamp
-and field validation, preserving a transactional validation boundary; other
-device state remains a separate follow-up slice.
+and MBC3 live/latched RTC, HuC3 clock/alarm, or MBC7 serial EEPROM/motion-latch
+state is restored with field validation, preserving a transactional validation
+boundary; other device state remains a separate follow-up slice.
 Both buffer-writing paths preflight model metadata and complete block ordering
 before writing external bytes, so rejected containers do not partially mutate
 the destination stream.
