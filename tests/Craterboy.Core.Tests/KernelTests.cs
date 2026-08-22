@@ -524,6 +524,52 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void Tama5BanksRomThroughNibbleRegisters()
+    {
+        var rom = MakeRom(type: 0xFD, romSizeCode: 3);
+        rom[0x1C000] = 0x47;
+        var emulator = NewEmulator(rom);
+
+        WriteTama5Register(emulator, 0, 7);
+        WriteTama5Register(emulator, 1, 1);
+
+        Assert.Equal((byte)0x47, emulator.PeekMemory(0x4000));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xA001));
+        WriteTama5Register(emulator, 0x0A, 0);
+        Assert.Equal((byte)0xF1, emulator.PeekMemory(0xA000));
+    }
+
+    [Fact]
+    public void Tama5WritesReadsAndPersistsNibbleAddressedEeprom()
+    {
+        var rom = MakeRom(type: 0xFD, romSizeCode: 1);
+        var emulator = NewEmulator(rom);
+
+        WriteTama5Register(emulator, 4, 0x0B);
+        WriteTama5Register(emulator, 5, 0x0A);
+        WriteTama5Register(emulator, 6, 1);
+        Assert.False(emulator.BatteryDirty);
+        WriteTama5Register(emulator, 7, 5);
+        Assert.True(emulator.BatteryDirty);
+
+        WriteTama5Register(emulator, 6, 3);
+        WriteTama5Register(emulator, 7, 5);
+        emulator.WriteMemory(0xA001, 0x0C);
+        Assert.Equal((byte)0xFB, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0xA001, 0x0D);
+        Assert.Equal((byte)0xFA, emulator.PeekMemory(0xA000));
+
+        var saved = emulator.SaveBattery();
+        Assert.Equal(0x20, saved.Length);
+        var restored = NewEmulator(rom);
+        restored.LoadBattery(saved);
+        WriteTama5Register(restored, 6, 3);
+        WriteTama5Register(restored, 7, 5);
+        restored.WriteMemory(0xA001, 0x0C);
+        Assert.Equal((byte)0xFB, restored.PeekMemory(0xA000));
+    }
+
+    [Fact]
     public void EchoRamMirrorsWorkRam()
     {
         var emulator = NewEmulator(MakeRom());
@@ -5692,6 +5738,12 @@ public sealed class KernelTests
         emulator.WriteMemory(0xA080, 0);
         emulator.WriteMemory(0xA080, 0x80);
         SendMbc7Bits(emulator, command, 11);
+    }
+
+    private static void WriteTama5Register(Emulator emulator, byte register, byte value)
+    {
+        emulator.WriteMemory(0xA001, register);
+        emulator.WriteMemory(0xA000, value);
     }
 
     private static void SendMbc7Bits(Emulator emulator, ushort value, int count)
