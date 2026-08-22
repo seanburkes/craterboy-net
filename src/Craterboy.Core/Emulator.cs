@@ -2,6 +2,10 @@ namespace Craterboy;
 
 public sealed class Emulator
 {
+    public const int FrameWidth = PpuDevice.Width;
+    public const int FrameHeight = PpuDevice.Height;
+    public const int FramePixelCount = FrameWidth * FrameHeight;
+
     private const int CyclesPerFrame = 70_224;
     private const byte InterruptMask = 0x1F;
     private readonly GameBoyModel _model;
@@ -57,6 +61,10 @@ public sealed class Emulator
     public RomHeader? RomHeader { get; private set; }
     public CpuRegisterSnapshot Registers => _state.Cpu.Snapshot;
     public bool BatteryDirty => _cartridge?.BatteryDirty ?? false;
+    public GameBoyFrameFormat FrameFormat => _model.IsColor()
+        ? GameBoyFrameFormat.Rgb15
+        : GameBoyFrameFormat.MonochromeShade;
+    public ReadOnlySpan<ushort> RawFrame => _ppu.RawFrame;
 
     public void LoadRom(ReadOnlyMemory<byte> rom)
     {
