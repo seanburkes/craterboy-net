@@ -127,6 +127,10 @@ infrared register mode through an optional caller-owned `IInfraredEndpoint`.
 HuC3 adds seven-bit ROM and four-bit RAM banking, nibble-command RTC/alarm
 register access, host-time minute advancement, infrared mode, and its packed
 SameBoy battery/BESS clock record.
+MBC6 implements its independently selected 8 KiB ROM windows and 4 KiB SRAM
+windows from the documented hardware register map. Flash selection and control
+state are hashed, but flash reads remain open bus until the MX29F008 command
+engine and persistence are ported; pinned SameBoy 1.0.3 has no MBC6 oracle.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP

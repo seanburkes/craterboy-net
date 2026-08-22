@@ -54,6 +54,7 @@ internal abstract class Cartridge
         0x0B or 0x0C or 0x0D => new Mmm01Cartridge(rom, header.RamSize),
         0x0F or 0x10 or 0x11 or 0x12 or 0x13 => new Mbc3Cartridge(rom, header.RamSize, timeProvider),
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
+        0x20 => new Mbc6Cartridge(rom, header.RamSize),
         0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
         0xFE => new Huc3Cartridge(rom, header.RamSize, timeProvider, infraredEndpoint),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
@@ -70,6 +71,71 @@ internal abstract class Cartridge
         Ram[index % Ram.Length] = value;
         Dirty();
     }
+}
+
+internal sealed class Mbc6Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ramSize)
+{
+    private bool _ramEnabled;
+    private int _ramBankA;
+    private int _ramBankB;
+    private bool _flashEnabled;
+    private bool _flashWriteEnabled;
+    private int _romBankA;
+    private int _romBankB;
+    private bool _flashBankA;
+    private bool _flashBankB;
+
+    public override byte Read(ushort address) => address switch
+    {
+        < 0x4000 => ReadRom(address),
+        < 0x6000 when _flashBankA => ReadFlash(),
+        < 0x6000 => ReadRom(_romBankA * 0x2000 + address - 0x4000),
+        < 0x8000 when _flashBankB => ReadFlash(),
+        < 0x8000 => ReadRom(_romBankB * 0x2000 + address - 0x6000),
+        >= 0xA000 and < 0xB000 when _ramEnabled =>
+            ReadRam(_ramBankA * 0x1000 + address - 0xA000),
+        >= 0xB000 and < 0xC000 when _ramEnabled =>
+            ReadRam(_ramBankB * 0x1000 + address - 0xB000),
+        _ => 0xFF,
+    };
+
+    public override void Write(ushort address, byte value)
+    {
+        switch (address)
+        {
+            case < 0x0400: _ramEnabled = (value & 0x0F) == 0x0A; break;
+            case < 0x0800: _ramBankA = value & 7; break;
+            case < 0x0C00: _ramBankB = value & 7; break;
+            case < 0x1000: _flashEnabled = (value & 1) != 0; break;
+            case 0x1000: _flashWriteEnabled = (value & 1) != 0; break;
+            case >= 0x2000 and < 0x2800: _romBankA = value & 0x7F; break;
+            case >= 0x2800 and < 0x3000: _flashBankA = value == 0x08; break;
+            case >= 0x3000 and < 0x3800: _romBankB = value & 0x7F; break;
+            case >= 0x3800 and < 0x4000: _flashBankB = value == 0x08; break;
+            case >= 0xA000 and < 0xB000 when _ramEnabled:
+                WriteRam(_ramBankA * 0x1000 + address - 0xA000, value);
+                break;
+            case >= 0xB000 and < 0xC000 when _ramEnabled:
+                WriteRam(_ramBankB * 0x1000 + address - 0xB000, value);
+                break;
+        }
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_ramEnabled);
+        writer.Write(_ramBankA);
+        writer.Write(_ramBankB);
+        writer.Write(_flashEnabled);
+        writer.Write(_flashWriteEnabled);
+        writer.Write(_romBankA);
+        writer.Write(_romBankB);
+        writer.Write(_flashBankA);
+        writer.Write(_flashBankB);
+    }
+
+    private static byte ReadFlash() => 0xFF;
 }
 
 internal sealed class Huc3Cartridge(

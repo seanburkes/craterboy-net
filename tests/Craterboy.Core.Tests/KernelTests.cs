@@ -414,6 +414,55 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void Mbc6SwitchesIndependentEightKilobyteRomBanks()
+    {
+        var rom = MakeRom(type: 0x20, romSizeCode: 3, ramSizeCode: 3);
+        for (var bank = 0; bank < rom.Length / 0x2000; bank++)
+            rom[bank * 0x2000] = (byte)bank;
+        var emulator = NewEmulator(rom);
+
+        emulator.WriteMemory(0x2000, 4);
+        emulator.WriteMemory(0x3000, 7);
+
+        Assert.Equal((byte)4, emulator.PeekMemory(0x4000));
+        Assert.Equal((byte)7, emulator.PeekMemory(0x6000));
+    }
+
+    [Fact]
+    public void Mbc6SwitchesIndependentFourKilobyteRamBanks()
+    {
+        var emulator = NewEmulator(MakeRom(type: 0x20, romSizeCode: 1, ramSizeCode: 3));
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0x0000, 0x0A);
+        emulator.WriteMemory(0x0400, 2);
+        emulator.WriteMemory(0x0800, 5);
+        emulator.WriteMemory(0xA000, 0x52);
+        emulator.WriteMemory(0xB000, 0x55);
+        Assert.Equal((byte)0x52, emulator.PeekMemory(0xA000));
+        Assert.Equal((byte)0x55, emulator.PeekMemory(0xB000));
+
+        emulator.WriteMemory(0x0400, 5);
+        emulator.WriteMemory(0x0800, 2);
+        Assert.Equal((byte)0x55, emulator.PeekMemory(0xA000));
+        Assert.Equal((byte)0x52, emulator.PeekMemory(0xB000));
+    }
+
+    [Fact]
+    public void Mbc6FlashSelectionIsOpenBusUntilCommandEngineIsPorted()
+    {
+        var emulator = NewEmulator(MakeRom(type: 0x20, romSizeCode: 1, ramSizeCode: 3));
+        var initialHash = emulator.ComputeStateHash();
+
+        emulator.WriteMemory(0x0C00, 1);
+        emulator.WriteMemory(0x1000, 1);
+        emulator.WriteMemory(0x2800, 0x08);
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0x4000));
+        Assert.NotEqual(initialHash, emulator.ComputeStateHash());
+    }
+
+    [Fact]
     public void EchoRamMirrorsWorkRam()
     {
         var emulator = NewEmulator(MakeRom());
