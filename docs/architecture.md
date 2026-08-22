@@ -124,6 +124,9 @@ MMM01 cartridges rotate their startup banks into SameBoy's internal order and
 preserve the mapper's one-way lock, masking, multiplex, ROM, and RAM bank state.
 HuC1 cartridges provide six-bit ROM and three-bit RAM banking plus the mapper's
 infrared register mode through an optional caller-owned `IInfraredEndpoint`.
+HuC3 adds seven-bit ROM and four-bit RAM banking, nibble-command RTC/alarm
+register access, host-time minute advancement, infrared mode, and its packed
+SameBoy battery/BESS clock record.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP
@@ -300,9 +303,9 @@ INFO metadata and the Craterboy producer NAME. The matching
 optional blocks before applying CORE CPU/I/O/memory/battery state; matching INFO
 metadata is validated against the loaded ROM while NAME is informational. Parsed `MBC `
 mapper writes are then replayed in order after the core buffers are restored,
-and MBC3 live/latched RTC state is restored with timestamp and field validation,
-preserving a transactional validation boundary; other device state remains a
-separate follow-up slice.
+and MBC3 live/latched RTC or HuC3 clock/alarm state is restored with timestamp
+and field validation, preserving a transactional validation boundary; other
+device state remains a separate follow-up slice.
 Both buffer-writing paths preflight model metadata and complete block ordering
 before writing external bytes, so rejected containers do not partially mutate
 the destination stream.

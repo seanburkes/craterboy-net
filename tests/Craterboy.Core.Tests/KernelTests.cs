@@ -312,6 +312,7 @@ public sealed class KernelTests
         rom[0x8000] = 0x42;
         var emulator = NewEmulator(rom);
 
+        Assert.Equal(rom[0x4000], emulator.PeekMemory(0x4000));
         emulator.WriteMemory(0x2000, 2);
         Assert.Equal((byte)0x42, emulator.PeekMemory(0x4000));
 
@@ -341,6 +342,75 @@ public sealed class KernelTests
         emulator.WriteMemory(0xA000, 0);
         Assert.False(endpoint.Output);
         Assert.Equal(2, endpoint.OutputChanges);
+    }
+
+    [Fact]
+    public void Huc3SwitchesRomAndRamBanks()
+    {
+        var rom = MakeRom(type: 0xFE, romSizeCode: 2, ramSizeCode: 3);
+        rom[0x8000] = 0x42;
+        var emulator = NewEmulator(rom);
+
+        Assert.Equal(rom[0x4000], emulator.PeekMemory(0x4000));
+        emulator.WriteMemory(0x2000, 2);
+        Assert.Equal((byte)0x42, emulator.PeekMemory(0x4000));
+        emulator.WriteMemory(0x0000, 0x0A);
+        emulator.WriteMemory(0x4000, 1);
+        emulator.WriteMemory(0xA000, 0x51);
+        emulator.WriteMemory(0x4000, 2);
+        emulator.WriteMemory(0xA000, 0x52);
+        Assert.Equal((byte)0x52, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0x4000, 1);
+        Assert.Equal((byte)0x51, emulator.PeekMemory(0xA000));
+    }
+
+    [Fact]
+    public void Huc3RtcCommandsAndBessStateRoundTrip()
+    {
+        var clock = new TestTimeProvider();
+        var rom = MakeRom(type: 0xFE, romSizeCode: 1, ramSizeCode: 2);
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        emulator.LoadRom(rom);
+
+        emulator.WriteMemory(0x0000, 0x0B);
+        emulator.WriteMemory(0xA000, 0x40);
+        emulator.WriteMemory(0xA000, 0x50);
+        emulator.WriteMemory(0xA000, 0x3B);
+        emulator.WriteMemory(0xA000, 0x34);
+        emulator.WriteMemory(0xA000, 0x30);
+        clock.Advance(TimeSpan.FromMinutes(60));
+        emulator.WriteMemory(0xA000, 0x40);
+        emulator.WriteMemory(0xA000, 0x50);
+        emulator.WriteMemory(0xA000, 0x10);
+        emulator.WriteMemory(0x0000, 0x0C);
+        Assert.Equal((byte)7, emulator.PeekMemory(0xA000));
+
+        using var state = new MemoryStream();
+        emulator.SaveBess(state);
+        state.Position = 0;
+        var restored = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        restored.LoadRom(rom);
+        restored.LoadBess(state);
+        restored.WriteMemory(0x0000, 0x0B);
+        restored.WriteMemory(0xA000, 0x40);
+        restored.WriteMemory(0xA000, 0x50);
+        restored.WriteMemory(0xA000, 0x10);
+        restored.WriteMemory(0x0000, 0x0C);
+        Assert.Equal((byte)7, restored.PeekMemory(0xA000));
+    }
+
+    [Fact]
+    public void Huc3InfraredModeUsesEndpoint()
+    {
+        var endpoint = new TestInfraredEndpoint { Input = true };
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { InfraredEndpoint = endpoint });
+        emulator.LoadRom(MakeRom(type: 0xFE, ramSizeCode: 2));
+
+        emulator.WriteMemory(0x0000, 0x0E);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0xA000, 1);
+        Assert.True(endpoint.Output);
+        Assert.Equal(1, endpoint.OutputChanges);
     }
 
     [Fact]

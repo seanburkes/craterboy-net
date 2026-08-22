@@ -21,6 +21,9 @@ internal abstract class Cartridge
     public virtual BessRtc? SaveBessRtc() => null;
     public virtual void ValidateBessRtc(BessRtc state) => throw new InvalidDataException("BESS RTC state is not supported by this cartridge.");
     public virtual void LoadBessRtc(BessRtc state) => throw new InvalidDataException("BESS RTC state is not supported by this cartridge.");
+    public virtual BessHuc3? SaveBessHuc3() => null;
+    public virtual void ValidateBessHuc3(BessHuc3 state) => throw new InvalidDataException("BESS HuC3 state is not supported by this cartridge.");
+    public virtual void LoadBessHuc3(BessHuc3 state) => throw new InvalidDataException("BESS HuC3 state is not supported by this cartridge.");
     public virtual void WriteStateHash(BinaryWriter writer)
     {
         writer.Write(System.Security.Cryptography.SHA256.HashData(Rom));
@@ -52,6 +55,7 @@ internal abstract class Cartridge
         0x0F or 0x10 or 0x11 or 0x12 or 0x13 => new Mbc3Cartridge(rom, header.RamSize, timeProvider),
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
+        0xFE => new Huc3Cartridge(rom, header.RamSize, timeProvider, infraredEndpoint),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
     };
 
@@ -68,10 +72,243 @@ internal abstract class Cartridge
     }
 }
 
+internal sealed class Huc3Cartridge(
+    byte[] rom, int ramSize, ITimeProvider timeProvider, IInfraredEndpoint? infraredEndpoint) : Cartridge(rom, ramSize)
+{
+    private const int RtcLength = 17;
+    private DateTimeOffset _lastRtcUpdate = timeProvider.UtcNow;
+    private int _romBank = 1;
+    private int _ramBank;
+    private byte _mode;
+    private ushort _minutes = 0x0FFF;
+    private ushort _days = 0xFFFF;
+    private ushort _alarmMinutes;
+    private ushort _alarmDays;
+    private byte _accessIndex;
+    private byte _read;
+    private byte _accessFlags;
+    private bool _alarmEnabled;
+    private bool _infraredOutput;
+
+    public override byte Read(ushort address) => address switch
+    {
+        < 0x4000 => ReadRom(address),
+        < 0x8000 => ReadRom(_romBank * 0x4000 + address - 0x4000),
+        >= 0xA000 and < 0xC000 => ReadExternal(address),
+        _ => 0xFF,
+    };
+
+    public override void Write(ushort address, byte value)
+    {
+        switch (address)
+        {
+            case < 0x2000: _mode = (byte)(value & 0x0F); break;
+            case < 0x4000: _romBank = value & 0x7F; break;
+            case < 0x6000: _ramBank = value & 0x0F; break;
+            case >= 0xA000 and < 0xC000: WriteExternal(address, value); break;
+        }
+    }
+
+    public override byte[] SaveBattery()
+    {
+        UpdateClock();
+        var ram = base.SaveBattery();
+        var result = new byte[ram.Length + RtcLength];
+        ram.CopyTo(result, 0);
+        WriteRtc(result.AsSpan(ram.Length));
+        return result;
+    }
+
+    public override void LoadBattery(ReadOnlySpan<byte> data)
+    {
+        if (data.Length != Ram.Length + RtcLength)
+            throw new ArgumentException($"HuC3 battery data must be exactly {Ram.Length + RtcLength} bytes.", nameof(data));
+        ValidateRtc(data[Ram.Length..], nameof(data));
+        base.LoadBattery(data[..Ram.Length]);
+        LoadRtc(data[Ram.Length..]);
+    }
+
+    public override BessHuc3? SaveBessHuc3()
+    {
+        UpdateClock();
+        return new(
+            checked((ulong)_lastRtcUpdate.ToUnixTimeSeconds()), _minutes, _days,
+            _alarmMinutes, _alarmDays, _alarmEnabled);
+    }
+
+    public override void ValidateBessHuc3(BessHuc3 state)
+    {
+        try
+        {
+            _ = DateTimeOffset.FromUnixTimeSeconds(checked((long)state.LastUnixSecond));
+        }
+        catch (Exception exception) when (exception is ArgumentOutOfRangeException or OverflowException)
+        {
+            throw new InvalidDataException("BESS HuC3 timestamp is invalid.", exception);
+        }
+    }
+
+    public override void LoadBessHuc3(BessHuc3 state)
+    {
+        ValidateBessHuc3(state);
+        _lastRtcUpdate = DateTimeOffset.FromUnixTimeSeconds((long)state.LastUnixSecond);
+        _minutes = state.Minutes;
+        _days = state.Days;
+        _alarmMinutes = state.AlarmMinutes;
+        _alarmDays = state.AlarmDays;
+        _alarmEnabled = state.AlarmEnabled;
+        UpdateClock();
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_romBank);
+        writer.Write(_ramBank);
+        writer.Write(_mode);
+        writer.Write(_minutes);
+        writer.Write(_days);
+        writer.Write(_alarmMinutes);
+        writer.Write(_alarmDays);
+        writer.Write(_accessIndex);
+        writer.Write(_read);
+        writer.Write(_accessFlags);
+        writer.Write(_alarmEnabled);
+        writer.Write(_infraredOutput);
+        writer.Write(infraredEndpoint?.Input == true);
+    }
+
+    private byte ReadExternal(ushort address)
+    {
+        UpdateClock();
+        return _mode switch
+        {
+            0 or 0x0A => ReadRam(_ramBank * 0x2000 + address - 0xA000),
+            0x0C => _accessFlags == 2 ? (byte)1 : _read,
+            0x0D => 1,
+            0x0E => infraredEndpoint?.Input == true ? (byte)1 : (byte)0,
+            _ => 1,
+        };
+    }
+
+    private void WriteExternal(ushort address, byte value)
+    {
+        switch (_mode)
+        {
+            case 0x0A:
+                WriteRam(_ramBank * 0x2000 + address - 0xA000, value);
+                break;
+            case 0x0B:
+                UpdateClock();
+                WriteRtcCommand(value);
+                break;
+            case 0x0E:
+                var output = (value & 1) != 0;
+                if (output != _infraredOutput)
+                {
+                    _infraredOutput = output;
+                    infraredEndpoint?.SetOutput(output);
+                }
+                break;
+        }
+    }
+
+    private void WriteRtcCommand(byte value)
+    {
+        switch (value >> 4)
+        {
+            case 1:
+                if (_accessIndex < 3) _read = (byte)((_minutes >> (_accessIndex * 4)) & 0x0F);
+                else if (_accessIndex < 7) _read = (byte)((_days >> ((_accessIndex - 3) * 4)) & 0x0F);
+                _accessIndex++;
+                break;
+            case 2:
+            case 3:
+                WriteRtcNibble((byte)(value & 0x0F));
+                if ((value >> 4) == 3) _accessIndex++;
+                break;
+            case 4: _accessIndex = (byte)((_accessIndex & 0xF0) | (value & 0x0F)); break;
+            case 5: _accessIndex = (byte)((_accessIndex & 0x0F) | ((value & 0x0F) << 4)); break;
+            case 6: _accessFlags = (byte)(value & 0x0F); break;
+        }
+    }
+
+    private void WriteRtcNibble(byte value)
+    {
+        if (_accessIndex < 3) _minutes = SetNibble(_minutes, _accessIndex, value);
+        else if (_accessIndex < 7) _days = SetNibble(_days, _accessIndex - 3, value);
+        else if (_accessIndex is >= 0x58 and <= 0x5A)
+        {
+            _alarmMinutes = SetNibble(_alarmMinutes, _accessIndex - 0x58, value);
+            Dirty();
+        }
+        else if (_accessIndex is >= 0x5B and <= 0x5E)
+        {
+            _alarmDays = SetNibble(_alarmDays, _accessIndex - 0x5B, value);
+            Dirty();
+        }
+        else if (_accessIndex == 0x5F)
+        {
+            _alarmEnabled = (value & 1) != 0;
+            Dirty();
+        }
+    }
+
+    private void UpdateClock()
+    {
+        var now = timeProvider.UtcNow;
+        var elapsedMinutes = (long)((now - _lastRtcUpdate).TotalSeconds / 60);
+        if (elapsedMinutes <= 0) return;
+        _lastRtcUpdate = _lastRtcUpdate.AddMinutes(elapsedMinutes);
+        var totalMinutes = _minutes + elapsedMinutes;
+        _days = unchecked((ushort)(_days + totalMinutes / 1440));
+        _minutes = (ushort)(totalMinutes % 1440);
+    }
+
+    private void WriteRtc(Span<byte> destination)
+    {
+        BinaryPrimitives.WriteUInt64LittleEndian(destination, checked((ulong)_lastRtcUpdate.ToUnixTimeSeconds()));
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[8..], _minutes);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[0x0A..], _days);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[0x0C..], _alarmMinutes);
+        BinaryPrimitives.WriteUInt16LittleEndian(destination[0x0E..], _alarmDays);
+        destination[0x10] = _alarmEnabled ? (byte)1 : (byte)0;
+    }
+
+    private void LoadRtc(ReadOnlySpan<byte> source)
+    {
+        var timestamp = BinaryPrimitives.ReadUInt64LittleEndian(source);
+        _lastRtcUpdate = DateTimeOffset.FromUnixTimeSeconds((long)timestamp);
+        _minutes = BinaryPrimitives.ReadUInt16LittleEndian(source[8..]);
+        _days = BinaryPrimitives.ReadUInt16LittleEndian(source[0x0A..]);
+        _alarmMinutes = BinaryPrimitives.ReadUInt16LittleEndian(source[0x0C..]);
+        _alarmDays = BinaryPrimitives.ReadUInt16LittleEndian(source[0x0E..]);
+        _alarmEnabled = source[0x10] != 0;
+        UpdateClock();
+    }
+
+    private static void ValidateRtc(ReadOnlySpan<byte> source, string parameterName)
+    {
+        try
+        {
+            _ = DateTimeOffset.FromUnixTimeSeconds(checked((long)BinaryPrimitives.ReadUInt64LittleEndian(source)));
+        }
+        catch (Exception exception) when (exception is ArgumentOutOfRangeException or OverflowException)
+        {
+            throw new ArgumentException("HuC3 battery timestamp is invalid.", parameterName, exception);
+        }
+        if (source[0x10] > 1)
+            throw new ArgumentException("HuC3 battery alarm flag is invalid.", parameterName);
+    }
+
+    private static ushort SetNibble(ushort current, int index, byte value) =>
+        (ushort)((current & ~(0x0F << (index * 4))) | ((value & 0x0F) << (index * 4)));
+}
+
 internal sealed class Huc1Cartridge(
     byte[] rom, int ramSize, IInfraredEndpoint? infraredEndpoint) : Cartridge(rom, ramSize)
 {
-    private int _romBank;
+    private int _romBank = 1;
     private int _ramBank;
     private bool _infraredMode;
     private bool _infraredOutput;
