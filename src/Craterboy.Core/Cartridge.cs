@@ -60,7 +60,7 @@ internal abstract class Cartridge
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         0x20 => new Mbc6Cartridge(rom, header.RamSize),
         0x22 => new Mbc7Cartridge(rom, motionProvider),
-        0xFD => new Tama5Cartridge(rom),
+        0xFD => new Tama5Cartridge(rom, timeProvider),
         0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
         0xFE => new Huc3Cartridge(rom, header.RamSize, timeProvider, infraredEndpoint),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
@@ -81,13 +81,26 @@ internal abstract class Cartridge
 
 internal sealed class Tama5Cartridge : Cartridge
 {
+    private const int RtcSaveLength = 40;
     private readonly byte[] _registers = new byte[8];
+    private readonly byte[][] _rtcPages = [new byte[16], new byte[16], new byte[16], new byte[16]];
+    private readonly ITimeProvider _timeProvider;
+    private DateTimeOffset _lastRtcUpdate;
     private int _romBank = 1;
     private byte _selectedRegister;
+    private bool _timerEnabled = true;
 
-    public Tama5Cartridge(byte[] rom) : base(rom, 0x20)
+    public Tama5Cartridge(byte[] rom, ITimeProvider timeProvider) : base(rom, 0x20)
     {
+        _timeProvider = timeProvider;
+        _lastRtcUpdate = timeProvider.UtcNow;
         Array.Fill(Ram, (byte)0xFF);
+        _rtcPages[0][7] = 1;
+        _rtcPages[0][9] = 1;
+        _rtcPages[1][13] = 1;
+        _rtcPages[2][13] = 2;
+        _rtcPages[3][13] = 3;
+        SetPageFlags(8, true);
     }
 
     public override byte Read(ushort address) => address switch
@@ -118,7 +131,49 @@ internal sealed class Tama5Cartridge : Cartridge
             case 7 when (_registers[6] >> 1) == 0:
                 WriteRam(EepromAddress, (byte)(_registers[4] | (_registers[5] << 4)));
                 break;
+            case 7 when (_registers[6] >> 1) == 2:
+                WriteClockCommand();
+                break;
+            case 7 when (_registers[6] >> 1) == 4 && (_registers[7] & 1) == 0:
+                WriteRtcPage();
+                break;
         }
+    }
+
+    public override byte[] SaveBattery()
+    {
+        UpdateClock();
+        var result = new byte[Ram.Length + RtcSaveLength];
+        base.SaveBattery().CopyTo(result, 0);
+        for (var page = 0; page < 4; page++)
+            for (var index = 0; index < 8; index++)
+                result[Ram.Length + page * 8 + index] = (byte)(_rtcPages[page][index * 2] | (_rtcPages[page][index * 2 + 1] << 4));
+        BinaryPrimitives.WriteInt64LittleEndian(result.AsSpan(Ram.Length + 32), _lastRtcUpdate.ToUnixTimeSeconds());
+        return result;
+    }
+
+    public override void LoadBattery(ReadOnlySpan<byte> data)
+    {
+        if (data.Length == Ram.Length)
+        {
+            base.LoadBattery(data);
+            _lastRtcUpdate = _timeProvider.UtcNow;
+            return;
+        }
+        if (data.Length != Ram.Length + RtcSaveLength)
+            throw new ArgumentException($"TAMA5 battery data must be exactly {Ram.Length} or {Ram.Length + RtcSaveLength} bytes.", nameof(data));
+        var timestamp = DateTimeOffset.FromUnixTimeSeconds(BinaryPrimitives.ReadInt64LittleEndian(data[(Ram.Length + 32)..]));
+        base.LoadBattery(data[..Ram.Length]);
+        for (var page = 0; page < 4; page++)
+            for (var index = 0; index < 8; index++)
+            {
+                var packed = data[Ram.Length + page * 8 + index];
+                _rtcPages[page][index * 2] = (byte)(packed & 0x0F);
+                _rtcPages[page][index * 2 + 1] = (byte)(packed >> 4);
+            }
+        _lastRtcUpdate = timestamp;
+        _timerEnabled = (_rtcPages[0][13] & 8) != 0;
+        UpdateClock();
     }
 
     public override void WriteStateHash(BinaryWriter writer)
@@ -128,6 +183,8 @@ internal sealed class Tama5Cartridge : Cartridge
         writer.Write(_selectedRegister);
         writer.Write(_registers);
         writer.Write(Ram);
+        writer.Write(_timerEnabled);
+        foreach (var page in _rtcPages) writer.Write(page);
     }
 
     private int EepromAddress => ((_registers[6] << 4) & 0x10) | _registers[7];
@@ -136,12 +193,104 @@ internal sealed class Tama5Cartridge : Cartridge
     {
         if (_selectedRegister == 0x0A)
             return 0xF1;
-        if (_selectedRegister is not (0x0C or 0x0D) || (_registers[6] >> 1) != 1)
+        if (_selectedRegister is not (0x0C or 0x0D))
             return 0xF1;
 
-        var value = ReadRam(EepromAddress);
+        byte value;
+        if ((_registers[6] >> 1) == 1)
+            value = ReadRam(EepromAddress);
+        else if ((_registers[6] >> 1) == 2)
+        {
+            UpdateClock();
+            value = (((_registers[6] & 1) << 4) | _registers[7]) switch
+            {
+                6 => (byte)(_rtcPages[0][2] | (_rtcPages[0][3] << 4)),
+                7 => (byte)(_rtcPages[0][4] | (_rtcPages[0][5] << 4)),
+                _ => (byte)0xFF,
+            };
+        }
+        else if ((_registers[6] >> 1) == 4 && _selectedRegister == 0x0C)
+        {
+            UpdateClock();
+            var page = _registers[7] >> 1;
+            value = page < _rtcPages.Length && _registers[4] < 16 ? _rtcPages[page][_registers[4]] : (byte)0;
+        }
+        else
+            return 0xF1;
         return (byte)(0xF0 | (_selectedRegister == 0x0C ? value & 0x0F : value >> 4));
     }
+
+    private void WriteClockCommand()
+    {
+        UpdateClock();
+        var command = ((_registers[6] & 1) << 4) | _registers[7];
+        switch (command)
+        {
+            case 0: _timerEnabled = false; SetPageFlags(8, false); break;
+            case 1: _timerEnabled = true; _lastRtcUpdate = _timeProvider.UtcNow; SetPageFlags(8, true); break;
+            case 4: SetRawBcd(2); break;
+            case 5: SetRawBcd(4); break;
+            case 0x10: SetPageFlags(4, false); break;
+            case 0x11: SetPageFlags(4, true); break;
+        }
+    }
+
+    private void WriteRtcPage()
+    {
+        var page = _registers[7] >> 1;
+        var index = _registers[4];
+        if (page >= _rtcPages.Length || index >= 13) return;
+        UpdateClock();
+        _rtcPages[page][index] = (byte)(_registers[5] & RtcMask(page, index));
+        _lastRtcUpdate = _timeProvider.UtcNow;
+        Dirty();
+    }
+
+    private void UpdateClock()
+    {
+        var now = _timeProvider.UtcNow;
+        var seconds = (long)(now - _lastRtcUpdate).TotalSeconds;
+        if (!_timerEnabled || seconds <= 0) return;
+        _lastRtcUpdate = _lastRtcUpdate.AddSeconds(seconds);
+        var page = _rtcPages[0];
+        try
+        {
+            var clock = new DateTimeOffset(2000 + Bcd(page, 11), Bcd(page, 9), Bcd(page, 7), Bcd(page, 4), Bcd(page, 2), Bcd(page, 0), TimeSpan.Zero).AddSeconds(seconds);
+            SetBcd(0, clock.Second);
+            SetBcd(2, clock.Minute);
+            SetBcd(4, clock.Hour);
+            page[6] = (byte)clock.DayOfWeek;
+            SetBcd(7, clock.Day);
+            SetBcd(9, clock.Month);
+            SetBcd(11, clock.Year % 100);
+        }
+        catch (ArgumentOutOfRangeException) { }
+    }
+
+    private int Bcd(byte[] page, int index) => page[index] + page[index + 1] * 10;
+    private void SetBcd(int index, int value)
+    {
+        _rtcPages[0][index] = (byte)(value % 10);
+        _rtcPages[0][index + 1] = (byte)(value / 10);
+    }
+    private void SetRawBcd(int index)
+    {
+        _rtcPages[0][index] = _registers[4];
+        _rtcPages[0][index + 1] = _registers[5];
+        _lastRtcUpdate = _timeProvider.UtcNow;
+        Dirty();
+    }
+    private void SetPageFlags(byte flag, bool enabled)
+    {
+        foreach (var page in _rtcPages)
+            page[13] = enabled ? (byte)(page[13] | flag) : (byte)(page[13] & ~flag);
+    }
+    private static byte RtcMask(int page, int index) => page switch
+    {
+        0 => index switch { 1 or 3 or 5 => 7, 10 => 1, 13 => 0, _ => 0x0F },
+        1 => index switch { 3 or 5 => 7, 10 => 1, 11 => 3, 13 => 0, _ => 0x0F },
+        _ => 0x0F,
+    };
 }
 
 internal sealed class Mbc7Cartridge : Cartridge
