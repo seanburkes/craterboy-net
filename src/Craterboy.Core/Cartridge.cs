@@ -46,6 +46,7 @@ internal abstract class Cartridge
         0x00 or 0x08 or 0x09 => new RomOnlyCartridge(rom, header.RamSize),
         0x01 or 0x02 or 0x03 => new Mbc1Cartridge(rom, header.RamSize, IsMbc1Multicart(rom)),
         0x05 or 0x06 => new Mbc2Cartridge(rom),
+        0x0B or 0x0C or 0x0D => new Mmm01Cartridge(rom, header.RamSize),
         0x0F or 0x10 or 0x11 or 0x12 or 0x13 => new Mbc3Cartridge(rom, header.RamSize, timeProvider),
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
@@ -61,6 +62,122 @@ internal abstract class Cartridge
         if (Ram.Length == 0) return;
         Ram[index % Ram.Length] = value;
         Dirty();
+    }
+}
+
+internal sealed class Mmm01Cartridge : Cartridge
+{
+    private bool _ramEnabled;
+    private int _romBankLow;
+    private int _romBankMid;
+    private int _romBankMask;
+    private int _romBankHigh;
+    private int _ramBankLow;
+    private int _ramBankHigh;
+    private int _ramBankMask = 3;
+    private bool _mbc1Mode;
+    private bool _locked;
+    private bool _mbc1ModeDisabled;
+    private bool _multiplexMode;
+
+    public Mmm01Cartridge(byte[] rom, int ramSize) : base(RotateStartupBanks(rom), ramSize) { }
+
+    public override byte Read(ushort address) => address switch
+    {
+        < 0x4000 => ReadRom(Rom0Bank() * 0x4000 + address),
+        < 0x8000 => ReadRom(RomBank() * 0x4000 + address - 0x4000),
+        >= 0xA000 and < 0xC000 when _ramEnabled =>
+            ReadRam(RamBank() * 0x2000 + address - 0xA000),
+        _ => 0xFF,
+    };
+
+    public override void Write(ushort address, byte value)
+    {
+        switch (address)
+        {
+            case < 0x2000:
+                _ramEnabled = (value & 0x0F) == 0x0A;
+                if (!_locked)
+                {
+                    _ramBankMask = (value >> 4) & 3;
+                    _locked = (value & 0x40) != 0;
+                }
+                break;
+            case < 0x4000:
+                if (!_locked) _romBankMid = (value >> 5) & 3;
+                var mask = (_romBankMask << 1) & 0x1F;
+                _romBankLow = ((_romBankLow & mask) | (value & ~mask)) & 0x1F;
+                break;
+            case < 0x6000:
+                _ramBankLow = (value | ~_ramBankMask) & 3;
+                if (!_locked)
+                {
+                    _ramBankHigh = (value >> 2) & 3;
+                    _romBankHigh = (value >> 4) & 3;
+                    _mbc1ModeDisabled = (value & 0x40) != 0;
+                }
+                break;
+            case < 0x8000:
+                if (!_mbc1ModeDisabled) _mbc1Mode = (value & 1) != 0;
+                if (!_locked)
+                {
+                    _romBankMask = (value >> 2) & 0x0F;
+                    _multiplexMode = (value & 0x40) != 0;
+                }
+                break;
+            case >= 0xA000 and < 0xC000 when _ramEnabled:
+                WriteRam(RamBank() * 0x2000 + address - 0xA000, value);
+                break;
+        }
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_ramEnabled);
+        writer.Write(_romBankLow);
+        writer.Write(_romBankMid);
+        writer.Write(_romBankMask);
+        writer.Write(_romBankHigh);
+        writer.Write(_ramBankLow);
+        writer.Write(_ramBankHigh);
+        writer.Write(_ramBankMask);
+        writer.Write(_mbc1Mode);
+        writer.Write(_locked);
+        writer.Write(_mbc1ModeDisabled);
+        writer.Write(_multiplexMode);
+    }
+
+    private int Rom0Bank()
+    {
+        if (!_locked) return Rom.Length / 0x4000 - 2;
+        if (_multiplexMode)
+            return (_romBankLow & (_romBankMask << 1)) |
+                ((_mbc1Mode ? 0 : _ramBankLow) << 5) | (_romBankHigh << 7);
+        return (_romBankLow & (_romBankMask << 1)) |
+            (_romBankMid << 5) | (_romBankHigh << 7);
+    }
+
+    private int RomBank()
+    {
+        if (!_locked) return Rom.Length / 0x4000 - 1;
+        var bank = _romBankLow |
+            ((_multiplexMode ? _ramBankLow : _romBankMid) << 5) |
+            (_romBankHigh << 7);
+        return bank == Rom0Bank() ? bank + 1 : bank;
+    }
+
+    private int RamBank() => _multiplexMode
+        ? _romBankMid | (_ramBankHigh << 2)
+        : _ramBankLow | (_ramBankHigh << 2);
+
+    private static byte[] RotateStartupBanks(byte[] rom)
+    {
+        if (rom.Length <= 0x8000) return rom;
+        var rotated = new byte[rom.Length];
+        rom.AsSpan(0x8000).CopyTo(rotated);
+        rom.AsSpan(0, 0x8000).CopyTo(rotated.AsSpan(rom.Length - 0x8000));
+        return rotated;
     }
 }
 

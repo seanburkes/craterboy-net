@@ -120,6 +120,8 @@ Cartridge mapper bank, enable, latch, and RTC control state are included too.
 MBC1 multicarts are detected using SameBoy's repeated-header heuristic and use
 the four-bit multicart bank wiring while ordinary MBC1 cartridges retain the
 standard five-bit mapping.
+MMM01 cartridges rotate their startup banks into SameBoy's internal order and
+preserve the mapper's one-way lock, masking, multiplex, ROM, and RAM bank state.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP
