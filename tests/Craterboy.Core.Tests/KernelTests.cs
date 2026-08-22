@@ -306,6 +306,44 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void Huc1SwitchesRomAndRamBanks()
+    {
+        var rom = MakeRom(type: 0xFF, romSizeCode: 2, ramSizeCode: 3);
+        rom[0x8000] = 0x42;
+        var emulator = NewEmulator(rom);
+
+        emulator.WriteMemory(0x2000, 2);
+        Assert.Equal((byte)0x42, emulator.PeekMemory(0x4000));
+
+        emulator.WriteMemory(0x4000, 1);
+        emulator.WriteMemory(0xA000, 0x51);
+        emulator.WriteMemory(0x4000, 2);
+        emulator.WriteMemory(0xA000, 0x52);
+        Assert.Equal((byte)0x52, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0x4000, 1);
+        Assert.Equal((byte)0x51, emulator.PeekMemory(0xA000));
+    }
+
+    [Fact]
+    public void Huc1InfraredModeUsesEndpoint()
+    {
+        var endpoint = new TestInfraredEndpoint { Input = true };
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { InfraredEndpoint = endpoint });
+        emulator.LoadRom(MakeRom(type: 0xFF, ramSizeCode: 2));
+
+        emulator.WriteMemory(0x0000, 0x0E);
+        Assert.Equal((byte)0xC1, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0xA000, 1);
+        Assert.True(endpoint.Output);
+        Assert.Equal(1, endpoint.OutputChanges);
+        emulator.WriteMemory(0xA000, 1);
+        Assert.Equal(1, endpoint.OutputChanges);
+        emulator.WriteMemory(0xA000, 0);
+        Assert.False(endpoint.Output);
+        Assert.Equal(2, endpoint.OutputChanges);
+    }
+
+    [Fact]
     public void EchoRamMirrorsWorkRam()
     {
         var emulator = NewEmulator(MakeRom());
@@ -5480,6 +5518,18 @@ public sealed class KernelTests
         public byte Response { get; init; }
         public byte Outgoing { get; private set; }
         public byte Exchange(byte outgoing) { Outgoing = outgoing; return Response; }
+    }
+
+    private sealed class TestInfraredEndpoint : IInfraredEndpoint
+    {
+        public bool Input { get; init; }
+        public bool Output { get; private set; }
+        public int OutputChanges { get; private set; }
+        public void SetOutput(bool enabled)
+        {
+            Output = enabled;
+            OutputChanges++;
+        }
     }
 
     private sealed class NonSeekableReadStream(byte[] data) : Stream
