@@ -269,6 +269,43 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void Mmm01LocksStartupMappingAndSwitchesRomBanks()
+    {
+        var rom = MakeRom(type: 0x0B, romSizeCode: 2);
+        for (var bank = 0; bank < 8; bank++) rom[bank * 0x4000] = (byte)bank;
+        var emulator = NewEmulator(rom);
+
+        Assert.Equal((byte)0, emulator.PeekMemory(0x0000));
+        Assert.Equal((byte)1, emulator.PeekMemory(0x4000));
+
+        emulator.WriteMemory(0x0000, 0x40);
+        Assert.Equal((byte)2, emulator.PeekMemory(0x0000));
+        Assert.Equal((byte)3, emulator.PeekMemory(0x4000));
+
+        emulator.WriteMemory(0x2000, 2);
+        Assert.Equal((byte)4, emulator.PeekMemory(0x4000));
+    }
+
+    [Fact]
+    public void Mmm01BanksAndProtectsRam()
+    {
+        var emulator = NewEmulator(MakeRom(type: 0x0D, romSizeCode: 2, ramSizeCode: 3));
+
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0x0000, 0x70);
+        emulator.WriteMemory(0x0000, 0x0A);
+        emulator.WriteMemory(0x4000, 1);
+        emulator.WriteMemory(0xA000, 0x51);
+        emulator.WriteMemory(0x4000, 2);
+        emulator.WriteMemory(0xA000, 0x52);
+
+        Assert.Equal((byte)0x52, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0x4000, 1);
+        Assert.Equal((byte)0x51, emulator.PeekMemory(0xA000));
+        Assert.True(emulator.BatteryDirty);
+    }
+
+    [Fact]
     public void EchoRamMirrorsWorkRam()
     {
         var emulator = NewEmulator(MakeRom());

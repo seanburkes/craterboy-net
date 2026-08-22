@@ -514,6 +514,33 @@ public sealed class DifferentialTests
         Assert.Equal(oracle.Read(0xA000), managed.PeekMemory(0xA000));
     }
 
+    [Fact]
+    public void Mmm01StartupLockAndBankingMatchOracle()
+    {
+        var rom = MakeRom(type: 0x0D, romSizeCode: 2, ramSizeCode: 3);
+        for (var bank = 0; bank < 8; bank++) rom[bank * 0x4000] = (byte)bank;
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        Assert.Equal(oracle.Read(0x0000), managed.PeekMemory(0x0000));
+        Assert.Equal(oracle.Read(0x4000), managed.PeekMemory(0x4000));
+
+        foreach (var (address, value) in new (ushort, byte)[]
+        {
+            (0x0000, 0x70), (0x0000, 0x0A), (0x2000, 2), (0x4000, 1),
+        })
+        {
+            managed.WriteMemory(address, value);
+            oracle.Write(address, value);
+        }
+
+        managed.WriteMemory(0xA000, 0x5A);
+        oracle.Write(0xA000, 0x5A);
+        Assert.Equal(oracle.Read(0x0000), managed.PeekMemory(0x0000));
+        Assert.Equal(oracle.Read(0x4000), managed.PeekMemory(0x4000));
+        Assert.Equal(oracle.Read(0xA000), managed.PeekMemory(0xA000));
+    }
+
     private static Emulator CreateManaged(byte[] rom)
     {
         var emulator = new Emulator(GameBoyModel.DmgB);
