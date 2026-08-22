@@ -2627,12 +2627,16 @@ public sealed class KernelTests
         Assert.NotEqual(baseline, actual);
     }
 
-    [Fact]
-    public void ApuMixerHonorsNr51RoutingAndNr50Volume()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
+    public void ApuMixerHonorsNr51RoutingAndNr50Volume(GameBoyModel model)
     {
         var rom = MakeRom();
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
-        var emulator = NewEmulator(rom);
+        var emulator = NewEmulator(rom, model);
         emulator.WriteMemory(0xFF26, 0x80);
         emulator.WriteMemory(0xFF12, 0xF0);
         emulator.WriteMemory(0xFF14, 0x80);
