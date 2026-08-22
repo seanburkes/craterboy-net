@@ -524,6 +524,48 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PocketCameraBanksRomRamAndMapsRegisters()
+    {
+        var rom = MakeRom(type: 0xFC, romSizeCode: 2, ramSizeCode: 4);
+        rom[0x8000] = 0x42;
+        var emulator = NewEmulator(rom);
+
+        emulator.WriteMemory(0x2000, 2);
+        Assert.Equal((byte)0x42, emulator.PeekMemory(0x4000));
+        emulator.WriteMemory(0x0000, 0x0A);
+        emulator.WriteMemory(0x4000, 3);
+        emulator.WriteMemory(0xA000, 0x53);
+        emulator.WriteMemory(0x4000, 1);
+        emulator.WriteMemory(0xA000, 0x51);
+        emulator.WriteMemory(0x4000, 3);
+        Assert.Equal((byte)0x53, emulator.PeekMemory(0xA000));
+
+        emulator.WriteMemory(0x4000, 0x10);
+        emulator.WriteMemory(0xA001, 0xFF);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xA001));
+        emulator.WriteMemory(0xA000, 0xFF);
+        Assert.Equal((byte)7, emulator.PeekMemory(0xA000));
+    }
+
+    [Fact]
+    public void PocketCameraBusyFlagBlocksRamAndCannotBeCancelled()
+    {
+        var emulator = NewEmulator(MakeRom(type: 0xFC, romSizeCode: 1, ramSizeCode: 4));
+        emulator.WriteMemory(0x0000, 0x0A);
+        emulator.WriteMemory(0xA000, 0x5A);
+        emulator.WriteMemory(0x4000, 0x10);
+        emulator.WriteMemory(0xA000, 1);
+        emulator.WriteMemory(0xA000, 0);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xA000));
+
+        emulator.WriteMemory(0x4000, 0);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0xA000, 0xA5);
+        emulator.WriteMemory(0x4000, 0x10);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xA000));
+    }
+
+    [Fact]
     public void Tama5BanksRomThroughNibbleRegisters()
     {
         var rom = MakeRom(type: 0xFD, romSizeCode: 3);

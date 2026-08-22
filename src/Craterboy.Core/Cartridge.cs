@@ -60,6 +60,7 @@ internal abstract class Cartridge
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         0x20 => new Mbc6Cartridge(rom, header.RamSize),
         0x22 => new Mbc7Cartridge(rom, motionProvider),
+        0xFC => new PocketCameraCartridge(rom, header.RamSize),
         0xFD => new Tama5Cartridge(rom, timeProvider),
         0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
         0xFE => new Huc3Cartridge(rom, header.RamSize, timeProvider, infraredEndpoint),
@@ -76,6 +77,74 @@ internal abstract class Cartridge
         if (Ram.Length == 0) return;
         Ram[index % Ram.Length] = value;
         Dirty();
+    }
+}
+
+internal sealed class PocketCameraCartridge : Cartridge
+{
+    private readonly byte[] _registers = new byte[0x36];
+    private int _romBank = 1;
+    private int _ramBank;
+    private bool _ramEnabled;
+    private bool _registersMapped;
+
+    public PocketCameraCartridge(byte[] rom, int ramSize) : base(rom, ramSize) { }
+
+    public override byte Read(ushort address) => address switch
+    {
+        < 0x4000 => ReadRom(address),
+        < 0x8000 => ReadRom(_romBank * 0x4000 + address - 0x4000),
+        >= 0xA000 and < 0xC000 when _registersMapped => ReadRegister(address),
+        >= 0xA000 and < 0xC000 when (_registers[0] & 1) != 0 => 0,
+        >= 0xA000 and < 0xC000 => ReadRam(_ramBank * 0x2000 + address - 0xA000),
+        _ => 0xFF,
+    };
+
+    public override void Write(ushort address, byte value)
+    {
+        switch (address)
+        {
+            case < 0x2000:
+                _ramEnabled = (value & 0x0F) == 0x0A;
+                break;
+            case < 0x4000:
+                _romBank = value;
+                break;
+            case < 0x6000:
+                _ramBank = value & 0x0F;
+                _registersMapped = (value & 0x10) != 0;
+                break;
+            case >= 0xA000 and < 0xC000 when _registersMapped:
+                WriteRegister(address, value);
+                break;
+            case >= 0xA000 and < 0xC000 when _ramEnabled && (_registers[0] & 1) == 0:
+                WriteRam(_ramBank * 0x2000 + address - 0xA000, value);
+                break;
+        }
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_romBank);
+        writer.Write(_ramBank);
+        writer.Write(_ramEnabled);
+        writer.Write(_registersMapped);
+        writer.Write(_registers);
+    }
+
+    private byte ReadRegister(ushort address) => (address & 0x7F) == 0 ? _registers[0] : (byte)0;
+
+    private void WriteRegister(ushort address, byte value)
+    {
+        var register = address & 0x7F;
+        if (register >= _registers.Length) return;
+        if (register == 0)
+        {
+            value &= 7;
+            if ((_registers[0] & 1) != 0) value |= 1;
+        }
+        _registers[register] = value;
     }
 }
 
