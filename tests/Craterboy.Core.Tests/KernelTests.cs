@@ -2032,6 +2032,7 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -2548,6 +2549,7 @@ public sealed class KernelTests
     [Theory]
     [InlineData(GameBoyModel.DmgB, 0xF0)]
     [InlineData(GameBoyModel.Mgb, 0xF0)]
+    [InlineData(GameBoyModel.CgbD, 0xF1)]
     [InlineData(GameBoyModel.CgbE, 0xF1)]
     [InlineData(GameBoyModel.AgbA, 0xF1)]
     [InlineData(GameBoyModel.GbpA, 0xF1)]
@@ -2781,10 +2783,12 @@ public sealed class KernelTests
     }
 
     [Theory]
-    [InlineData(GameBoyModel.CgbE)]
-    [InlineData(GameBoyModel.AgbA)]
-    [InlineData(GameBoyModel.GbpA)]
-    public void ApuActiveWaveRamUsesModelSpecificAccessRules(GameBoyModel model)
+    [InlineData(GameBoyModel.CgbD, 0xF0, 0xAA)]
+    [InlineData(GameBoyModel.CgbE, 0xF0, 0xAA)]
+    [InlineData(GameBoyModel.AgbA, 0xFF, 0xFF)]
+    [InlineData(GameBoyModel.GbpA, 0xFF, 0xFF)]
+    public void ApuActiveWaveRamUsesModelSpecificAccessRules(
+        GameBoyModel model, byte expectedActiveRead, byte expectedActiveWriteRead)
     {
         var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF26, 0x80);
@@ -2793,8 +2797,6 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1A, 0x80);
         emulator.WriteMemory(0xFF1E, 0x80);
 
-        var expectedActiveRead = model == GameBoyModel.CgbE ? (byte)0xF0 : (byte)0xFF;
-        var expectedActiveWriteRead = model == GameBoyModel.CgbE ? (byte)0xAA : (byte)0xFF;
         Assert.Equal(expectedActiveRead, emulator.PeekMemory(0xFF31));
         emulator.WriteMemory(0xFF31, 0xAA);
         Assert.Equal(expectedActiveWriteRead, emulator.PeekMemory(0xFF30));
@@ -4865,6 +4867,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -4882,6 +4885,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -4932,6 +4936,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -4963,6 +4968,7 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -4978,6 +4984,7 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -4995,6 +5002,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
@@ -5018,6 +5026,7 @@ public sealed class KernelTests
 
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]

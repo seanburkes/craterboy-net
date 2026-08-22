@@ -194,6 +194,8 @@ first-byte wave-RAM corruption variant; MGB's instance-specific variant remains
 deterministically copies the selected four-byte wave group.
 DMG channel 3 wave-RAM reads and writes are restricted while the channel is
 active, matching SameBoy’s inaccessible active-wave behavior.
+CGB-D and CGB-E expose the currently addressed wave byte while channel 3 is
+active, while AGB and GBP return open-bus values and ignore active writes.
 CGB PCM12 and PCM34 reads expose the current digital channel amplitudes.
 CGB-0 through CGB-C retain SameBoy's revision-specific PCM read masks across
 envelope, frame-sequencer, and pulse-waveform edge events.
