@@ -560,13 +560,67 @@ public sealed class KernelTests
         Assert.Equal((byte)0xFA, emulator.PeekMemory(0xA000));
 
         var saved = emulator.SaveBattery();
-        Assert.Equal(0x20, saved.Length);
+        Assert.Equal(72, saved.Length);
         var restored = NewEmulator(rom);
         restored.LoadBattery(saved);
         WriteTama5Register(restored, 6, 3);
         WriteTama5Register(restored, 7, 5);
         restored.WriteMemory(0xA001, 0x0C);
         Assert.Equal((byte)0xFB, restored.PeekMemory(0xA000));
+
+        var legacy = NewEmulator(rom);
+        legacy.LoadBattery(saved.AsSpan(0, 0x20));
+    }
+
+    [Fact]
+    public void Tama5RtcAdvancesAndPersistsClockPages()
+    {
+        var clock = new TestTimeProvider();
+        var rom = MakeRom(type: 0xFD, romSizeCode: 1);
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        emulator.LoadRom(rom);
+
+        clock.Advance(TimeSpan.FromSeconds(61));
+        Assert.Equal((byte)1, ReadTama5RtcNibble(emulator, page: 0, index: 0));
+        Assert.Equal((byte)1, ReadTama5RtcNibble(emulator, page: 0, index: 2));
+        WriteTama5RtcNibble(emulator, page: 1, index: 2, value: 7);
+        Assert.Equal((byte)7, ReadTama5RtcNibble(emulator, page: 1, index: 2));
+
+        var battery = emulator.SaveBattery();
+        Assert.Equal(72, battery.Length);
+        var restored = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        restored.LoadRom(rom);
+        restored.LoadBattery(battery);
+        Assert.Equal((byte)1, ReadTama5RtcNibble(restored, page: 0, index: 2));
+        Assert.Equal((byte)7, ReadTama5RtcNibble(restored, page: 1, index: 2));
+    }
+
+    [Fact]
+    public void Tama5RtcTimerCommandsPauseAndResumeAdvancement()
+    {
+        var clock = new TestTimeProvider();
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { TimeProvider = clock });
+        emulator.LoadRom(MakeRom(type: 0xFD, romSizeCode: 1));
+
+        WriteTama5Register(emulator, 4, 9);
+        WriteTama5Register(emulator, 5, 5);
+        WriteTama5ClockCommand(emulator, 4);
+        Assert.Equal((byte)9, ReadTama5RtcNibble(emulator, page: 0, index: 2));
+        Assert.Equal((byte)5, ReadTama5RtcNibble(emulator, page: 0, index: 3));
+        WriteTama5ClockCommand(emulator, 6);
+        emulator.WriteMemory(0xA001, 0x0D);
+        Assert.Equal((byte)5, emulator.PeekMemory(0xA000) & 0x0F);
+        WriteTama5ClockCommand(emulator, 0x11);
+        Assert.Equal((byte)0x0C, ReadTama5RtcNibble(emulator, page: 0, index: 13));
+        WriteTama5Register(emulator, 4, 0);
+        WriteTama5Register(emulator, 5, 0);
+        WriteTama5ClockCommand(emulator, 4);
+        WriteTama5ClockCommand(emulator, 0);
+        clock.Advance(TimeSpan.FromMinutes(2));
+        Assert.Equal((byte)0, ReadTama5RtcNibble(emulator, page: 0, index: 2));
+        WriteTama5ClockCommand(emulator, 1);
+        clock.Advance(TimeSpan.FromMinutes(1));
+        Assert.Equal((byte)1, ReadTama5RtcNibble(emulator, page: 0, index: 2));
     }
 
     [Fact]
@@ -5744,6 +5798,29 @@ public sealed class KernelTests
     {
         emulator.WriteMemory(0xA001, register);
         emulator.WriteMemory(0xA000, value);
+    }
+
+    private static byte ReadTama5RtcNibble(Emulator emulator, byte page, byte index)
+    {
+        WriteTama5Register(emulator, 4, index);
+        WriteTama5Register(emulator, 6, 8);
+        WriteTama5Register(emulator, 7, (byte)(page * 2 + 1));
+        emulator.WriteMemory(0xA001, 0x0C);
+        return (byte)(emulator.PeekMemory(0xA000) & 0x0F);
+    }
+
+    private static void WriteTama5RtcNibble(Emulator emulator, byte page, byte index, byte value)
+    {
+        WriteTama5Register(emulator, 4, index);
+        WriteTama5Register(emulator, 5, value);
+        WriteTama5Register(emulator, 6, 8);
+        WriteTama5Register(emulator, 7, (byte)(page * 2));
+    }
+
+    private static void WriteTama5ClockCommand(Emulator emulator, byte command)
+    {
+        WriteTama5Register(emulator, 6, (byte)(4 | (command >> 4)));
+        WriteTama5Register(emulator, 7, (byte)(command & 0x0F));
     }
 
     private static void SendMbc7Bits(Emulator emulator, ushort value, int count)

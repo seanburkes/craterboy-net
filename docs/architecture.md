@@ -138,9 +138,10 @@ cartridge-type label mentions rumble, but neither pinned SameBoy nor the
 documented MBC7 register map defines a rumble control, so no speculative bit is
 exposed as one.
 TAMA5 composes its ROM bank from two nibble registers and implements the
-32-byte nibble-addressed EEPROM command path, including battery persistence.
-Its TAMA6 clock/alarm pages remain deferred because pinned SameBoy 1.0.3 marks
-the entire mapper unsupported, leaving no project oracle for RTC semantics.
+32-byte nibble-addressed EEPROM command path plus TAMA6 timer, alarm, and free
+RTC pages with injected host-time advancement and battery persistence. Pinned
+SameBoy 1.0.3 marks the entire mapper unsupported, so this mapper uses focused
+managed protocol tests rather than native differential evidence.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP
