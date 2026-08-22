@@ -72,7 +72,7 @@ public sealed class Emulator
         if (header.RomSize != 0 && rom.Length < header.RomSize)
             throw new ArgumentException($"ROM header declares {header.RomSize} bytes but only {rom.Length} were supplied.", nameof(rom));
         var owned = rom.ToArray();
-        _cartridge = Cartridge.Create(owned, header, _options.TimeProvider);
+        _cartridge = Cartridge.Create(owned, header, _options.TimeProvider, _options.InfraredEndpoint);
         RomHeader = header;
         Reset();
     }

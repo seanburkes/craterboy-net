@@ -21,11 +21,18 @@ public interface ISerialEndpoint
     byte Exchange(byte outgoing);
 }
 
+public interface IInfraredEndpoint
+{
+    bool Input { get; }
+    void SetOutput(bool enabled);
+}
+
 public sealed class EmulatorOptions
 {
     public ITimeProvider TimeProvider { get; init; } = SystemEmulationTime.Instance;
     public IEntropyProvider EntropyProvider { get; init; } = SystemEntropy.Instance;
     public ISerialEndpoint? SerialEndpoint { get; init; }
+    public IInfraredEndpoint? InfraredEndpoint { get; init; }
     public bool SkipBootRom { get; init; } = true;
     public bool EmulateJoypadBouncing { get; init; }
 }

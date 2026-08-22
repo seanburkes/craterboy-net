@@ -122,6 +122,8 @@ the four-bit multicart bank wiring while ordinary MBC1 cartridges retain the
 standard five-bit mapping.
 MMM01 cartridges rotate their startup banks into SameBoy's internal order and
 preserve the mapper's one-way lock, masking, multiplex, ROM, and RAM bank state.
+HuC1 cartridges provide six-bit ROM and three-bit RAM banking plus the mapper's
+infrared register mode through an optional caller-owned `IInfraredEndpoint`.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP

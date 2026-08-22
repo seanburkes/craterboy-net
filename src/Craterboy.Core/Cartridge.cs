@@ -41,7 +41,9 @@ internal abstract class Cartridge
         return (byte[])Ram.Clone();
     }
 
-    public static Cartridge Create(byte[] rom, RomHeader header, ITimeProvider timeProvider) => header.CartridgeType switch
+    public static Cartridge Create(
+        byte[] rom, RomHeader header, ITimeProvider timeProvider, IInfraredEndpoint? infraredEndpoint) =>
+        header.CartridgeType switch
     {
         0x00 or 0x08 or 0x09 => new RomOnlyCartridge(rom, header.RamSize),
         0x01 or 0x02 or 0x03 => new Mbc1Cartridge(rom, header.RamSize, IsMbc1Multicart(rom)),
@@ -49,6 +51,7 @@ internal abstract class Cartridge
         0x0B or 0x0C or 0x0D => new Mmm01Cartridge(rom, header.RamSize),
         0x0F or 0x10 or 0x11 or 0x12 or 0x13 => new Mbc3Cartridge(rom, header.RamSize, timeProvider),
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
+        0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
         _ => throw new NotSupportedException($"Cartridge type 0x{header.CartridgeType:X2} is not implemented."),
     };
 
@@ -62,6 +65,62 @@ internal abstract class Cartridge
         if (Ram.Length == 0) return;
         Ram[index % Ram.Length] = value;
         Dirty();
+    }
+}
+
+internal sealed class Huc1Cartridge(
+    byte[] rom, int ramSize, IInfraredEndpoint? infraredEndpoint) : Cartridge(rom, ramSize)
+{
+    private int _romBank;
+    private int _ramBank;
+    private bool _infraredMode;
+    private bool _infraredOutput;
+
+    public override byte Read(ushort address) => address switch
+    {
+        < 0x4000 => ReadRom(address),
+        < 0x8000 => ReadRom(_romBank * 0x4000 + address - 0x4000),
+        >= 0xA000 and < 0xC000 when _infraredMode =>
+            (byte)(0xC0 | (infraredEndpoint?.Input == true ? 1 : 0)),
+        >= 0xA000 and < 0xC000 => ReadRam(_ramBank * 0x2000 + address - 0xA000),
+        _ => 0xFF,
+    };
+
+    public override void Write(ushort address, byte value)
+    {
+        switch (address)
+        {
+            case < 0x2000:
+                _infraredMode = (value & 0x0F) == 0x0E;
+                break;
+            case < 0x4000:
+                _romBank = value & 0x3F;
+                break;
+            case < 0x6000:
+                _ramBank = value & 7;
+                break;
+            case >= 0xA000 and < 0xC000 when _infraredMode:
+                var output = (value & 1) != 0;
+                if (output != _infraredOutput)
+                {
+                    _infraredOutput = output;
+                    infraredEndpoint?.SetOutput(output);
+                }
+                break;
+            case >= 0xA000 and < 0xC000:
+                WriteRam(_ramBank * 0x2000 + address - 0xA000, value);
+                break;
+        }
+    }
+
+    public override void WriteStateHash(BinaryWriter writer)
+    {
+        base.WriteStateHash(writer);
+        writer.Write(_romBank);
+        writer.Write(_ramBank);
+        writer.Write(_infraredMode);
+        writer.Write(_infraredOutput);
+        writer.Write(infraredEndpoint?.Input == true);
     }
 }
 
