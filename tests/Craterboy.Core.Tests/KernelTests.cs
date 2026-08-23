@@ -106,7 +106,7 @@ public sealed class KernelTests
         new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100);
         var emulator = NewEmulator(rom);
 
-        Assert.Equal(4, emulator.StepInstruction());
+        Assert.Equal(8, emulator.StepInstruction());
         Assert.Equal((ushort)0x102, emulator.Registers.ProgramCounter);
         Assert.True(emulator.Registers.Halted);
     }
@@ -139,7 +139,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF00, 0x10); // select action buttons
         emulator.SetButtonState(GameBoyButton.A, true);
 
-        Assert.Equal(4, emulator.StepInstruction());
+        Assert.Equal(8, emulator.StepInstruction());
         Assert.Equal((ushort)0x102, emulator.Registers.ProgramCounter);
         Assert.False(emulator.Registers.Halted);
     }
@@ -1005,7 +1005,7 @@ public sealed class KernelTests
     public void JoypadSelectionAndButtonPressUseActiveLowLines()
     {
         var emulator = NewEmulator(MakeRom());
-        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF00));
+        Assert.Equal((byte)0xCF, emulator.PeekMemory(0xFF00));
 
         emulator.WriteMemory(0xFF00, 0x10); // select action buttons
         emulator.SetButtonState(GameBoyButton.A, true);
@@ -1029,6 +1029,7 @@ public sealed class KernelTests
     {
         var emulator = NewEmulator(MakeRom());
         emulator.WriteMemory(0xFF00, 0x10);
+        emulator.RunCycles(48);
         emulator.SetButtonState(GameBoyButton.Right, true);
         emulator.WriteMemory(0xFF00, 0x20); // action to direction row: 24 T-cycles
 
@@ -1045,6 +1046,7 @@ public sealed class KernelTests
     {
         var emulator = NewEmulator(MakeRom(), GameBoyModel.Mgb);
         emulator.WriteMemory(0xFF00, 0x10);
+        emulator.RunCycles(32);
         emulator.SetButtonState(GameBoyButton.Right, true);
         emulator.WriteMemory(0xFF00, 0x20); // action to direction row: 8 T-cycles on MGB
 
@@ -1456,14 +1458,14 @@ public sealed class KernelTests
         var emulator = NewEmulator(rom, model);
 
         emulator.WriteMemory(0xFF4D, 0x01);
-        Assert.Equal(4, emulator.StepInstruction()); // speed-switch STOP uses normal cadence
-        Assert.Equal(4, emulator.CycleCount);
+        Assert.Equal(8, emulator.StepInstruction()); // opcode fetch plus STOP padding read
+        Assert.Equal(8, emulator.CycleCount);
         Assert.Equal(2, emulator.StepInstruction()); // NOP at double speed
-        Assert.Equal(6, emulator.CycleCount);
+        Assert.Equal(10, emulator.CycleCount);
 
         emulator.RunCycles(4); // two more NOPs at two hardware T-cycles each
         Assert.Equal((ushort)0x105, emulator.Registers.ProgramCounter);
-        Assert.Equal(10, emulator.CycleCount);
+        Assert.Equal(14, emulator.CycleCount);
     }
 
     [Theory]

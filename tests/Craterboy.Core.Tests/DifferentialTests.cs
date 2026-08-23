@@ -107,6 +107,45 @@ public sealed class DifferentialTests
         }
     }
 
+    public static IEnumerable<object[]> BaseOpcodes() =>
+        Enumerable.Range(0, 0x100).Where(opcode => opcode != 0xCB).Select(opcode => new object[] { (byte)opcode });
+
+    [Theory]
+    [MemberData(nameof(BaseOpcodes))]
+    public void EveryBaseOpcodeMatchesOracle(byte opcode)
+    {
+        var rom = MakeRom();
+        rom[0x100] = opcode;
+        rom[0x101] = 0;
+        rom[0x102] = 0xC0;
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+
+        managed.WriteMemory(0xC000, 0x81);
+        managed.WriteMemory(0xC001, 0x42);
+        oracle.Write(0xC000, 0x81);
+        oracle.Write(0xC001, 0x42);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+        foreach (var address in new ushort[] { 0xC000, 0xC001, 0xFF80, 0xFFFC, 0xFFFD, 0xFFFF })
+            Assert.Equal(oracle.Read(address), managed.PeekMemory(address));
+    }
+
+    [Fact]
+    public void StopSpeedSwitchCyclesMatchOracle()
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0 }.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom, GameBoyModel.CgbE);
+        using var oracle = new SameBoyOracle(GameBoyModel.CgbE, rom);
+        managed.WriteMemory(0xFF4D, 1);
+        oracle.Write(0xFF4D, 1);
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+    }
+
     [Fact]
     public void RegisterTransfersMatchOracle()
     {
@@ -635,9 +674,9 @@ public sealed class DifferentialTests
         Assert.Equal(oracle.Read(0xA001), managed.PeekMemory(0xA001));
     }
 
-    private static Emulator CreateManaged(byte[] rom)
+    private static Emulator CreateManaged(byte[] rom, GameBoyModel model = GameBoyModel.DmgB)
     {
-        var emulator = new Emulator(GameBoyModel.DmgB);
+        var emulator = new Emulator(model);
         emulator.LoadRom(rom);
         return emulator;
     }

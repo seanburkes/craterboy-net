@@ -534,7 +534,8 @@ public sealed class Emulator
         var opcode = Read(_state.Cpu.PC);
         var cycles = IsIllegalOpcode(opcode) ? 4 : opcode switch
         {
-            0x00 or 0x10 or 0x76 => 4,
+            0x00 or 0x76 => 4,
+            0x10 => PendingInterrupts() != 0 ? 4 : 8,
             0xCB => PredictCbCycles(Read((ushort)(_state.Cpu.PC + 1))),
             >= 0x40 and <= 0x7F when opcode != 0x76 =>
                 (opcode & 7) == 6 || ((opcode >> 3) & 7) == 6 ? 8 : 4,
@@ -788,18 +789,18 @@ public sealed class Emulator
             _doubleSpeed = !_doubleSpeed;
             _speedSwitchPrepared = false;
             _stopped = false;
-            return 4;
+            return interruptPending ? 4 : 8;
         }
         if (exitByJoypad)
         {
             _stopped = false;
-            return 4;
+            return interruptPending ? 4 : 8;
         }
         _timer.Write(0xFF04, 0);
         _state.Cpu.Halted = true;
         _stopped = true;
         _cgbDmaOnWake = !_ppu.IsVisibleHblank;
-        return 4;
+        return interruptPending ? 4 : 8;
     }
 
     private int StoreHlAndIncrement()
