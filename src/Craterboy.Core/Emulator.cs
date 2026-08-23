@@ -73,7 +73,8 @@ public sealed class Emulator
             throw new ArgumentException($"ROM header declares {header.RomSize} bytes but only {rom.Length} were supplied.", nameof(rom));
         var owned = rom.ToArray();
         _cartridge = Cartridge.Create(
-            owned, header, _options.TimeProvider, _options.InfraredEndpoint, _options.MotionProvider);
+            owned, header, _options.TimeProvider, _options.InfraredEndpoint, _options.MotionProvider,
+            _options.CameraSource);
         RomHeader = header;
         Reset();
     }
@@ -1202,7 +1203,11 @@ public sealed class Emulator
         _state.Cpu.PC = address;
         return 16;
     }
-    private void Advance(int cycles) => _state.Scheduler.Advance(cycles);
+    private void Advance(int cycles)
+    {
+        _state.Scheduler.Advance(cycles);
+        _cartridge?.AdvanceCycles(cycles);
+    }
     private void EnsureRom() { if (_cartridge is null) throw new InvalidOperationException("Load a ROM before executing."); }
 
     private byte Read(ushort address) => Read(address, false);

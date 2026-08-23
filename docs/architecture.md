@@ -143,9 +143,10 @@ RTC pages with injected host-time advancement and battery persistence. Pinned
 SameBoy 1.0.3 marks the entire mapper unsupported, so this mapper uses focused
 managed protocol tests rather than native differential evidence.
 Pocket Camera cartridges implement MBC5-style ROM/RAM banking, the camera
-register aperture and masks, and busy-state RAM gating with pinned SameBoy
-differential coverage. Image acquisition, processing, and completion timing are
-deferred; beginning a capture therefore leaves the busy bit asserted.
+register aperture and masks, busy-state RAM gating, capture completion timing,
+and exposure/gain/edge/dither image reads from an optional caller-owned
+`ICameraSource`. Mapper behavior has pinned SameBoy differential coverage;
+platform-specific camera acquisition remains outside the managed core.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP

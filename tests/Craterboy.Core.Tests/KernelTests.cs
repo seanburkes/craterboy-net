@@ -566,6 +566,30 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void PocketCameraCaptureCompletesAndProcessesCallerPixels()
+    {
+        var source = new TestCameraSource(0);
+        var emulator = new Emulator(GameBoyModel.DmgB, new EmulatorOptions { CameraSource = source });
+        emulator.LoadRom(MakeRom(type: 0xFC, romSizeCode: 1, ramSizeCode: 4));
+        emulator.WriteMemory(0x4000, 0x10);
+        for (ushort address = 0xA006; address <= 0xA035; address += 3)
+        {
+            emulator.WriteMemory(address, 1);
+            emulator.WriteMemory((ushort)(address + 1), 2);
+            emulator.WriteMemory((ushort)(address + 2), 3);
+        }
+        emulator.WriteMemory(0xA000, 1);
+
+        emulator.RunCycles(131839);
+        Assert.Equal((byte)1, emulator.PeekMemory(0xA000));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0, emulator.PeekMemory(0xA000));
+        emulator.WriteMemory(0x4000, 0);
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xA100));
+        Assert.True(source.Reads >= 8);
+    }
+
+    [Fact]
     public void Tama5BanksRomThroughNibbleRegisters()
     {
         var rom = MakeRom(type: 0xFD, romSizeCode: 3);
@@ -5916,6 +5940,16 @@ public sealed class KernelTests
     {
         public double X { get; init; }
         public double Y { get; init; }
+    }
+
+    private sealed class TestCameraSource(byte value) : ICameraSource
+    {
+        public int Reads { get; private set; }
+        public byte GetPixel(int x, int y)
+        {
+            Reads++;
+            return value;
+        }
     }
 
     private sealed class NonSeekableReadStream(byte[] data) : Stream

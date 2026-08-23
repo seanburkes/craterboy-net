@@ -17,6 +17,7 @@ internal abstract class Cartridge
     public bool BatteryDirty => _batteryDirty;
     public abstract byte Read(ushort address);
     public abstract void Write(ushort address, byte value);
+    public virtual void AdvanceCycles(int cycles) { }
     protected void Dirty() => _batteryDirty = true;
     public virtual BessRtc? SaveBessRtc() => null;
     public virtual void ValidateBessRtc(BessRtc state) => throw new InvalidDataException("BESS RTC state is not supported by this cartridge.");
@@ -49,7 +50,7 @@ internal abstract class Cartridge
 
     public static Cartridge Create(
         byte[] rom, RomHeader header, ITimeProvider timeProvider, IInfraredEndpoint? infraredEndpoint,
-        IMotionProvider? motionProvider) =>
+        IMotionProvider? motionProvider, ICameraSource? cameraSource) =>
         header.CartridgeType switch
     {
         0x00 or 0x08 or 0x09 => new RomOnlyCartridge(rom, header.RamSize),
@@ -60,7 +61,7 @@ internal abstract class Cartridge
         0x19 or 0x1A or 0x1B or 0x1C or 0x1D or 0x1E => new Mbc5Cartridge(rom, header.RamSize),
         0x20 => new Mbc6Cartridge(rom, header.RamSize),
         0x22 => new Mbc7Cartridge(rom, motionProvider),
-        0xFC => new PocketCameraCartridge(rom, header.RamSize),
+        0xFC => new PocketCameraCartridge(rom, header.RamSize, cameraSource),
         0xFD => new Tama5Cartridge(rom, timeProvider),
         0xFF => new Huc1Cartridge(rom, header.RamSize, infraredEndpoint),
         0xFE => new Huc3Cartridge(rom, header.RamSize, timeProvider, infraredEndpoint),
@@ -82,13 +83,27 @@ internal abstract class Cartridge
 
 internal sealed class PocketCameraCartridge : Cartridge
 {
+    private static readonly double[] GainValues =
+    [
+        0.8809390, 0.9149149, 0.9457498, 0.9739758, 1.0000000, 1.0241412, 1.0466537, 1.0677433,
+        1.0875793, 1.1240310, 1.1568911, 1.1868043, 1.2142561, 1.2396208, 1.2743837, 1.3157323,
+        1.3525190, 1.3856512, 1.4157897, 1.4434309, 1.4689574, 1.4926697, 1.5148087, 1.5355703,
+        1.5551159, 1.5735801, 1.5910762, 1.6077008, 1.6235366, 1.6386550, 1.6531183, 1.6669808,
+    ];
+    private static readonly double[] EdgeRatios = [0.5, 0.75, 1, 1.25, 2, 3, 4, 5];
     private readonly byte[] _registers = new byte[0x36];
+    private readonly ICameraSource? _cameraSource;
     private int _romBank = 1;
     private int _ramBank;
+    private int _captureCycles;
+    private byte _alignment;
     private bool _ramEnabled;
     private bool _registersMapped;
 
-    public PocketCameraCartridge(byte[] rom, int ramSize) : base(rom, ramSize) { }
+    public PocketCameraCartridge(byte[] rom, int ramSize, ICameraSource? cameraSource) : base(rom, ramSize)
+    {
+        _cameraSource = cameraSource;
+    }
 
     public override byte Read(ushort address) => address switch
     {
@@ -96,6 +111,7 @@ internal sealed class PocketCameraCartridge : Cartridge
         < 0x8000 => ReadRom(_romBank * 0x4000 + address - 0x4000),
         >= 0xA000 and < 0xC000 when _registersMapped => ReadRegister(address),
         >= 0xA000 and < 0xC000 when (_registers[0] & 1) != 0 => 0,
+        >= 0xA100 and < 0xAF00 when _ramBank == 0 => ReadImage(address - 0xA100),
         >= 0xA000 and < 0xC000 => ReadRam(_ramBank * 0x2000 + address - 0xA000),
         _ => 0xFF,
     };
@@ -131,6 +147,16 @@ internal sealed class PocketCameraCartridge : Cartridge
         writer.Write(_ramEnabled);
         writer.Write(_registersMapped);
         writer.Write(_registers);
+        writer.Write(_captureCycles);
+        writer.Write(_alignment);
+    }
+
+    public override void AdvanceCycles(int cycles)
+    {
+        _alignment = unchecked((byte)(_alignment + cycles));
+        if (_captureCycles == 0) return;
+        _captureCycles = Math.Max(0, _captureCycles - cycles);
+        if (_captureCycles == 0) _registers[0] &= 0xFE;
     }
 
     private byte ReadRegister(ushort address) => (address & 0x7F) == 0 ? _registers[0] : (byte)0;
@@ -143,8 +169,48 @@ internal sealed class PocketCameraCartridge : Cartridge
         {
             value &= 7;
             if ((_registers[0] & 1) != 0) value |= 1;
+            else if ((value & 1) != 0)
+            {
+                var exposure = (_registers[2] << 8) | _registers[3];
+                _captureCycles = 129792 + ((_registers[1] & 0x80) != 0 ? 0 : 2048) + exposure * 64 + (_alignment & 4);
+            }
         }
         _registers[register] = value;
+    }
+
+    private byte ReadImage(int address)
+    {
+        var tileX = address / 0x10 % 0x10;
+        var tileY = address / 0x100;
+        var y = ((address >> 1) & 7) + tileY * 8;
+        var bit = address & 1;
+        byte result = 0;
+        for (var x = tileX * 8; x < tileX * 8 + 8; x++)
+        {
+            var color = ProcessedColor(x, y);
+            if ((_registers[1] & 0xE0) == 0xE0)
+            {
+                var ratio = EdgeRatios[(_registers[4] >> 4) & 7];
+                color += color * 4 * ratio;
+                color -= ProcessedColor(x - 1, y) * ratio;
+                color -= ProcessedColor(x + 1, y) * ratio;
+                color -= ProcessedColor(x, y - 1) * ratio;
+                color -= ProcessedColor(x, y + 1) * ratio;
+            }
+            var pattern = 6 + ((x & 3) + (y & 3) * 4) * 3;
+            var shade = color < _registers[pattern] ? 3 : color < _registers[pattern + 1] ? 2 : color < _registers[pattern + 2] ? 1 : 0;
+            result = (byte)((result << 1) | ((shade >> bit) & 1));
+        }
+        return result;
+    }
+
+    private double ProcessedColor(int x, int y)
+    {
+        x = x == 128 ? 127 : x > 128 || x < 0 ? 0 : x;
+        y = y == 112 ? 111 : y >= 112 || y < 0 ? 0 : y;
+        double color = _cameraSource?.GetPixel(x, y) ?? 0;
+        color *= GainValues[_registers[1] & 0x1F];
+        return color * ((_registers[2] << 8) | _registers[3]) / 0x1000;
     }
 }
 

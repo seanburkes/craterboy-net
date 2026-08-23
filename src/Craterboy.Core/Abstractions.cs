@@ -33,6 +33,11 @@ public interface IMotionProvider
     double Y { get; }
 }
 
+public interface ICameraSource
+{
+    byte GetPixel(int x, int y);
+}
+
 public sealed class EmulatorOptions
 {
     public ITimeProvider TimeProvider { get; init; } = SystemEmulationTime.Instance;
@@ -40,6 +45,7 @@ public sealed class EmulatorOptions
     public ISerialEndpoint? SerialEndpoint { get; init; }
     public IInfraredEndpoint? InfraredEndpoint { get; init; }
     public IMotionProvider? MotionProvider { get; init; }
+    public ICameraSource? CameraSource { get; init; }
     public bool SkipBootRom { get; init; } = true;
     public bool EmulateJoypadBouncing { get; init; }
 }
