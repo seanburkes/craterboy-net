@@ -590,6 +590,50 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void GameBoyPrinterDecodesCompressedDataAndDeliversPrintJob()
+    {
+        var sink = new TestPrinterSink();
+        var printer = new GameBoyPrinter(sink);
+        var compressed = new List<byte>();
+        for (var run = 0; run < 4; run++) { compressed.Add(0xFF); compressed.Add(0); }
+        compressed.Add(0xFA);
+        compressed.Add(0);
+
+        var dataResponse = SendPrinterPacket(printer, 4, compressed.ToArray(), compressed: true);
+        Assert.Equal((byte)0x81, dataResponse.Ack);
+        Assert.Equal((byte)0, dataResponse.Status);
+        var printResponse = SendPrinterPacket(printer, 2, [0, 0x23, 0xE4, 0x40]);
+
+        Assert.Equal((byte)0x81, printResponse.Ack);
+        Assert.Equal((byte)8, printResponse.Status);
+        Assert.Equal((byte)6, printer.Status);
+        Assert.NotNull(sink.Image);
+        Assert.Equal(160, sink.Image.Value.Width);
+        Assert.Equal(16, sink.Image.Value.Height);
+        Assert.Equal((byte)2, sink.Image.Value.TopMargin);
+        Assert.Equal((byte)3, sink.Image.Value.BottomMargin);
+        Assert.Equal((byte)0x40, sink.Image.Value.Exposure);
+        Assert.All(sink.Image.Value.GrayscalePixels.ToArray(), pixel => Assert.Equal((byte)255, pixel));
+
+        SendPrinterPacket(printer, 1, []);
+        SendPrinterPacket(printer, 4, new byte[0x280]);
+        Assert.Equal((byte)8, printer.Status);
+    }
+
+    [Fact]
+    public void GameBoyPrinterRejectsBadChecksumAndInitClearsStatus()
+    {
+        var printer = new GameBoyPrinter();
+        SendPrinterPacket(printer, 4, new byte[0x280], corruptChecksum: true);
+        Assert.Equal((byte)1, printer.Status);
+
+        var init = SendPrinterPacket(printer, 1, []);
+        Assert.Equal((byte)0x81, init.Ack);
+        Assert.Equal((byte)0, init.Status);
+        Assert.Equal((byte)0, printer.Status);
+    }
+
+    [Fact]
     public void Tama5BanksRomThroughNibbleRegisters()
     {
         var rom = MakeRom(type: 0xFD, romSizeCode: 3);
@@ -5866,6 +5910,30 @@ public sealed class KernelTests
         emulator.WriteMemory(0xA000, value);
     }
 
+    private static (byte Ack, byte Status) SendPrinterPacket(
+        GameBoyPrinter printer, byte command, byte[] data, bool compressed = false, bool corruptChecksum = false)
+    {
+        ushort checksum = 0;
+        printer.Exchange(0x88);
+        printer.Exchange(0x33);
+        foreach (var value in new[] { command, compressed ? (byte)1 : (byte)0, (byte)data.Length, (byte)(data.Length >> 8) })
+        {
+            printer.Exchange(value);
+            checksum = unchecked((ushort)(checksum + value));
+        }
+        foreach (var value in data)
+        {
+            printer.Exchange(value);
+            checksum = unchecked((ushort)(checksum + value));
+        }
+        if (corruptChecksum) checksum++;
+        printer.Exchange((byte)checksum);
+        printer.Exchange((byte)(checksum >> 8));
+        var ack = printer.Exchange(0);
+        var status = printer.Exchange(0);
+        return (ack, status);
+    }
+
     private static byte ReadTama5RtcNibble(Emulator emulator, byte page, byte index)
     {
         WriteTama5Register(emulator, 4, index);
@@ -5950,6 +6018,12 @@ public sealed class KernelTests
             Reads++;
             return value;
         }
+    }
+
+    private sealed class TestPrinterSink : IPrinterSink
+    {
+        public PrinterImage? Image { get; private set; }
+        public void Print(PrinterImage image) => Image = image;
     }
 
     private sealed class NonSeekableReadStream(byte[] data) : Stream

@@ -147,6 +147,10 @@ register aperture and masks, busy-state RAM gating, capture completion timing,
 and exposure/gain/edge/dither image reads from an optional caller-owned
 `ICameraSource`. Mapper behavior has pinned SameBoy differential coverage;
 platform-specific camera acquisition remains outside the managed core.
+`GameBoyPrinter` is an optional `ISerialEndpoint` that parses printer packets,
+validates checksums, expands printer RLE, decodes 2bpp tile rows, and delivers
+owned grayscale print jobs to an `IPrinterSink`. Mechanical printing duration
+and completion notification remain deferred.
 Cartridge ROM and configured DMG/CGB-family boot-ROM identities are included in
 the hash input, along with whether the boot ROM is currently mapped. The
 selected hardware model identity is included as well, so CGB, AGB, and GBP
