@@ -81,7 +81,9 @@ VBlank lines, LY/LYC coincidence, and STAT interrupts. The first
 renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 160×144 pixels. Window positioning and its independent tile-map line counter
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
-overlap priority; FIFO behavior remains separate.
+overlap priority. Background and window pixels are emitted progressively during
+mode 3, so register changes affect only pixels that remain in the scanline;
+fetcher stalls and progressive sprite FIFO composition remain separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
 are modeled at the bus boundary and feed a raw RGB15 color frame. The public
 `Emulator.RawFrame` span exposes the same stable 160×144 backing buffer without

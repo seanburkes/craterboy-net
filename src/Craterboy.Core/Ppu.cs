@@ -33,6 +33,9 @@ internal sealed class PpuDevice : ICycleParticipant
     private bool _statLine;
     private bool _paletteAccessBlocked;
     private int _oamCorruptionRow;
+    private int _renderedPixels;
+    private int _mode3FineScroll;
+    private bool _windowUsedOnLine;
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
@@ -75,6 +78,9 @@ internal sealed class PpuDevice : ICycleParticipant
         _statLine = false;
         _paletteAccessBlocked = false;
         _oamCorruptionRow = -1;
+        _renderedPixels = 0;
+        _mode3FineScroll = 0;
+        _windowUsedOnLine = false;
         Array.Clear(_frame);
         Array.Clear(_colorFrame);
         Array.Clear(_backgroundPaletteRam);
@@ -163,6 +169,9 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_statLine);
         writer.Write(_paletteAccessBlocked);
         writer.Write(_oamCorruptionRow);
+        writer.Write(_renderedPixels);
+        writer.Write(_mode3FineScroll);
+        writer.Write(_windowUsedOnLine);
         writer.Write(_backgroundPaletteRam);
         writer.Write(_objectPaletteRam);
     }
@@ -189,13 +198,23 @@ internal sealed class PpuDevice : ICycleParticipant
                 var searchIndex = (_lineCycles / 2) - 1;
                 _oamCorruptionRow = Math.Min(0x98, ((searchIndex & ~1) * 4) + 8);
             }
-            if (_lineCycles == 80) SetMode(3);
-            else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
-            else if (_lineCycles == Mode3End())
+            if (_lineCycles == 80)
             {
-                RenderBackgroundLine(_line);
-                if (_isDoubleSpeed()) _mode3EndPending = true;
-                else SetMode(0);
+                _renderedPixels = 0;
+                _mode3FineScroll = _io[0x43] & 0x07;
+                _windowUsedOnLine = false;
+                SetMode(3);
+            }
+            else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
+            else if (_mode == 3)
+            {
+                RenderBackgroundPixelsThrough(Math.Clamp(_lineCycles - 92 - _mode3FineScroll, 0, Width));
+                if (_lineCycles == Mode3End())
+                {
+                    FinishBackgroundLine(_line);
+                    if (_isDoubleSpeed()) _mode3EndPending = true;
+                    else SetMode(0);
+                }
             }
         }
         if (_lineCycles < 456) return;
@@ -216,7 +235,7 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private int Mode3End()
     {
-        var end = 252 + (_io[0x43] & 0x07);
+        var end = 252 + _mode3FineScroll;
         if (!_model.IsColor() && !_model.IsSuperGameBoy() && (_io[0x40] & 0x20) != 0 &&
             _io[0x4B] == 0 && _io[0x43] != 0 && _line >= _io[0x4A] && _io[0x4A] < 144)
         {
@@ -343,14 +362,27 @@ internal sealed class PpuDevice : ICycleParticipant
             _io[indexOffset] = (byte)(0x80 | ((indexRegister + 1) & 0x3F));
     }
 
-    private void RenderBackgroundLine(byte line)
+    private void RenderBackgroundPixelsThrough(int target)
     {
+        while (_renderedPixels < target) RenderBackgroundPixel(_line, _renderedPixels++);
+    }
+
+    private void FinishBackgroundLine(byte line)
+    {
+        RenderBackgroundPixelsThrough(Width);
+        if (_windowUsedOnLine) _windowLine++;
+        RenderSprites(line, line * Width);
+    }
+
+    private void RenderBackgroundPixel(byte line, int x)
+    {
+        var output = line * Width + x;
         if ((_io[0x40] & 0x01) == 0)
         {
-            Array.Clear(_backgroundColors);
-            Array.Clear(_backgroundPriority);
-            Array.Clear(_colorFrame, line * Width, Width);
-            RenderSprites(line, line * Width);
+            _backgroundColors[x] = 0;
+            _backgroundPriority[x] = false;
+            _frame[output] = 0;
+            _colorFrame[output] = 0;
             return;
         }
         var mapBase = (_io[0x40] & 0x08) != 0 ? 0x1C00 : 0x1800;
@@ -358,40 +390,31 @@ internal sealed class PpuDevice : ICycleParticipant
         var worldY = (line + _io[0x42]) & 0xFF;
         var windowStart = _io[0x4B] - 7;
         var windowActive = (_io[0x40] & 0x20) != 0 && line >= _io[0x4A] && _io[0x4A] < 144 && windowStart < Width;
-        var windowUsed = false;
-        var tileRow = worldY >> 3;
-        var row = worldY & 7;
-        var output = line * Width;
-        for (var x = 0; x < Width; x++)
-        {
-            var useWindow = windowActive && x >= windowStart;
-            var worldX = useWindow ? (x - windowStart) & 0xFF : (x + _io[0x43]) & 0xFF;
-            var pixelY = useWindow ? _windowLine : worldY;
-            var tileColumn = worldX >> 3;
-            var selectedMap = useWindow && (_io[0x40] & 0x40) != 0 ? 0x1C00 : mapBase;
-            if (useWindow && (_io[0x40] & 0x40) == 0) selectedMap = 0x1800;
-            var selectedTileRow = pixelY >> 3;
-            var mapAddress = selectedMap + selectedTileRow * 32 + tileColumn;
-            var tile = _vram[mapAddress];
-            var attributes = _model.IsColor() ? _vram[0x2000 + mapAddress] : (byte)0;
-            var tileAddress = (_model.IsColor() && (attributes & 0x08) != 0 ? 0x2000 : 0) +
-                (unsignedTiles ? tile * 16 : 0x1000 + (sbyte)tile * 16);
-            var selectedRow = pixelY & 7;
-            if ((attributes & 0x40) != 0) selectedRow = 7 - selectedRow;
-            var low = _vram[tileAddress + selectedRow * 2];
-            var high = _vram[tileAddress + selectedRow * 2 + 1];
-            var bit = (attributes & 0x20) != 0 ? worldX & 7 : 7 - (worldX & 7);
-            var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
-            _backgroundColors[x] = (byte)color;
-            _backgroundPriority[x] = _model.IsColor() && (attributes & 0x80) != 0;
-            _frame[output + x] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
-            _colorFrame[output + x] = _model.IsColor()
-                ? ReadColor(_backgroundPaletteRam, (attributes & 0x07) * 4 + color)
-                : (ushort)_frame[output + x];
-            windowUsed |= useWindow;
-        }
-        if (windowUsed) _windowLine++;
-        RenderSprites(line, output);
+        var useWindow = windowActive && x >= windowStart;
+        var worldX = useWindow ? (x - windowStart) & 0xFF : (x + _io[0x43]) & 0xFF;
+        var pixelY = useWindow ? _windowLine : worldY;
+        var tileColumn = worldX >> 3;
+        var selectedMap = useWindow && (_io[0x40] & 0x40) != 0 ? 0x1C00 : mapBase;
+        if (useWindow && (_io[0x40] & 0x40) == 0) selectedMap = 0x1800;
+        var selectedTileRow = pixelY >> 3;
+        var mapAddress = selectedMap + selectedTileRow * 32 + tileColumn;
+        var tile = _vram[mapAddress];
+        var attributes = _model.IsColor() ? _vram[0x2000 + mapAddress] : (byte)0;
+        var tileAddress = (_model.IsColor() && (attributes & 0x08) != 0 ? 0x2000 : 0) +
+            (unsignedTiles ? tile * 16 : 0x1000 + (sbyte)tile * 16);
+        var selectedRow = pixelY & 7;
+        if ((attributes & 0x40) != 0) selectedRow = 7 - selectedRow;
+        var low = _vram[tileAddress + selectedRow * 2];
+        var high = _vram[tileAddress + selectedRow * 2 + 1];
+        var bit = (attributes & 0x20) != 0 ? worldX & 7 : 7 - (worldX & 7);
+        var color = ((high >> bit) & 1) << 1 | ((low >> bit) & 1);
+        _backgroundColors[x] = (byte)color;
+        _backgroundPriority[x] = _model.IsColor() && (attributes & 0x80) != 0;
+        _frame[output] = (byte)((_io[0x47] >> (color * 2)) & 0x03);
+        _colorFrame[output] = _model.IsColor()
+            ? ReadColor(_backgroundPaletteRam, (attributes & 0x07) * 4 + color)
+            : (ushort)_frame[output];
+        _windowUsedOnLine |= useWindow;
     }
 
     private void RenderSprites(byte line, int output)
