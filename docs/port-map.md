@@ -36,6 +36,8 @@ flag, stack, and indirect-memory states instead of relying only on reset state.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
 The display mapping also covers SameBoy's read-only LY register and later-CGB normal-speed first-HBlank
 OAM-read block; OAM writes remain available during that one-T-cycle window.
+Background and window output now advances progressively through mode 3, including
+mid-scanline DMG palette changes; fetcher stalls and progressive sprites remain partial.
 
 No SameBoy private native-state compatibility is planned. BESS will be the
 interoperable save-state format. A layer moves from partial to ported only

@@ -1604,6 +1604,24 @@ public sealed class KernelTests
         Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF6C));
     }
 
+    [Fact]
+    public void DmgBackgroundPaletteWriteAffectsOnlyPixelsRemainingInMode3()
+    {
+        var emulator = NewEmulator(MakeRom());
+        for (var row = 0; row < 8; row++) emulator.WriteMemory((ushort)(0x8000 + row * 2), 0xFF);
+        emulator.WriteMemory(0xFF47, 0x04); // color 1 maps to shade 1
+        emulator.WriteMemory(0xFF40, 0x91); // LCD and background on
+
+        emulator.RunCycles(172); // mode 2, fetch startup, then 80 emitted pixels
+        emulator.WriteMemory(0xFF47, 0x0C); // color 1 maps to shade 3
+        emulator.RunCycles(80);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.All(frame.AsSpan(0, 80).ToArray(), pixel => Assert.Equal((byte)1, pixel));
+        Assert.All(frame.AsSpan(80, 80).ToArray(), pixel => Assert.Equal((byte)3, pixel));
+    }
+
     [Theory]
     [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
