@@ -110,6 +110,10 @@ public sealed class DifferentialTests
     public static IEnumerable<object[]> BaseOpcodes() =>
         Enumerable.Range(0, 0x100).Where(opcode => opcode != 0xCB).Select(opcode => new object[] { (byte)opcode });
 
+    public static IEnumerable<object[]> VariedBaseOpcodeStates() =>
+        Enumerable.Range(0, 0x100).Where(opcode => opcode != 0xCB)
+            .SelectMany(opcode => Enumerable.Range(0, 2).Select(state => new object[] { (byte)opcode, state }));
+
     [Theory]
     [MemberData(nameof(BaseOpcodes))]
     public void EveryBaseOpcodeMatchesOracle(byte opcode)
@@ -129,6 +133,38 @@ public sealed class DifferentialTests
         Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
         AssertRegistersEqual(managed.Registers, oracle.Registers);
         foreach (var address in new ushort[] { 0xC000, 0xC001, 0xFF80, 0xFFFC, 0xFFFD, 0xFFFF })
+            Assert.Equal(oracle.Read(address), managed.PeekMemory(address));
+    }
+
+    [Theory]
+    [MemberData(nameof(VariedBaseOpcodeStates))]
+    public void EveryBaseOpcodeMatchesOracleFromVariedState(byte opcode, int state)
+    {
+        var rom = MakeRom();
+        var program = state == 0
+            ? new byte[] { 0x31, 0x00, 0xC1, 0x01, 0x10, 0xC0, 0x11, 0x20, 0xC0,
+                0x21, 0x00, 0xC0, 0xAF, 0x3E, 0xA5, opcode, 0x00, 0xC0 }
+            : new byte[] { 0x31, 0x80, 0xC1, 0x01, 0x10, 0xC0, 0x11, 0x20, 0xC0,
+                0x21, 0x00, 0xC0, 0x37, 0x3E, 0x5A, opcode, 0x00, 0xC0 };
+        program.CopyTo(rom, 0x100);
+        var managed = CreateManaged(rom);
+        using var oracle = new SameBoyOracle(GameBoyModel.DmgB, rom);
+        foreach (var address in new ushort[] { 0xC000, 0xC010, 0xC020 })
+        {
+            var value = (byte)(address ^ (state == 0 ? 0x81 : 0x42));
+            managed.WriteMemory(address, value);
+            oracle.Write(address, value);
+        }
+
+        for (var instruction = 0; instruction < 6; instruction++)
+        {
+            Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+            AssertRegistersEqual(managed.Registers, oracle.Registers);
+        }
+
+        Assert.Equal(oracle.StepInstruction(), (uint)managed.StepInstruction());
+        AssertRegistersEqual(managed.Registers, oracle.Registers);
+        foreach (var address in new ushort[] { 0xC000, 0xC001, 0xC010, 0xC020, 0xC0FE, 0xC0FF, 0xC17E, 0xC17F, 0xFF00, 0xFF10, 0xFFFF })
             Assert.Equal(oracle.Read(address), managed.PeekMemory(address));
     }
 
