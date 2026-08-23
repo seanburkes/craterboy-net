@@ -9,6 +9,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/Craterboy.Core/Craterboy.Core.csproj" />
+    <ProjectReference Include="../../src/Craterboy.Tester/Craterboy.Tester.csproj" />
   </ItemGroup>
   <Target Name="BuildSameBoyOracle" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <Exec Command="sh ../native/build-oracle.sh" />
