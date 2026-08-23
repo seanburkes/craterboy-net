@@ -44,9 +44,9 @@ internal sealed class JoypadDevice : ICycleParticipant
         _fauxAnalogEnabled = false;
         _analogTicks = 0;
         _frameCycles = 0;
-        _select = 0x30;
-        _activeSelect = 0x30;
-        _pendingSelect = 0x30;
+        _select = 0;
+        _activeSelect = 0;
+        _pendingSelect = 0;
         _switchingDelay = 0;
         _io[0x00] = 0xCF;
     }

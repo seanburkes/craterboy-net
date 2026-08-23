@@ -30,6 +30,11 @@ they clear IE, halt the CPU, and consume the four-cycle instruction boundary
 instead of escaping into a host exception.
 HALT with IME disabled and a pending interrupt preserves the HALT bug's
 suppressed following-opcode PC increment.
+The ordinary and immediate-exit STOP paths account for both the opcode fetch
+and padding-byte bus read (8 T-cycles); an already-pending interrupt preserves
+the padding byte and retains the 4-T-cycle path. Post-boot JOYP state starts at
+`CF`, including SameBoy's initially selected rows and subsequent DMG/MGB
+selection-switch delays.
 
 OAM DMA and serial transfer devices are also scheduler participants. DMA copies
 one byte per four T-cycles for 160 bytes, while the serial endpoint completes an
