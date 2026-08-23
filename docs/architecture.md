@@ -440,5 +440,9 @@ deferred with the rest of the SGB host bridge.
 comparisons without exposing mutable emulator state, including cartridge battery
 state when a cartridge is loaded.
 
-`Craterboy.Tester` is a headless conformance entry point. A native SameBoy
-adapter will live only in tests/CI and will never be included in packages.
+`Craterboy.Tester` is a headless conformance entry point. Its retail
+qualification workflow runs caller-owned ROMs with fixed time and entropy,
+optionally replays validated input recordings, and emits ROM-safe JSON with
+metadata, checkpoint hashes, frame/audio activity, battery round-trip evidence,
+and sanitized failure details. A native SameBoy adapter lives only in tests/CI
+and is never included in packages.

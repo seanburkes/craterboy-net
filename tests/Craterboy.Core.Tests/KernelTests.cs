@@ -1,10 +1,27 @@
 using Craterboy;
+using Craterboy.Tester;
 using Xunit;
 
 namespace Craterboy.Core.Tests;
 
 public sealed class KernelTests
 {
+    [Fact]
+    public void RetailQualificationReportsDeterministicRomSafeEvidence()
+    {
+        var rom = MakeRom();
+        var first = RetailQualification.Run(rom, 140448, 70224);
+        var second = RetailQualification.Run(rom, 140448, 70224);
+
+        Assert.Equal("completed", first.Outcome);
+        Assert.Equal(140448, first.CompletedCycles);
+        Assert.Equal(2, first.Checkpoints.Count);
+        Assert.Equal(first.RomSha256, second.RomSha256);
+        Assert.Equal(first.Checkpoints, second.Checkpoints);
+        Assert.True(first.BatteryRoundTrip);
+        Assert.DoesNotContain(Convert.ToBase64String(rom), System.Text.Json.JsonSerializer.Serialize(first));
+    }
+
     [Fact]
     public void HeaderParserValidatesChecksumAndMetadata()
     {

@@ -20,6 +20,54 @@ The port will:
   only after profiling demonstrates a meaningful benefit.
 - Use the pinned C implementation as a development and CI differential oracle.
 
+## Current execution priority: retail-title playability
+
+The numbered layers below remain the architectural decomposition, but the
+remaining implementation order is now driven by the ability to play licensed
+commercial DMG/MGB and CGB titles reliably. Source-file coverage, obscure
+hardware breadth, and accessory completeness do not outrank defects that block
+ordinary retail games.
+
+Execute remaining work in this order:
+
+1. **Retail compatibility harness and evidence.** Add a tester workflow for
+   caller-supplied, legally obtained ROMs that records cartridge metadata,
+   boot/run outcome, deterministic checkpoints, frame/audio activity, battery
+   behavior, and failures without copying ROM data into reports or the
+   repository. Keep CI restricted to redistributable test ROMs and native
+   differential fixtures.
+2. **DMG/MGB playable closure.** Finish CPU opcode/timing coverage, PPU FIFO and
+   rendering behavior, APU fidelity, timer/DMA/serial/joypad edge cases, and
+   reset/load/run stability that affect ordinary DMG and MGB retail titles.
+3. **CGB retail closure.** Finish CGB DMA, palette/priority, double-speed,
+   revision-specific bus behavior, and CGB audio/video regressions before
+   pursuing AGB/GBP refinements that do not unblock games.
+4. **Long-session and persistence reliability.** Validate repeated ROM loads,
+   deterministic runs, battery RAM/RTC round trips, and transactional saves for
+   common retail mappers. BESS restoration of transient device timing follows
+   battery-backed progress unless a title requires it to run.
+5. **Released special-hardware titles.** Complete only hardware required by
+   shipped games: MBC7 motion/EEPROM, HuC/TAMA RTC behavior, rumble where the
+   register contract is known, and Pocket Camera behavior. Add title-driven
+   evidence for each path.
+6. **Post-playability breadth.** Finish printer mechanics, WorkBoy, unusual or
+   unlicensed mappers, SGB/SGB2, debugger/cheats/rewind, and other convenience
+   tooling after the DMG/MGB and CGB retail gates are met.
+
+For local retail-title qualification, a representative title must:
+
+- load without unsupported cartridge or model errors;
+- reach interactive gameplay under a deterministic input recording;
+- produce changing video and bounded audio for at least ten emulated minutes;
+- survive reset and repeated load/run cycles without state leakage;
+- preserve battery RAM and RTC state when the cartridge uses them; and
+- reproduce checkpoint hashes when all injected inputs, time, and entropy are
+  fixed.
+
+This priority order overrides the numeric layer order for unfinished work.
+Frontend adapters remain deferred and cannot be used to redefine the playable
+gate.
+
 ## Architecture and Public API
 
 Create a .NET 10 solution with these logical components:
@@ -169,6 +217,9 @@ their hashes; library consumers must not need RGBDS installed.
 - Provide deterministic camera, motion, time, and printer fixtures.
 - Validate battery formats, peripheral protocols, sensor conversion, RTC/alarm
   behavior, and mapper edge cases independently.
+- Treat this layer as title-driven after common retail compatibility work.
+  Printer mechanics, WorkBoy, speculative rumble controls, and obscure or
+  unlicensed mapper breadth do not block the DMG/MGB or CGB playable gates.
 
 ### 11. SGB and SGB2
 
@@ -232,6 +283,10 @@ their hashes; library consumers must not need RGBDS installed.
   suites pass; BESS interoperability succeeds; deterministic runs reproduce
   identical hashes; extended hardware and tooling milestones pass their own
   suites; real-time performance target is met.
+- **Retail playable gate:** a documented local corpus of caller-supplied retail
+  titles satisfies the boot, gameplay, video/audio, reset, persistence, and
+  deterministic-checkpoint requirements above, while CI remains reproducible
+  using only redistributable artifacts.
 
 ## Assumptions
 

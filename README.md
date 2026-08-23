@@ -12,7 +12,15 @@ It is not yet a complete or playable emulator; see `docs/port-map.md`.
 ```sh
 dotnet test Craterboy.slnx
 dotnet run --project src/Craterboy.Tester -- game.gb --cycles 1000
+dotnet run --project src/Craterboy.Tester -- qualify game.gb --cycles 4213440 --output report.json
 ```
+
+The `qualify` command runs a caller-supplied ROM with deterministic time and
+entropy and writes ROM-safe JSON evidence: ROM identity and header metadata,
+checkpoint hashes, frame/audio activity, battery round-trip behavior, and any
+runtime failure. Add `--recording input.cbir` for deterministic input events.
+ROM bytes are never embedded in the report. Proprietary ROMs remain local and
+must not be committed to this repository.
 
 The shipping core is dependency-free and contains no native SameBoy code.
 SameBoy remains the behavioral differential oracle during development.
