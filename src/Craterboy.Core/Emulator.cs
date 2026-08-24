@@ -251,6 +251,7 @@ public sealed class Emulator
         _joypad.Reset();
         _ppu.Reset();
         _apu.Reset();
+        _cartridge?.Reset();
         _bootMapped = _bootRom is not null && !_options.SkipBootRom;
         var cpu = _state.Cpu;
         cpu.A = _model.IsColor() ? (byte)0x11 : (byte)0x01;
