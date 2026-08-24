@@ -83,7 +83,8 @@ renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
 overlap priority. Background and window pixels are emitted progressively during
 mode 3, so register changes affect only pixels that remain in the scanline;
-fetcher stalls and progressive sprite FIFO composition remain separate.
+sprites use the same progressive output boundary with mode-2-selected candidates.
+Fetcher and sprite-fetch stalls remain separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
 are modeled at the bus boundary and feed a raw RGB15 color frame. The public
 `Emulator.RawFrame` span exposes the same stable 160×144 backing buffer without

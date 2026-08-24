@@ -1622,6 +1622,30 @@ public sealed class KernelTests
         Assert.All(frame.AsSpan(80, 80).ToArray(), pixel => Assert.Equal((byte)3, pixel));
     }
 
+    [Fact]
+    public void DmgObjectPaletteWriteAffectsOnlySpritesRemainingInMode3()
+    {
+        var emulator = NewEmulator(MakeRom());
+        for (var row = 0; row < 8; row++) emulator.WriteMemory((ushort)(0x8000 + row * 2), 0xFF);
+        for (var sprite = 0; sprite < 10; sprite++)
+        {
+            var oam = (ushort)(0xFE00 + sprite * 4);
+            emulator.WriteMemory(oam, 16);
+            emulator.WriteMemory((ushort)(oam + 1), (byte)(8 + sprite * 8));
+        }
+        emulator.WriteMemory(0xFF48, 0x04); // color 1 maps to shade 1
+        emulator.WriteMemory(0xFF40, 0x92); // LCD and sprites on, background off
+
+        emulator.RunCycles(132); // mode 2, fetch startup, then 40 emitted pixels
+        emulator.WriteMemory(0xFF48, 0x0C); // color 1 maps to shade 3
+        emulator.RunCycles(120);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.All(frame.AsSpan(0, 40).ToArray(), pixel => Assert.Equal((byte)1, pixel));
+        Assert.All(frame.AsSpan(40, 40).ToArray(), pixel => Assert.Equal((byte)3, pixel));
+    }
+
     [Theory]
     [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
