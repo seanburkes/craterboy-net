@@ -270,6 +270,45 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ResetRestoresCommonMapperControlsWithoutErasingBatteryRam()
+    {
+        var rom = MakeRom(type: 0x03, romSizeCode: 1, ramSizeCode: 2);
+        rom[0x4000] = 1;
+        rom[0x8000] = 2;
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(0, 0x0A);
+        emulator.WriteMemory(0x2000, 2);
+        emulator.WriteMemory(0xA000, 0x5A);
+
+        emulator.Reset();
+
+        Assert.Equal((byte)1, emulator.PeekMemory(0x4000));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xA000));
+        Assert.True(emulator.BatteryDirty);
+        emulator.WriteMemory(0, 0x0A);
+        Assert.Equal((byte)0x5A, emulator.PeekMemory(0xA000));
+    }
+
+    [Theory]
+    [InlineData(0x03, 0x2000)]
+    [InlineData(0x06, 0x2100)]
+    [InlineData(0x13, 0x2000)]
+    [InlineData(0x1B, 0x2000)]
+    public void ResetRestoresCommonMapperRomBankOne(byte type, ushort bankAddress)
+    {
+        var rom = MakeRom(type: type, romSizeCode: 1, ramSizeCode: 2);
+        rom[0x4000] = 1;
+        rom[0x8000] = 2;
+        var emulator = NewEmulator(rom);
+        emulator.WriteMemory(bankAddress, 2);
+        Assert.Equal((byte)2, emulator.PeekMemory(0x4000));
+
+        emulator.Reset();
+
+        Assert.Equal((byte)1, emulator.PeekMemory(0x4000));
+    }
+
+    [Fact]
     public void Mbc1MulticartUsesFourBitBankWiring()
     {
         var rom = MakeRom(type: 0x03, romSizeCode: 5, ramSizeCode: 2);

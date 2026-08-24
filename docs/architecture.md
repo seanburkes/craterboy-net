@@ -125,6 +125,8 @@ Joypad button and model-specific delayed-selection state are included as well;
 DMG-B/MGB selection switching is delayed, while CGB-family selection changes are
 immediate.
 Cartridge mapper bank, enable, latch, and RTC control state are included too.
+Reset restores MBC1, MBC2, MBC3, and MBC5 control registers to power-on
+banking without clearing battery RAM, RTC contents, or the dirty-save signal.
 MBC1 multicarts are detected using SameBoy's repeated-header heuristic and use
 the four-bit multicart bank wiring while ordinary MBC1 cartridges retain the
 standard five-bit mapping.

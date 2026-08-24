@@ -15,6 +15,7 @@ internal abstract class Cartridge
     }
 
     public bool BatteryDirty => _batteryDirty;
+    public virtual void Reset() { }
     public abstract byte Read(ushort address);
     public abstract void Write(ushort address, byte value);
     public virtual void AdvanceCycles(int cycles) { }
@@ -1139,6 +1140,14 @@ internal sealed class Mbc3Cartridge(byte[] rom, int ramSize, ITimeProvider timeP
     private byte _select;
     private byte _latchValue;
 
+    public override void Reset()
+    {
+        _ramEnabled = false;
+        _romBank = 1;
+        _select = 0;
+        _latchValue = 0;
+    }
+
     public override byte Read(ushort address) => address switch
     {
         < 0x4000 => ReadRom(address),
@@ -1347,6 +1356,14 @@ internal sealed class Mbc1Cartridge : Cartridge
 
     public Mbc1Cartridge(byte[] rom, int ramSize, bool multicart) : base(rom, ramSize) => _multicart = multicart;
 
+    public override void Reset()
+    {
+        _ramEnabled = false;
+        _lowBank = 1;
+        _highBank = 0;
+        _ramMode = false;
+    }
+
     public override byte Read(ushort address) => address switch
     {
         < 0x4000 => ReadRom(((_ramMode ? _highBank << (_multicart ? 4 : 5) : 0) * 0x4000) + address),
@@ -1392,6 +1409,12 @@ internal sealed class Mbc2Cartridge(byte[] rom) : Cartridge(rom, 512)
 {
     private bool _ramEnabled;
     private int _bank = 1;
+
+    public override void Reset()
+    {
+        _ramEnabled = false;
+        _bank = 1;
+    }
     public override byte Read(ushort address) => address switch
     {
         < 0x4000 => ReadRom(address),
@@ -1422,6 +1445,13 @@ internal sealed class Mbc5Cartridge(byte[] rom, int ramSize) : Cartridge(rom, ra
 {
     private bool _ramEnabled;
     private int _romBank = 1, _ramBank;
+
+    public override void Reset()
+    {
+        _ramEnabled = false;
+        _romBank = 1;
+        _ramBank = 0;
+    }
     public override byte Read(ushort address) => address switch
     {
         < 0x4000 => ReadRom(address),
