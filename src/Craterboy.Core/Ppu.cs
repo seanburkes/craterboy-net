@@ -14,7 +14,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly byte[] _backgroundColors = new byte[Width];
     private readonly bool[] _backgroundPriority = new bool[Width];
     private readonly SpriteCandidate[] _spriteCandidates = new SpriteCandidate[10];
-    private readonly byte[] _spritePenaltyByPixel = new byte[Width];
+    private readonly byte[] _fetchPenaltyByPixel = new byte[Width];
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
     private readonly byte[] _objectPaletteRam = new byte[0x40];
     private readonly Action? _hblankStarted;
@@ -89,7 +89,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _mode3TallSprites = false;
         _mode3EndCycle = 0;
         _spriteFetchStall = 0;
-        Array.Clear(_spritePenaltyByPixel);
+        Array.Clear(_fetchPenaltyByPixel);
         Array.Clear(_frame);
         Array.Clear(_colorFrame);
         Array.Clear(_backgroundPaletteRam);
@@ -187,7 +187,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(rendering && _mode3TallSprites);
         writer.Write(rendering ? _mode3EndCycle : 0);
         writer.Write(rendering ? _spriteFetchStall : 0);
-        if (rendering) writer.Write(_spritePenaltyByPixel);
+        if (rendering) writer.Write(_fetchPenaltyByPixel);
         for (var index = 0; index < selectedSprites; index++)
         {
             writer.Write(_spriteCandidates[index].OamIndex);
@@ -228,8 +228,9 @@ internal sealed class PpuDevice : ICycleParticipant
                 _mode3FineScroll = _io[0x43] & 0x07;
                 _windowUsedOnLine = false;
                 SelectSprites(_line);
-                var spritePenalty = PrepareSpritePenalties(_line);
-                _mode3EndCycle = Mode3End() + spritePenalty;
+                Array.Clear(_fetchPenaltyByPixel);
+                var fetchPenalty = PrepareWindowPenalty(_line) + PrepareSpritePenalties(_line);
+                _mode3EndCycle = Mode3End() + fetchPenalty;
                 _spriteFetchStall = 0;
                 SetMode(3);
             }
@@ -280,10 +281,10 @@ internal sealed class PpuDevice : ICycleParticipant
             _spriteFetchStall--;
             return;
         }
-        var penalty = _spritePenaltyByPixel[_renderedPixels];
+        var penalty = _fetchPenaltyByPixel[_renderedPixels];
         if (penalty != 0)
         {
-            _spritePenaltyByPixel[_renderedPixels] = 0;
+            _fetchPenaltyByPixel[_renderedPixels] = 0;
             _spriteFetchStall = penalty - 1;
             return;
         }
@@ -502,7 +503,6 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private int PrepareSpritePenalties(byte line)
     {
-        Array.Clear(_spritePenaltyByPixel);
         if (_model.IsColor() || _model.IsSuperGameBoy() || (_io[0x40] & 0x02) == 0) return 0;
 
         Span<int> order = stackalloc int[_selectedSprites];
@@ -542,13 +542,23 @@ internal sealed class PpuDevice : ICycleParticipant
                     penalty += Math.Max(5 - pixelInTile, 0);
                 }
             }
-            _spritePenaltyByPixel[trigger] += (byte)penalty;
+            _fetchPenaltyByPixel[trigger] += (byte)penalty;
             total += penalty;
         }
         return total;
 
         static bool ComesAfter(SpriteCandidate first, SpriteCandidate second) =>
             first.X > second.X || first.X == second.X && first.OamIndex > second.OamIndex;
+    }
+
+    private int PrepareWindowPenalty(byte line)
+    {
+        var windowStart = _io[0x4B] - 7;
+        if ((_io[0x40] & 0x21) != 0x21 || line < _io[0x4A] || _io[0x4A] >= Height ||
+            windowStart >= Width)
+            return 0;
+        _fetchPenaltyByPixel[Math.Max(0, windowStart)] = 6;
+        return 6;
     }
 
     private int SpriteFetchTile(int x, byte line)
