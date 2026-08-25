@@ -4,7 +4,7 @@ using Craterboy.Tester;
 
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
-    Console.WriteLine("Usage:\n  craterboy-tester <rom> [--cycles <count>]\n  craterboy-tester qualify <rom> [--cycles <count>] [--checkpoint-cycles <count>] [--recording <path>] [--output <path>]");
+    Console.WriteLine("Usage:\n  craterboy-tester <rom> [--cycles <count>]\n  craterboy-tester qualify <rom> [--cycles <count>] [--checkpoint-cycles <count>] [--recording <path>] [--output <path>]\n\nQualification defaults to ten emulated minutes with one-second checkpoints.");
     return 0;
 }
 
@@ -17,8 +17,8 @@ static int Qualify(string[] arguments)
 {
     if (arguments.Length == 0) return UsageError("A ROM path is required.");
     var romPath = arguments[0];
-    long cycles = 70224 * 60L;
-    var checkpointCycles = 70224;
+    long cycles = RetailQualification.TenMinuteCycles;
+    var checkpointCycles = checked((int)RetailQualification.HardwareCyclesPerSecond);
     string? recordingPath = null;
     string? outputPath = null;
     for (var index = 1; index < arguments.Length; index += 2)

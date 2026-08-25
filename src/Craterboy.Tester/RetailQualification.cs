@@ -15,6 +15,7 @@ public sealed record RetailQualificationReport(
     string Model,
     long RequestedCycles,
     long CompletedCycles,
+    bool TenMinuteDurationCompleted,
     string Outcome,
     string? ErrorType,
     string? ErrorMessage,
@@ -31,6 +32,9 @@ public sealed record RetailQualificationReport(
 
 public static class RetailQualification
 {
+    public const long HardwareCyclesPerSecond = 4_194_304;
+    public const long TenMinuteCycles = HardwareCyclesPerSecond * 60 * 10;
+
     public static RetailQualificationReport Run(
         ReadOnlyMemory<byte> rom, long cycles, int checkpointCycles,
         GameBoyModel? requestedModel = null, InputRecording? recording = null)
@@ -125,7 +129,7 @@ public static class RetailQualification
         return new(
             Convert.ToHexString(SHA256.HashData(rom.Span)), header.Title, header.CartridgeType,
             header.RomSize, header.RamSize, header.SupportsColor, model.ToString(), cycles,
-            completedCycles, outcome, errorType, errorMessage, frameChanges,
+            completedCycles, completedCycles >= TenMinuteCycles, outcome, errorType, errorMessage, frameChanges,
             audioFrames, audioNonSilent, batteryDirty, batteryBytes, batteryRoundTrip,
             repeatedLoadStable, resetStable,
             recording?.Events.Count ?? 0, checkpoints);

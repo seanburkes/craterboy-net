@@ -18,6 +18,7 @@ public sealed class KernelTests
 
         Assert.Equal("completed", first.Outcome);
         Assert.Equal(140448, first.CompletedCycles);
+        Assert.False(first.TenMinuteDurationCompleted);
         Assert.Equal(2, first.Checkpoints.Count);
         Assert.Equal(first.RomSha256, second.RomSha256);
         Assert.Equal(first.Checkpoints, second.Checkpoints);
@@ -26,6 +27,13 @@ public sealed class KernelTests
         Assert.True(first.ResetStable);
         Assert.Equal(2, first.InputEvents);
         Assert.DoesNotContain(Convert.ToBase64String(rom), System.Text.Json.JsonSerializer.Serialize(first));
+    }
+
+    [Fact]
+    public void RetailQualificationTenMinuteGateUsesDmgHardwareClock()
+    {
+        Assert.Equal(4_194_304, RetailQualification.HardwareCyclesPerSecond);
+        Assert.Equal(2_516_582_400, RetailQualification.TenMinuteCycles);
     }
 
     [Fact]
