@@ -37,6 +37,8 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _renderedPixels;
     private int _mode3FineScroll;
     private bool _windowUsedOnLine;
+    private bool _windowTriggeredOnLine;
+    private int _mode3WindowStart;
     private int _selectedSprites;
     private bool _mode3TallSprites;
     private int _mode3EndCycle;
@@ -87,6 +89,8 @@ internal sealed class PpuDevice : ICycleParticipant
         _renderedPixels = 0;
         _mode3FineScroll = 0;
         _windowUsedOnLine = false;
+        _windowTriggeredOnLine = false;
+        _mode3WindowStart = 0;
         _selectedSprites = 0;
         _mode3TallSprites = false;
         _mode3EndCycle = 0;
@@ -108,7 +112,7 @@ internal sealed class PpuDevice : ICycleParticipant
     {
         0xFF40 => _io[0x40],
         0xFF41 => (byte)(0x80 | (_io[0x41] & 0x78) | (_coincidence ? 0x04 : 0) | _mode),
-        0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49 => _io[address - 0xFF00],
+        0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49 or 0xFF4A or 0xFF4B => _io[address - 0xFF00],
         0xFF68 => ReadPaletteIndex(_io[0x68]),
         0xFF69 => ReadPaletteData(_backgroundPaletteRam, _io[0x68]),
         0xFF6A => ReadPaletteIndex(_io[0x6A]),
@@ -129,7 +133,7 @@ internal sealed class PpuDevice : ICycleParticipant
                 _io[0x41] = (byte)(0x80 | (value & 0x78));
                 UpdateCoincidence();
                 break;
-            case 0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49:
+            case 0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49 or 0xFF4A or 0xFF4B:
                 _io[address - 0xFF00] = value;
                 break;
             case 0xFF68 when _model.IsColor():
@@ -186,6 +190,8 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(rendering ? _renderedPixels : 0);
         writer.Write(rendering ? _mode3FineScroll : 0);
         writer.Write(rendering && _windowUsedOnLine);
+        writer.Write(rendering && _windowTriggeredOnLine);
+        writer.Write(rendering ? _mode3WindowStart : 0);
         var selectedSprites = rendering ? _selectedSprites : 0;
         writer.Write(selectedSprites);
         writer.Write(rendering && _mode3TallSprites);
@@ -233,10 +239,12 @@ internal sealed class PpuDevice : ICycleParticipant
                 _renderedPixels = 0;
                 _mode3FineScroll = _io[0x43] & 0x07;
                 _windowUsedOnLine = false;
+                _windowTriggeredOnLine = false;
+                _mode3WindowStart = 0;
                 SelectSprites(_line);
                 Array.Clear(_fetchPenaltyByPixel);
                 Array.Clear(_spritePenaltyByPixel);
-                var fetchPenalty = PrepareWindowPenalty(_line) + PrepareSpritePenalties(_line);
+                var fetchPenalty = PrepareSpritePenalties(_line);
                 _mode3EndCycle = Mode3End() + fetchPenalty;
                 _fetchStall = 0;
                 _spriteFetchActive = false;
@@ -272,13 +280,7 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private int Mode3End()
     {
-        var end = 252 + _mode3FineScroll;
-        if (!_model.IsColor() && !_model.IsSuperGameBoy() && (_io[0x40] & 0x20) != 0 &&
-            _io[0x4B] == 0 && _io[0x43] != 0 && _line >= _io[0x4A] && _io[0x4A] < 144)
-        {
-            end++;
-        }
-        return end;
+        return 252 + _mode3FineScroll;
     }
 
     private void AdvancePixelTransfer()
@@ -290,6 +292,7 @@ internal sealed class PpuDevice : ICycleParticipant
             if (_fetchStall == 0) _spriteFetchActive = false;
             return;
         }
+        TriggerWindowIfNeeded();
         var penalty = _fetchPenaltyByPixel[_renderedPixels];
         if (penalty != 0)
         {
@@ -309,6 +312,24 @@ internal sealed class PpuDevice : ICycleParticipant
             }
         }
         RenderBackgroundPixelsThrough(_renderedPixels + 1);
+    }
+
+    private void TriggerWindowIfNeeded()
+    {
+        if (_windowTriggeredOnLine || (_io[0x40] & 0x21) != 0x21 ||
+            _line < _io[0x4A] || _io[0x4A] >= Height)
+            return;
+
+        var windowStart = _io[0x4B] - 7;
+        if (windowStart >= Width || _renderedPixels != Math.Max(0, windowStart)) return;
+
+        _windowTriggeredOnLine = true;
+        _mode3WindowStart = windowStart;
+        var penalty = 6;
+        if (!_model.IsColor() && !_model.IsSuperGameBoy() && _io[0x4B] == 0 && _io[0x43] != 0)
+            penalty++;
+        _fetchPenaltyByPixel[_renderedPixels] = (byte)penalty;
+        _mode3EndCycle += penalty;
     }
 
     private void WriteLcdc(byte value)
@@ -477,10 +498,8 @@ internal sealed class PpuDevice : ICycleParticipant
         var mapBase = (_io[0x40] & 0x08) != 0 ? 0x1C00 : 0x1800;
         var unsignedTiles = (_io[0x40] & 0x10) != 0;
         var worldY = (line + _io[0x42]) & 0xFF;
-        var windowStart = _io[0x4B] - 7;
-        var windowActive = (_io[0x40] & 0x20) != 0 && line >= _io[0x4A] && _io[0x4A] < 144 && windowStart < Width;
-        var useWindow = windowActive && x >= windowStart;
-        var worldX = useWindow ? (x - windowStart) & 0xFF : (x + _io[0x43]) & 0xFF;
+        var useWindow = _windowTriggeredOnLine && (_io[0x40] & 0x20) != 0;
+        var worldX = useWindow ? (x - _mode3WindowStart) & 0xFF : (x + _io[0x43]) & 0xFF;
         var pixelY = useWindow ? _windowLine : worldY;
         var tileColumn = worldX >> 3;
         var selectedMap = useWindow && (_io[0x40] & 0x40) != 0 ? 0x1C00 : mapBase;
@@ -591,16 +610,6 @@ internal sealed class PpuDevice : ICycleParticipant
 
         static bool ComesAfter(SpriteCandidate first, SpriteCandidate second) =>
             first.X > second.X || first.X == second.X && first.OamIndex > second.OamIndex;
-    }
-
-    private int PrepareWindowPenalty(byte line)
-    {
-        var windowStart = _io[0x4B] - 7;
-        if ((_io[0x40] & 0x21) != 0x21 || line < _io[0x4A] || _io[0x4A] >= Height ||
-            windowStart >= Width)
-            return 0;
-        _fetchPenaltyByPixel[Math.Max(0, windowStart)] = 6;
-        return 6;
     }
 
     private int SpriteFetchTile(int x, byte line)
