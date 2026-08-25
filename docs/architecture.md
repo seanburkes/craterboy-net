@@ -454,5 +454,6 @@ state when a cartridge is loaded.
 qualification workflow runs caller-owned ROMs with fixed time and entropy,
 optionally replays validated input recordings, and emits ROM-safe JSON with
 metadata, checkpoint hashes, frame/audio activity, battery round-trip evidence,
-and sanitized failure details. A native SameBoy adapter lives only in tests/CI
+same-instance reload/reset stability evidence, and sanitized failure details.
+A native SameBoy adapter lives only in tests/CI
 and is never included in packages.

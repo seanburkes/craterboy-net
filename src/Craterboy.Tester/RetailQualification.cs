@@ -24,6 +24,8 @@ public sealed record RetailQualificationReport(
     bool BatteryDirtyObserved,
     int BatteryBytes,
     bool BatteryRoundTrip,
+    bool RepeatedLoadStable,
+    bool ResetStable,
     int InputEvents,
     IReadOnlyList<QualificationCheckpoint> Checkpoints);
 
@@ -51,12 +53,16 @@ public static class RetailQualification
         string? errorMessage = null;
         var batteryBytes = 0;
         var batteryRoundTrip = false;
+        var repeatedLoadStable = false;
+        var resetStable = false;
+        long completedCycles = 0;
 
         try
         {
             var options = DeterministicOptions();
             emulator = new Emulator(model, options);
             emulator.LoadRom(rom);
+            var initialHash = Convert.ToHexString(emulator.ComputeStateHash());
             emulator.RawFrame.CopyTo(previousFrame);
             var events = recording?.Events ?? [];
             var eventIndex = 0;
@@ -85,6 +91,7 @@ public static class RetailQualification
                 if (target == cycles) break;
                 nextCheckpoint = Math.Min(cycles, checked(nextCheckpoint + checkpointCycles));
             }
+            completedCycles = emulator.CycleCount;
 
             var battery = emulator.SaveBattery();
             batteryBytes = battery.Length;
@@ -92,9 +99,24 @@ public static class RetailQualification
             restored.LoadRom(rom);
             restored.LoadBattery(battery);
             batteryRoundTrip = restored.SaveBattery().AsSpan().SequenceEqual(battery);
+
+            var stabilityCycle = checkpoints.Count == 0 ? 0 : checkpoints[0].Cycle;
+            var expectedHash = checkpoints.Count == 0 ? initialHash : checkpoints[0].StateSha256;
+            emulator.LoadRom(rom);
+            ReplayTo(emulator, events, stabilityCycle);
+            repeatedLoadStable = Convert.ToHexString(emulator.ComputeStateHash()) == expectedHash;
+            var resetBattery = emulator.SaveBattery();
+            emulator.Reset();
+            ReplayTo(emulator, events, stabilityCycle);
+            var resetReference = new Emulator(model, options);
+            resetReference.LoadRom(rom);
+            resetReference.LoadBattery(resetBattery);
+            ReplayTo(resetReference, events, stabilityCycle);
+            resetStable = emulator.ComputeStateHash().AsSpan().SequenceEqual(resetReference.ComputeStateHash());
         }
         catch (Exception exception)
         {
+            if (completedCycles == 0) completedCycles = emulator?.CycleCount ?? 0;
             outcome = "failed";
             errorType = exception.GetType().Name;
             errorMessage = exception.Message;
@@ -103,8 +125,9 @@ public static class RetailQualification
         return new(
             Convert.ToHexString(SHA256.HashData(rom.Span)), header.Title, header.CartridgeType,
             header.RomSize, header.RamSize, header.SupportsColor, model.ToString(), cycles,
-            emulator?.CycleCount ?? 0, outcome, errorType, errorMessage, frameChanges,
+            completedCycles, outcome, errorType, errorMessage, frameChanges,
             audioFrames, audioNonSilent, batteryDirty, batteryBytes, batteryRoundTrip,
+            repeatedLoadStable, resetStable,
             recording?.Events.Count ?? 0, checkpoints);
     }
 
@@ -118,6 +141,17 @@ public static class RetailQualification
     {
         while (emulator.CycleCount < target)
             emulator.RunCycles((int)Math.Min(target - emulator.CycleCount, int.MaxValue));
+    }
+
+    private static void ReplayTo(Emulator emulator, IReadOnlyList<InputEvent> events, long target)
+    {
+        foreach (var input in events)
+        {
+            if (input.Cycle > target) break;
+            RunTo(emulator, input.Cycle);
+            emulator.SetButtonState(input.Button, input.Pressed, input.Player);
+        }
+        RunTo(emulator, target);
     }
 
     private sealed class FixedTimeProvider : ITimeProvider
