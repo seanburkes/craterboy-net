@@ -1256,6 +1256,49 @@ public sealed class KernelTests
         Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
     }
 
+    [Fact]
+    public void DmgWxWriteBeforeTriggerMovesWindowFetch()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF4A, 0);
+        emulator.WriteMemory(0xFF4B, 127); // initially x=120
+        emulator.WriteMemory(0xFF40, 0xB1);
+
+        emulator.RunCycles(132); // 40 pixels emitted
+        emulator.WriteMemory(0xFF4B, 87); // move the pending trigger to x=80
+
+        emulator.RunCycles(125);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
+    [Fact]
+    public void DmgWxWriteAfterTriggerDoesNotRepositionWindow()
+    {
+        var emulator = NewEmulator(MakeRom());
+        for (var row = 0; row < 8; row++)
+        {
+            emulator.WriteMemory((ushort)(0x8010 + row * 2), 0xFF); // tile 1: color 1
+            emulator.WriteMemory((ushort)(0x8020 + row * 2 + 1), 0xFF); // tile 2: color 2
+        }
+        emulator.WriteMemory(0x9800, 1); // window tile column 0
+        emulator.WriteMemory(0x9805, 2); // window tile column 5
+        emulator.WriteMemory(0xFF47, 0xE4);
+        emulator.WriteMemory(0xFF4A, 0);
+        emulator.WriteMemory(0xFF4B, 87); // trigger at x=80
+        emulator.WriteMemory(0xFF40, 0xB1);
+
+        emulator.RunCycles(190);
+        emulator.WriteMemory(0xFF4B, 127);
+        emulator.RunCycles(68);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.Equal((byte)1, frame[80]);
+        Assert.Equal((byte)2, frame[120]);
+    }
+
     [Theory]
     [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
