@@ -14,6 +14,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly byte[] _backgroundColors = new byte[Width];
     private readonly bool[] _backgroundPriority = new bool[Width];
     private readonly SpriteCandidate[] _spriteCandidates = new SpriteCandidate[10];
+    private readonly byte[] _spritePenaltyByPixel = new byte[Width];
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
     private readonly byte[] _objectPaletteRam = new byte[0x40];
     private readonly Action? _hblankStarted;
@@ -37,6 +38,8 @@ internal sealed class PpuDevice : ICycleParticipant
     private bool _windowUsedOnLine;
     private int _selectedSprites;
     private bool _mode3TallSprites;
+    private int _mode3EndCycle;
+    private int _spriteFetchStall;
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
@@ -84,6 +87,9 @@ internal sealed class PpuDevice : ICycleParticipant
         _windowUsedOnLine = false;
         _selectedSprites = 0;
         _mode3TallSprites = false;
+        _mode3EndCycle = 0;
+        _spriteFetchStall = 0;
+        Array.Clear(_spritePenaltyByPixel);
         Array.Clear(_frame);
         Array.Clear(_colorFrame);
         Array.Clear(_backgroundPaletteRam);
@@ -179,6 +185,9 @@ internal sealed class PpuDevice : ICycleParticipant
         var selectedSprites = rendering ? _selectedSprites : 0;
         writer.Write(selectedSprites);
         writer.Write(rendering && _mode3TallSprites);
+        writer.Write(rendering ? _mode3EndCycle : 0);
+        writer.Write(rendering ? _spriteFetchStall : 0);
+        if (rendering) writer.Write(_spritePenaltyByPixel);
         for (var index = 0; index < selectedSprites; index++)
         {
             writer.Write(_spriteCandidates[index].OamIndex);
@@ -219,13 +228,16 @@ internal sealed class PpuDevice : ICycleParticipant
                 _mode3FineScroll = _io[0x43] & 0x07;
                 _windowUsedOnLine = false;
                 SelectSprites(_line);
+                var spritePenalty = PrepareSpritePenalties(_line);
+                _mode3EndCycle = Mode3End() + spritePenalty;
+                _spriteFetchStall = 0;
                 SetMode(3);
             }
             else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
             else if (_mode == 3)
             {
-                RenderBackgroundPixelsThrough(Math.Clamp(_lineCycles - 92 - _mode3FineScroll, 0, Width));
-                if (_lineCycles == Mode3End())
+                AdvancePixelTransfer();
+                if (_lineCycles == _mode3EndCycle)
                 {
                     FinishBackgroundLine();
                     if (_isDoubleSpeed()) _mode3EndPending = true;
@@ -258,6 +270,24 @@ internal sealed class PpuDevice : ICycleParticipant
             end++;
         }
         return end;
+    }
+
+    private void AdvancePixelTransfer()
+    {
+        if (_lineCycles <= 92 + _mode3FineScroll || _renderedPixels == Width) return;
+        if (_spriteFetchStall != 0)
+        {
+            _spriteFetchStall--;
+            return;
+        }
+        var penalty = _spritePenaltyByPixel[_renderedPixels];
+        if (penalty != 0)
+        {
+            _spritePenaltyByPixel[_renderedPixels] = 0;
+            _spriteFetchStall = penalty - 1;
+            return;
+        }
+        RenderBackgroundPixelsThrough(_renderedPixels + 1);
     }
 
     private void WriteLcdc(byte value)
@@ -468,6 +498,73 @@ internal sealed class PpuDevice : ICycleParticipant
                 candidates[j + 1] = candidate;
             }
         }
+    }
+
+    private int PrepareSpritePenalties(byte line)
+    {
+        Array.Clear(_spritePenaltyByPixel);
+        if (_model.IsColor() || _model.IsSuperGameBoy() || (_io[0x40] & 0x02) == 0) return 0;
+
+        Span<int> order = stackalloc int[_selectedSprites];
+        for (var index = 0; index < order.Length; index++) order[index] = index;
+        for (var index = 1; index < order.Length; index++)
+        {
+            var candidate = order[index];
+            var previous = index - 1;
+            while (previous >= 0 && ComesAfter(_spriteCandidates[order[previous]], _spriteCandidates[candidate]))
+            {
+                order[previous + 1] = order[previous];
+                previous--;
+            }
+            order[previous + 1] = candidate;
+        }
+
+        Span<int> consideredTiles = stackalloc int[10];
+        var consideredTileCount = 0;
+        var total = 0;
+        foreach (var index in order)
+        {
+            var sprite = _spriteCandidates[index];
+            if (sprite.X >= Width || sprite.X < -8) continue;
+            var trigger = Math.Max(0, sprite.X);
+            var penalty = 6;
+            if (sprite.X == -8)
+            {
+                penalty = 11;
+            }
+            else
+            {
+                var tile = SpriteFetchTile(sprite.X, line);
+                if (!consideredTiles[..consideredTileCount].Contains(tile))
+                {
+                    consideredTiles[consideredTileCount++] = tile;
+                    var pixelInTile = SpritePixelInTile(sprite.X, line);
+                    penalty += Math.Max(5 - pixelInTile, 0);
+                }
+            }
+            _spritePenaltyByPixel[trigger] += (byte)penalty;
+            total += penalty;
+        }
+        return total;
+
+        static bool ComesAfter(SpriteCandidate first, SpriteCandidate second) =>
+            first.X > second.X || first.X == second.X && first.OamIndex > second.OamIndex;
+    }
+
+    private int SpriteFetchTile(int x, byte line)
+    {
+        var windowStart = _io[0x4B] - 7;
+        var useWindow = (_io[0x40] & 0x20) != 0 && line >= _io[0x4A] && _io[0x4A] < Height &&
+            windowStart < Width && x >= windowStart;
+        return useWindow ? 0x100 + ((x - windowStart) >> 3) : (x + _io[0x43]) >> 3;
+    }
+
+    private int SpritePixelInTile(int x, byte line)
+    {
+        var windowStart = _io[0x4B] - 7;
+        var useWindow = (_io[0x40] & 0x20) != 0 && line >= _io[0x4A] && _io[0x4A] < Height &&
+            windowStart < Width && x >= windowStart;
+        return useWindow ? (x - windowStart) & 7 : (x + _io[0x43]) & 7;
     }
 
     private void RenderSpritePixel(int screenX, int output)

@@ -44,7 +44,9 @@ The display mapping also covers SameBoy's read-only LY register and later-CGB no
 OAM-read block; OAM writes remain available during that one-T-cycle window.
 Background and window output now advances progressively through mode 3, including
 mid-scanline DMG palette changes. Mode-2-selected sprites compose at the same
-progressive pixel boundary; fetcher and sprite-fetch stalls remain partial.
+progressive pixel boundary. DMG/MGB sprite fetches now apply the documented
+six-to-eleven-dot penalty, shared-background-tile suppression, and OAM X=0
+exception; mid-fetch cancellation and native CGB-mode stalls remain partial.
 
 No SameBoy private native-state compatibility is planned. BESS will be the
 interoperable save-state format. A layer moves from partial to ported only

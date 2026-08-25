@@ -1708,14 +1708,47 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF48, 0x04); // color 1 maps to shade 1
         emulator.WriteMemory(0xFF40, 0x92); // LCD and sprites on, background off
 
-        emulator.RunCycles(132); // mode 2, fetch startup, then 40 emitted pixels
+        emulator.RunCycles(187); // mode 2, fetch startup, five OBJ stalls, then 40 emitted pixels
         emulator.WriteMemory(0xFF48, 0x0C); // color 1 maps to shade 3
-        emulator.RunCycles(120);
+        emulator.RunCycles(175);
 
         var frame = new byte[160 * 144];
         emulator.CopyFrame(frame);
         Assert.All(frame.AsSpan(0, 40).ToArray(), pixel => Assert.Equal((byte)1, pixel));
         Assert.All(frame.AsSpan(40, 40).ToArray(), pixel => Assert.Equal((byte)3, pixel));
+    }
+
+    [Theory]
+    [InlineData(80, 263)] // first OBJ in a tile: six fetch dots plus five waiting dots
+    [InlineData(85, 258)] // pixel five in its tile has no additional waiting dots
+    [InlineData(-8, 263)] // OAM X=0 always costs eleven dots
+    public void DmgSpriteFetchPenaltyExtendsMode3(int spriteX, int hblankCycle)
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, (byte)(spriteX + 8));
+        emulator.WriteMemory(0xFF40, 0x92);
+
+        emulator.RunCycles(hblankCycle - 1);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
+    [Fact]
+    public void DmgSpritesSharingBackgroundTilePayFetcherWaitOnce()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, 88); // screen x=80, eleven dots
+        emulator.WriteMemory(0xFE04, 16);
+        emulator.WriteMemory(0xFE05, 92); // screen x=84, same tile, six dots
+        emulator.WriteMemory(0xFF40, 0x92);
+
+        emulator.RunCycles(268);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
     }
 
     [Theory]

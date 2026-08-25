@@ -84,7 +84,10 @@ are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG
 overlap priority. Background and window pixels are emitted progressively during
 mode 3, so register changes affect only pixels that remain in the scanline;
 sprites use the same progressive output boundary with mode-2-selected candidates.
-Fetcher and sprite-fetch stalls remain separate.
+DMG/MGB sprite fetches pause that boundary for Pan Docs' six-dot tile fetch plus
+the first sprite's zero-to-five-dot background/window fetch wait; sprites sharing
+a tile pay the wait once, and OAM X=0 uses the eleven-dot exception. Mid-fetch
+OBJ cancellation and native CGB-mode stall nuances remain separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
 are modeled at the bus boundary and feed a raw RGB15 color frame. The public
 `Emulator.RawFrame` span exposes the same stable 160×144 backing buffer without
