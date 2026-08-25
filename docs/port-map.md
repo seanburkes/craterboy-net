@@ -37,6 +37,8 @@ Common retail MBC1, MBC2, MBC3, and MBC5 reset coverage restores mapper controls
 while retaining battery-backed contents and pending-save state.
 The retail qualification report now replays its first deterministic checkpoint
 after same-instance ROM reload and reset to expose cross-session state leakage.
+Its default run is the full ten-minute retail gate at the DMG hardware clock,
+with bounded one-second checkpoints and explicit duration completion evidence.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
 The display mapping also covers SameBoy's read-only LY register and later-CGB normal-speed first-HBlank
 OAM-read block; OAM writes remain available during that one-T-cycle window.
