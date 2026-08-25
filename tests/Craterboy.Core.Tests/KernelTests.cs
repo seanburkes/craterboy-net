@@ -1237,6 +1237,26 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.DmgB, 87, 0, 258)]
+    [InlineData(GameBoyModel.Mgb, 87, 0, 258)]
+    [InlineData(GameBoyModel.DmgB, 0, 1, 260)]
+    [InlineData(GameBoyModel.Mgb, 0, 1, 260)]
+    public void DmgWindowFetchRestartExtendsModeThree(
+        GameBoyModel model, byte wx, byte scx, int hblankCycle)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF43, scx);
+        emulator.WriteMemory(0xFF4A, 0);
+        emulator.WriteMemory(0xFF4B, wx);
+        emulator.WriteMemory(0xFF40, 0xB1);
+
+        emulator.RunCycles(hblankCycle - 1);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
+    [Theory]
     [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]

@@ -76,7 +76,8 @@ Opposing direction inputs are filtered to the hardware-compatible
 single-direction result; SGB multiplayer input is deferred.
 
 The PPU timing kernel is also scheduler-owned. It models DMG mode 2/3/0
-transitions, including the SCX fine-scroll and WX=0 window-fetch penalties,
+transitions, including SCX fine scroll and the window fetcher's six-dot restart
+at the visible WX boundary, plus the additional WX=0 fine-scroll penalty,
 VBlank lines, LY/LYC coincidence, and STAT interrupts. The first
 renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 160×144 pixels. Window positioning and its independent tile-map line counter
@@ -87,7 +88,8 @@ sprites use the same progressive output boundary with mode-2-selected candidates
 DMG/MGB sprite fetches pause that boundary for Pan Docs' six-dot tile fetch plus
 the first sprite's zero-to-five-dot background/window fetch wait; sprites sharing
 a tile pay the wait once, and OAM X=0 uses the eleven-dot exception. Mid-fetch
-OBJ cancellation and native CGB-mode stall nuances remain separate.
+OBJ cancellation, mid-scanline window-register changes, and native CGB-mode stall
+nuances remain separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
 are modeled at the bus boundary and feed a raw RGB15 color frame. The public
 `Emulator.RawFrame` span exposes the same stable 160×144 backing buffer without
