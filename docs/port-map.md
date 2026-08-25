@@ -48,8 +48,9 @@ six-dot fetcher restart, including the WX=0 fine-scroll edge case.
 Mode-2-selected sprites compose at the same progressive pixel boundary.
 DMG/MGB sprite fetches now apply the documented
 six-to-eleven-dot penalty, shared-background-tile suppression, and OAM X=0
-exception; mid-fetch cancellation, mid-scanline window-register changes, and
-native CGB-mode stalls remain partial.
+exception. Disabling objects cancels an active DMG/MGB fetch and pending fetches,
+while reenabling restores not-yet-reached penalties. Mid-scanline window-register
+changes and native CGB-mode stalls remain partial.
 
 No SameBoy private native-state compatibility is planned. BESS will be the
 interoperable save-state format. A layer moves from partial to ported only

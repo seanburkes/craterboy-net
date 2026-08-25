@@ -15,6 +15,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private readonly bool[] _backgroundPriority = new bool[Width];
     private readonly SpriteCandidate[] _spriteCandidates = new SpriteCandidate[10];
     private readonly byte[] _fetchPenaltyByPixel = new byte[Width];
+    private readonly byte[] _spritePenaltyByPixel = new byte[Width];
     private readonly byte[] _backgroundPaletteRam = new byte[0x40];
     private readonly byte[] _objectPaletteRam = new byte[0x40];
     private readonly Action? _hblankStarted;
@@ -39,7 +40,8 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _selectedSprites;
     private bool _mode3TallSprites;
     private int _mode3EndCycle;
-    private int _spriteFetchStall;
+    private int _fetchStall;
+    private bool _spriteFetchActive;
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
@@ -88,8 +90,10 @@ internal sealed class PpuDevice : ICycleParticipant
         _selectedSprites = 0;
         _mode3TallSprites = false;
         _mode3EndCycle = 0;
-        _spriteFetchStall = 0;
+        _fetchStall = 0;
+        _spriteFetchActive = false;
         Array.Clear(_fetchPenaltyByPixel);
+        Array.Clear(_spritePenaltyByPixel);
         Array.Clear(_frame);
         Array.Clear(_colorFrame);
         Array.Clear(_backgroundPaletteRam);
@@ -186,8 +190,10 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(selectedSprites);
         writer.Write(rendering && _mode3TallSprites);
         writer.Write(rendering ? _mode3EndCycle : 0);
-        writer.Write(rendering ? _spriteFetchStall : 0);
+        writer.Write(rendering ? _fetchStall : 0);
+        writer.Write(rendering && _spriteFetchActive);
         if (rendering) writer.Write(_fetchPenaltyByPixel);
+        if (rendering) writer.Write(_spritePenaltyByPixel);
         for (var index = 0; index < selectedSprites; index++)
         {
             writer.Write(_spriteCandidates[index].OamIndex);
@@ -229,9 +235,11 @@ internal sealed class PpuDevice : ICycleParticipant
                 _windowUsedOnLine = false;
                 SelectSprites(_line);
                 Array.Clear(_fetchPenaltyByPixel);
+                Array.Clear(_spritePenaltyByPixel);
                 var fetchPenalty = PrepareWindowPenalty(_line) + PrepareSpritePenalties(_line);
                 _mode3EndCycle = Mode3End() + fetchPenalty;
-                _spriteFetchStall = 0;
+                _fetchStall = 0;
+                _spriteFetchActive = false;
                 SetMode(3);
             }
             else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
@@ -276,17 +284,29 @@ internal sealed class PpuDevice : ICycleParticipant
     private void AdvancePixelTransfer()
     {
         if (_lineCycles <= 92 + _mode3FineScroll || _renderedPixels == Width) return;
-        if (_spriteFetchStall != 0)
+        if (_fetchStall != 0)
         {
-            _spriteFetchStall--;
+            _fetchStall--;
+            if (_fetchStall == 0) _spriteFetchActive = false;
             return;
         }
         var penalty = _fetchPenaltyByPixel[_renderedPixels];
         if (penalty != 0)
         {
             _fetchPenaltyByPixel[_renderedPixels] = 0;
-            _spriteFetchStall = penalty - 1;
+            _fetchStall = penalty - 1;
             return;
+        }
+        penalty = _spritePenaltyByPixel[_renderedPixels];
+        if (penalty != 0)
+        {
+            _spritePenaltyByPixel[_renderedPixels] = 0;
+            if ((_io[0x40] & 0x02) != 0)
+            {
+                _fetchStall = penalty - 1;
+                _spriteFetchActive = _fetchStall != 0;
+                return;
+            }
         }
         RenderBackgroundPixelsThrough(_renderedPixels + 1);
     }
@@ -294,6 +314,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private void WriteLcdc(byte value)
     {
         var wasEnabled = _enabled;
+        UpdateDmgSpriteFetches(_io[0x40], value);
         _io[0x40] = value;
         _enabled = (value & 0x80) != 0;
         if (!wasEnabled && _enabled)
@@ -318,6 +339,27 @@ internal sealed class PpuDevice : ICycleParticipant
             _io[0x44] = 0;
             SetMode(0);
             UpdateCoincidence();
+        }
+    }
+
+    private void UpdateDmgSpriteFetches(byte previous, byte value)
+    {
+        if (_model.IsColor() || _model.IsSuperGameBoy() || _mode != 3 ||
+            ((previous ^ value) & 0x02) == 0)
+            return;
+
+        var enabling = (value & 0x02) != 0;
+        if (!enabling && _spriteFetchActive)
+        {
+            _mode3EndCycle -= _fetchStall;
+            _fetchStall = 0;
+            _spriteFetchActive = false;
+        }
+
+        for (var pixel = _renderedPixels; pixel < Width; pixel++)
+        {
+            var penalty = _spritePenaltyByPixel[pixel];
+            _mode3EndCycle += enabling ? penalty : -penalty;
         }
     }
 
@@ -542,7 +584,7 @@ internal sealed class PpuDevice : ICycleParticipant
                     penalty += Math.Max(5 - pixelInTile, 0);
                 }
             }
-            _fetchPenaltyByPixel[trigger] += (byte)penalty;
+            _spritePenaltyByPixel[trigger] += (byte)penalty;
             total += penalty;
         }
         return total;

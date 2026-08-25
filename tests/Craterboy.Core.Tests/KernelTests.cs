@@ -1755,6 +1755,48 @@ public sealed class KernelTests
         Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
+    public void DisablingDmgSpritesCancelsActiveAndPendingFetches(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, 88); // screen x=80
+        emulator.WriteMemory(0xFE04, 16);
+        emulator.WriteMemory(0xFE05, 128); // screen x=120
+        emulator.WriteMemory(0xFF40, 0x92);
+
+        emulator.RunCycles(173); // one dot into the first eleven-dot OBJ fetch
+        emulator.WriteMemory(0xFF40, 0x90);
+
+        emulator.RunCycles(79);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
+    [Fact]
+    public void ReenablingDmgSpritesRestoresPendingFetches()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, 88); // screen x=80
+        emulator.WriteMemory(0xFE04, 16);
+        emulator.WriteMemory(0xFE05, 128); // screen x=120
+        emulator.WriteMemory(0xFF40, 0x92);
+
+        emulator.RunCycles(173);
+        emulator.WriteMemory(0xFF40, 0x90);
+        emulator.RunCycles(20);
+        emulator.WriteMemory(0xFF40, 0x92);
+
+        emulator.RunCycles(70);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
     [Fact]
     public void DmgSpritesSharingBackgroundTilePayFetcherWaitOnce()
     {
