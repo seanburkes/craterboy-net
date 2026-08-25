@@ -10,8 +10,11 @@ public sealed class KernelTests
     public void RetailQualificationReportsDeterministicRomSafeEvidence()
     {
         var rom = MakeRom();
-        var first = RetailQualification.Run(rom, 140448, 70224);
-        var second = RetailQualification.Run(rom, 140448, 70224);
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(100, GameBoyButton.A, true));
+        recording.Add(new InputEvent(200, GameBoyButton.A, false));
+        var first = RetailQualification.Run(rom, 140448, 70224, recording: recording);
+        var second = RetailQualification.Run(rom, 140448, 70224, recording: recording);
 
         Assert.Equal("completed", first.Outcome);
         Assert.Equal(140448, first.CompletedCycles);
@@ -19,7 +22,29 @@ public sealed class KernelTests
         Assert.Equal(first.RomSha256, second.RomSha256);
         Assert.Equal(first.Checkpoints, second.Checkpoints);
         Assert.True(first.BatteryRoundTrip);
+        Assert.True(first.RepeatedLoadStable);
+        Assert.True(first.ResetStable);
+        Assert.Equal(2, first.InputEvents);
         Assert.DoesNotContain(Convert.ToBase64String(rom), System.Text.Json.JsonSerializer.Serialize(first));
+    }
+
+    [Fact]
+    public void RetailQualificationSeparatesBatteryPersistenceFromResetLeakage()
+    {
+        var rom = MakeRom(type: 0x03, romSizeCode: 1, ramSizeCode: 2);
+        new byte[] {
+            0x3E, 0x0A, 0xEA, 0x00, 0x00, // enable MBC1 RAM
+            0x3E, 0x5A, 0xEA, 0x00, 0xA0, // write battery RAM
+            0xC3, 0x0A, 0x01,             // idle loop
+        }.CopyTo(rom, 0x100);
+
+        var report = RetailQualification.Run(rom, 1000, 1000);
+
+        Assert.Equal("completed", report.Outcome);
+        Assert.True(report.BatteryDirtyObserved);
+        Assert.True(report.BatteryRoundTrip);
+        Assert.True(report.RepeatedLoadStable);
+        Assert.True(report.ResetStable);
     }
 
     [Fact]
