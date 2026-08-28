@@ -344,6 +344,7 @@ internal sealed class PpuDevice : ICycleParticipant
     {
         var wasEnabled = _enabled;
         UpdateDmgSpriteFetches(_io[0x40], value);
+        UpdateWindowEnable(_io[0x40], value);
         _io[0x40] = value;
         _enabled = (value & 0x80) != 0;
         if (!wasEnabled && _enabled)
@@ -375,6 +376,12 @@ internal sealed class PpuDevice : ICycleParticipant
         {
             CheckWindowY();
         }
+    }
+
+    private void UpdateWindowEnable(byte previous, byte value)
+    {
+        if (_mode == 3 && (previous & 0x20) != 0 && (value & 0x20) == 0)
+            _windowTriggeredOnLine = false;
     }
 
     private void CheckWindowY()

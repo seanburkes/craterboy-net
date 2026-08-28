@@ -52,8 +52,9 @@ exception. Disabling objects cancels an active DMG/MGB fetch and pending fetches
 while reenabling restores not-yet-reached penalties. Mid-scanline WX writes move
 only a pending window trigger; an active window retains its triggered position.
 The enabled-window LY=WY match latches for the frame and ignores retroactive or
-post-match WY changes. LCDC window retrigger behavior and native CGB-mode stalls
-remain partial.
+post-match WY changes. Clearing the LCDC window bit clears an active horizontal
+trigger, and reenabling can retrigger only at a future WX boundary. Sub-fetch
+window-disable timing and native CGB-mode stalls remain partial.
 
 No SameBoy private native-state compatibility is planned. BESS will be the
 interoperable save-state format. A layer moves from partial to ported only
