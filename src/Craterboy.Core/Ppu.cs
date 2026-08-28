@@ -37,6 +37,7 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _renderedPixels;
     private int _mode3FineScroll;
     private bool _windowUsedOnLine;
+    private bool _windowWyTriggered;
     private bool _windowTriggeredOnLine;
     private int _mode3WindowStart;
     private int _selectedSprites;
@@ -89,6 +90,7 @@ internal sealed class PpuDevice : ICycleParticipant
         _renderedPixels = 0;
         _mode3FineScroll = 0;
         _windowUsedOnLine = false;
+        _windowWyTriggered = false;
         _windowTriggeredOnLine = false;
         _mode3WindowStart = 0;
         _selectedSprites = 0;
@@ -133,8 +135,12 @@ internal sealed class PpuDevice : ICycleParticipant
                 _io[0x41] = (byte)(0x80 | (value & 0x78));
                 UpdateCoincidence();
                 break;
-            case 0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49 or 0xFF4A or 0xFF4B:
+            case 0xFF42 or 0xFF43 or 0xFF47 or 0xFF48 or 0xFF49 or 0xFF4B:
                 _io[address - 0xFF00] = value;
+                break;
+            case 0xFF4A:
+                _io[0x4A] = value;
+                CheckWindowY();
                 break;
             case 0xFF68 when _model.IsColor():
                 _io[0x68] = value;
@@ -177,6 +183,7 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(_lineCycles);
         writer.Write(_line);
         writer.Write(_windowLine);
+        writer.Write(_windowWyTriggered);
         writer.Write(_mode);
         writer.Write(_hblankBusBlocked);
         writer.Write(_hblankOamReadBlocked);
@@ -271,10 +278,12 @@ internal sealed class PpuDevice : ICycleParticipant
         {
             _line = 0;
             _windowLine = 0;
+            _windowWyTriggered = false;
             SetMode(2);
         }
         else if (_line < 144) SetMode(2);
         _io[0x44] = _line;
+        CheckWindowY();
         UpdateCoincidence();
     }
 
@@ -316,8 +325,7 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private void TriggerWindowIfNeeded()
     {
-        if (_windowTriggeredOnLine || (_io[0x40] & 0x21) != 0x21 ||
-            _line < _io[0x4A] || _io[0x4A] >= Height)
+        if (_windowTriggeredOnLine || !_windowWyTriggered || (_io[0x40] & 0x21) != 0x21)
             return;
 
         var windowStart = _io[0x4B] - 7;
@@ -345,6 +353,7 @@ internal sealed class PpuDevice : ICycleParticipant
             _lineCycles = 0;
             _io[0x44] = 0;
             SetMode(2);
+            CheckWindowY();
             UpdateCoincidence();
         }
         else if (wasEnabled && !_enabled)
@@ -353,6 +362,7 @@ internal sealed class PpuDevice : ICycleParticipant
             _line = 0;
             _lineCycles = 0;
             _windowLine = 0;
+            _windowWyTriggered = false;
             _hblankBusBlocked = false;
             _mode3EndPending = false;
             Array.Clear(_frame);
@@ -361,6 +371,16 @@ internal sealed class PpuDevice : ICycleParticipant
             SetMode(0);
             UpdateCoincidence();
         }
+        else if (_enabled)
+        {
+            CheckWindowY();
+        }
+    }
+
+    private void CheckWindowY()
+    {
+        if (_enabled && (_io[0x40] & 0x20) != 0 && _line < Height && _io[0x4A] == _line)
+            _windowWyTriggered = true;
     }
 
     private void UpdateDmgSpriteFetches(byte previous, byte value)

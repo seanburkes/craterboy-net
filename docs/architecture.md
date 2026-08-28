@@ -91,8 +91,10 @@ a tile pay the wait once, and OAM X=0 uses the eleven-dot exception. Disabling
 DMG/MGB objects cancels the active fetch remainder and suppresses pending fetches;
 reenabling objects restores penalties for sprites not yet reached. WX is sampled
 at the progressive trigger boundary, so earlier writes move a pending window and
-later writes do not reposition one already active. Mid-scanline WY/LCDC window
-latching and native CGB-mode stall nuances remain separate.
+later writes do not reposition one already active. WY latching records an
+enabled-window LY=WY match for the rest of the frame, so writes to past lines
+cannot activate the window and later WY changes cannot clear an existing match.
+LCDC window retrigger behavior and native CGB-mode stall nuances remain separate.
 CGB indexed BG/OBJ palette registers and their auto-incrementing palette RAM
 are modeled at the bus boundary and feed a raw RGB15 color frame. The public
 `Emulator.RawFrame` span exposes the same stable 160×144 backing buffer without

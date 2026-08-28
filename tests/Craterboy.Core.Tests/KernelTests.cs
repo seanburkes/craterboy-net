@@ -1299,6 +1299,41 @@ public sealed class KernelTests
         Assert.Equal((byte)2, frame[120]);
     }
 
+    [Fact]
+    public void DmgWyWriteToPastLineDoesNotRetroactivelyTriggerWindow()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF4A, 100);
+        emulator.WriteMemory(0xFF4B, 87);
+        emulator.WriteMemory(0xFF40, 0xB1);
+
+        emulator.RunCycles(456); // line 1
+        emulator.WriteMemory(0xFF4A, 0);
+
+        emulator.RunCycles(251);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
+    [Fact]
+    public void DmgWyMatchDuringLineLatchesWindowForFrame()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF4A, 100);
+        emulator.WriteMemory(0xFF4B, 87);
+        emulator.WriteMemory(0xFF40, 0xB1);
+
+        emulator.RunCycles(456); // line 1
+        emulator.WriteMemory(0xFF4A, 1);
+        emulator.WriteMemory(0xFF4A, 100); // changing WY does not clear the match
+
+        emulator.RunCycles(257);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
     [Theory]
     [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
