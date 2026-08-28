@@ -1236,6 +1236,21 @@ public sealed class KernelTests
         Assert.Equal((byte)3, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
     }
 
+    [Fact]
+    public void PpuRequestsVblankInterruptAtVisibleFrameBoundary()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.WriteMemory(0xFF0F, 0);
+
+        emulator.RunCycles(456 * 144 - 1);
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF0F) & 0x01));
+        emulator.RunCycles(1);
+
+        Assert.Equal((byte)1, (byte)(emulator.PeekMemory(0xFF0F) & 0x01));
+        Assert.Equal((byte)1, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+    }
+
     [Theory]
     [InlineData(GameBoyModel.DmgB, 87, 0, 258)]
     [InlineData(GameBoyModel.Mgb, 87, 0, 258)]
