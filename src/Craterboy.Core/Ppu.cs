@@ -419,6 +419,7 @@ internal sealed class PpuDevice : ICycleParticipant
             return;
         }
         _mode = mode;
+        if (mode == 1) _io[0x0F] |= 0x01;
         _hblankBusBlocked = _enabled && mode == 0 && _isDoubleSpeed();
         _hblankOamReadBlocked = mode == 0 && _enabled && IsLaterCgbRevision() && !_isDoubleSpeed();
         if (mode == 0 && _enabled && _model.IsColor() && !_isDoubleSpeed())

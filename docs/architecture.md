@@ -78,7 +78,8 @@ single-direction result; SGB multiplayer input is deferred.
 The PPU timing kernel is also scheduler-owned. It models DMG mode 2/3/0
 transitions, including SCX fine scroll and the window fetcher's six-dot restart
 at the visible WX boundary, plus the additional WX=0 fine-scroll penalty,
-VBlank lines, LY/LYC coincidence, and STAT interrupts. The first
+VBlank lines and VBlank interrupt requests, LY/LYC coincidence, and STAT
+interrupts. The first
 renderer slice draws the DMG background tile map with SCX/SCY and BGP into raw
 160×144 pixels. Window positioning and its independent tile-map line counter
 are modeled, along with DMG sprite composition, 8×16 tile selection, and DMG

@@ -40,7 +40,8 @@ after same-instance ROM reload and reset to expose cross-session state leakage.
 Its default run is the full ten-minute retail gate at the DMG hardware clock,
 with bounded one-second checkpoints and explicit duration completion evidence.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
-The display mapping also covers SameBoy's read-only LY register and later-CGB normal-speed first-HBlank
+The display mapping also covers VBlank interrupt requests, SameBoy's read-only
+LY register and later-CGB normal-speed first-HBlank
 OAM-read block; OAM writes remain available during that one-T-cycle window.
 Background and window output now advances progressively through mode 3, including
 mid-scanline DMG palette changes. A visible window start pauses output for its
