@@ -13,6 +13,7 @@ public sealed class KernelTests
         var recording = new InputRecording();
         recording.Add(new InputEvent(100, GameBoyButton.A, true));
         recording.Add(new InputEvent(200, GameBoyButton.A, false));
+        recording.Add(new InputEvent(200000, GameBoyButton.Start, true));
         var first = RetailQualification.Run(rom, 140448, 70224, recording: recording);
         var second = RetailQualification.Run(rom, 140448, 70224, recording: recording);
 
@@ -25,7 +26,9 @@ public sealed class KernelTests
         Assert.True(first.BatteryRoundTrip);
         Assert.True(first.RepeatedLoadStable);
         Assert.True(first.ResetStable);
-        Assert.Equal(2, first.InputEvents);
+        Assert.Equal(3, first.InputEvents);
+        Assert.Equal(2, first.AppliedInputEvents);
+        Assert.Equal(0, first.FrameChangesAfterInput);
         Assert.DoesNotContain(Convert.ToBase64String(rom), System.Text.Json.JsonSerializer.Serialize(first));
     }
 

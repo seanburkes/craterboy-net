@@ -468,6 +468,8 @@ qualification workflow runs caller-owned ROMs with fixed time and entropy,
 optionally replays validated input recordings, and emits ROM-safe JSON with
 metadata, checkpoint hashes, frame/audio activity, battery round-trip evidence,
 same-instance reload/reset stability evidence, and sanitized failure details.
+Reports distinguish supplied input events from those applied before the run
+boundary and count checkpoint-visible frame changes after input begins.
 The CLI defaults to ten minutes at the 4,194,304 Hz hardware clock with
 one-second checkpoints, and reports whether the duration gate completed.
 A native SameBoy adapter lives only in tests/CI

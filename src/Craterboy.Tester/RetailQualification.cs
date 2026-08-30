@@ -28,6 +28,8 @@ public sealed record RetailQualificationReport(
     bool RepeatedLoadStable,
     bool ResetStable,
     int InputEvents,
+    int AppliedInputEvents,
+    int FrameChangesAfterInput,
     IReadOnlyList<QualificationCheckpoint> Checkpoints);
 
 public static class RetailQualification
@@ -59,6 +61,8 @@ public static class RetailQualification
         var batteryRoundTrip = false;
         var repeatedLoadStable = false;
         var resetStable = false;
+        var appliedInputEvents = 0;
+        var frameChangesAfterInput = 0;
         long completedCycles = 0;
 
         try
@@ -80,6 +84,7 @@ public static class RetailQualification
                     RunTo(emulator, events[eventIndex].Cycle);
                     var input = events[eventIndex++];
                     emulator.SetButtonState(input.Button, input.Pressed, input.Player);
+                    appliedInputEvents++;
                 }
                 RunTo(emulator, target);
                 batteryDirty |= emulator.BatteryDirty;
@@ -87,6 +92,7 @@ public static class RetailQualification
                 if (!emulator.RawFrame.SequenceEqual(previousFrame))
                 {
                     frameChanges++;
+                    if (appliedInputEvents != 0) frameChangesAfterInput++;
                     emulator.RawFrame.CopyTo(previousFrame);
                 }
                 var copied = emulator.CopyAudioFrames(audio);
@@ -132,7 +138,7 @@ public static class RetailQualification
             completedCycles, completedCycles >= TenMinuteCycles, outcome, errorType, errorMessage, frameChanges,
             audioFrames, audioNonSilent, batteryDirty, batteryBytes, batteryRoundTrip,
             repeatedLoadStable, resetStable,
-            recording?.Events.Count ?? 0, checkpoints);
+            recording?.Events.Count ?? 0, appliedInputEvents, frameChangesAfterInput, checkpoints);
     }
 
     private static EmulatorOptions DeterministicOptions() => new()
