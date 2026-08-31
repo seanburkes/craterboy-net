@@ -30,6 +30,7 @@ public sealed class KernelTests
         Assert.Equal(2, first.AppliedInputEvents);
         Assert.Equal(0, first.FrameChangesAfterInput);
         Assert.False(first.InputChangedFinalFrame);
+        Assert.Null(first.FirstInputFrameDivergenceCycle);
         Assert.DoesNotContain(Convert.ToBase64String(rom), System.Text.Json.JsonSerializer.Serialize(first));
     }
 
@@ -55,6 +56,7 @@ public sealed class KernelTests
         Assert.Equal("completed", report.Outcome);
         Assert.Equal(1, report.AppliedInputEvents);
         Assert.True(report.InputChangedFinalFrame);
+        Assert.Equal(70_224, report.FirstInputFrameDivergenceCycle);
     }
 
     [Fact]

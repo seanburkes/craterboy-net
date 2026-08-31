@@ -41,7 +41,8 @@ Its default run is the full ten-minute retail gate at the DMG hardware clock,
 with bounded one-second checkpoints and explicit duration completion evidence.
 Input-assisted qualification distinguishes supplied events from events applied
 within the requested run, reports frame changes observed after input begins,
-and compares the final frame with a deterministic no-input control replay.
+and compares checkpoint and final frames with a deterministic no-input control
+replay, including the first divergent checkpoint cycle.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
 The display mapping also covers VBlank interrupt requests, SameBoy's read-only
 LY register and later-CGB normal-speed first-HBlank
