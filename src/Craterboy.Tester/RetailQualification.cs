@@ -31,6 +31,7 @@ public sealed record RetailQualificationReport(
     int AppliedInputEvents,
     int FrameChangesAfterInput,
     bool InputChangedFinalFrame,
+    long? FirstInputFrameDivergenceCycle,
     IReadOnlyList<QualificationCheckpoint> Checkpoints);
 
 public static class RetailQualification
@@ -65,6 +66,7 @@ public static class RetailQualification
         var appliedInputEvents = 0;
         var frameChangesAfterInput = 0;
         var inputChangedFinalFrame = false;
+        long? firstInputFrameDivergenceCycle = null;
         long completedCycles = 0;
 
         try
@@ -76,6 +78,12 @@ public static class RetailQualification
             emulator.RawFrame.CopyTo(previousFrame);
             var events = recording?.Events ?? [];
             var eventIndex = 0;
+            Emulator? noInput = null;
+            if (events.Count != 0 && events[0].Cycle <= cycles)
+            {
+                noInput = new Emulator(model, options);
+                noInput.LoadRom(rom);
+            }
             long nextCheckpoint = Math.Min(cycles, checkpointCycles);
 
             while (emulator.CycleCount < cycles)
@@ -89,6 +97,13 @@ public static class RetailQualification
                     appliedInputEvents++;
                 }
                 RunTo(emulator, target);
+                if (noInput is not null)
+                {
+                    RunTo(noInput, target);
+                    if (appliedInputEvents != 0 &&
+                        !emulator.RawFrame.SequenceEqual(noInput.RawFrame))
+                        firstInputFrameDivergenceCycle ??= target;
+                }
                 batteryDirty |= emulator.BatteryDirty;
                 checkpoints.Add(new(emulator.CycleCount, Convert.ToHexString(emulator.ComputeStateHash())));
                 if (!emulator.RawFrame.SequenceEqual(previousFrame))
@@ -105,13 +120,8 @@ public static class RetailQualification
             }
             completedCycles = emulator.CycleCount;
 
-            if (appliedInputEvents != 0)
-            {
-                var noInput = new Emulator(model, options);
-                noInput.LoadRom(rom);
-                RunTo(noInput, completedCycles);
+            if (appliedInputEvents != 0 && noInput is not null)
                 inputChangedFinalFrame = !emulator.RawFrame.SequenceEqual(noInput.RawFrame);
-            }
 
             var battery = emulator.SaveBattery();
             batteryBytes = battery.Length;
@@ -149,7 +159,7 @@ public static class RetailQualification
             audioFrames, audioNonSilent, batteryDirty, batteryBytes, batteryRoundTrip,
             repeatedLoadStable, resetStable,
             recording?.Events.Count ?? 0, appliedInputEvents, frameChangesAfterInput,
-            inputChangedFinalFrame, checkpoints);
+            inputChangedFinalFrame, firstInputFrameDivergenceCycle, checkpoints);
     }
 
     private static EmulatorOptions DeterministicOptions() => new()
