@@ -29,7 +29,32 @@ public sealed class KernelTests
         Assert.Equal(3, first.InputEvents);
         Assert.Equal(2, first.AppliedInputEvents);
         Assert.Equal(0, first.FrameChangesAfterInput);
+        Assert.False(first.InputChangedFinalFrame);
         Assert.DoesNotContain(Convert.ToBase64String(rom), System.Text.Json.JsonSerializer.Serialize(first));
+    }
+
+    [Fact]
+    public void RetailQualificationComparesRecordedInputWithNoInputFrame()
+    {
+        var rom = MakeRom();
+        new byte[] {
+            0x3E, 0xFF, 0xEA, 0x00, 0x80, // tile zero low row
+            0x3E, 0xE4, 0xE0, 0x47,       // identity DMG palette
+            0x3E, 0x91, 0xE0, 0x40,       // enable LCD and background
+            0x3E, 0x10, 0xE0, 0x00,       // select action buttons
+            0xF0, 0x00, 0xE6, 0x01,       // wait for A
+            0x20, 0xFA,
+            0x3E, 0x1B, 0xE0, 0x47,       // change the visible palette
+            0x18, 0xFE,
+        }.CopyTo(rom, 0x100);
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(10_000, GameBoyButton.A, true));
+
+        var report = RetailQualification.Run(rom, 140_448, 70_224, recording: recording);
+
+        Assert.Equal("completed", report.Outcome);
+        Assert.Equal(1, report.AppliedInputEvents);
+        Assert.True(report.InputChangedFinalFrame);
     }
 
     [Fact]

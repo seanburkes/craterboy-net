@@ -40,7 +40,8 @@ after same-instance ROM reload and reset to expose cross-session state leakage.
 Its default run is the full ten-minute retail gate at the DMG hardware clock,
 with bounded one-second checkpoints and explicit duration completion evidence.
 Input-assisted qualification distinguishes supplied events from events applied
-within the requested run and reports frame changes observed after input begins.
+within the requested run, reports frame changes observed after input begins,
+and compares the final frame with a deterministic no-input control replay.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
 The display mapping also covers VBlank interrupt requests, SameBoy's read-only
 LY register and later-CGB normal-speed first-HBlank
