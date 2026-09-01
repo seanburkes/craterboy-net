@@ -1430,6 +1430,40 @@ public sealed class KernelTests
     }
 
     [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
+    public void DmgWindowDisableDuringFetchFinishesFetchedTile(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        for (var row = 0; row < 8; row++)
+        {
+            emulator.WriteMemory((ushort)(0x8010 + row * 2), 0xFF); // background tile 1: color 1
+            emulator.WriteMemory((ushort)(0x8020 + row * 2 + 1), 0xFF); // window tile 2: color 2
+        }
+        for (var column = 0; column < 32; column++)
+        {
+            emulator.WriteMemory((ushort)(0x9800 + column), 1);
+            emulator.WriteMemory((ushort)(0x9C00 + column), 2);
+        }
+        emulator.WriteMemory(0xFF47, 0xE4);
+        emulator.WriteMemory(0xFF4A, 0);
+        emulator.WriteMemory(0xFF4B, 87); // trigger at x=80
+        emulator.WriteMemory(0xFF40, 0xF1);
+
+        emulator.RunCycles(175); // two dots into the six-dot restart
+        emulator.WriteMemory(0xFF40, 0xD1);
+        emulator.RunCycles(82);
+        Assert.Equal(3, emulator.PeekMemory(0xFF41) & 3);
+        emulator.RunCycles(1);
+
+        var frame = new byte[160 * 144];
+        emulator.CopyFrame(frame);
+        Assert.All(frame[80..88], pixel => Assert.Equal((byte)2, pixel));
+        Assert.Equal((byte)1, frame[88]);
+        Assert.Equal(0, emulator.PeekMemory(0xFF41) & 3);
+    }
+
+    [Theory]
     [InlineData(GameBoyModel.CgbD)]
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
