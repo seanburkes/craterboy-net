@@ -45,6 +45,8 @@ internal sealed class PpuDevice : ICycleParticipant
     private int _mode3EndCycle;
     private int _fetchStall;
     private bool _spriteFetchActive;
+    private bool _windowFetchActive;
+    private bool _windowDisableAfterTile;
 
     private readonly record struct SpriteCandidate(int OamIndex, int X, int Row, byte Tile, byte Attributes);
 
@@ -98,6 +100,8 @@ internal sealed class PpuDevice : ICycleParticipant
         _mode3EndCycle = 0;
         _fetchStall = 0;
         _spriteFetchActive = false;
+        _windowFetchActive = false;
+        _windowDisableAfterTile = false;
         Array.Clear(_fetchPenaltyByPixel);
         Array.Clear(_spritePenaltyByPixel);
         Array.Clear(_frame);
@@ -205,6 +209,8 @@ internal sealed class PpuDevice : ICycleParticipant
         writer.Write(rendering ? _mode3EndCycle : 0);
         writer.Write(rendering ? _fetchStall : 0);
         writer.Write(rendering && _spriteFetchActive);
+        writer.Write(rendering && _windowFetchActive);
+        writer.Write(rendering && _windowDisableAfterTile);
         if (rendering) writer.Write(_fetchPenaltyByPixel);
         if (rendering) writer.Write(_spritePenaltyByPixel);
         for (var index = 0; index < selectedSprites; index++)
@@ -255,6 +261,8 @@ internal sealed class PpuDevice : ICycleParticipant
                 _mode3EndCycle = Mode3End() + fetchPenalty;
                 _fetchStall = 0;
                 _spriteFetchActive = false;
+                _windowFetchActive = false;
+                _windowDisableAfterTile = false;
                 SetMode(3);
             }
             else if (_lineCycles == 85 && _model.IsColor()) _paletteAccessBlocked = true;
@@ -298,9 +306,14 @@ internal sealed class PpuDevice : ICycleParticipant
         if (_fetchStall != 0)
         {
             _fetchStall--;
-            if (_fetchStall == 0) _spriteFetchActive = false;
+            if (_fetchStall == 0)
+            {
+                _spriteFetchActive = false;
+                _windowFetchActive = false;
+            }
             return;
         }
+        FinishDisabledWindowTileIfNeeded();
         TriggerWindowIfNeeded();
         var penalty = _fetchPenaltyByPixel[_renderedPixels];
         if (penalty != 0)
@@ -338,6 +351,14 @@ internal sealed class PpuDevice : ICycleParticipant
             penalty++;
         _fetchPenaltyByPixel[_renderedPixels] = (byte)penalty;
         _mode3EndCycle += penalty;
+        _windowFetchActive = true;
+    }
+
+    private void FinishDisabledWindowTileIfNeeded()
+    {
+        if (!_windowDisableAfterTile || _renderedPixels < _mode3WindowStart + 8) return;
+        _windowDisableAfterTile = false;
+        _windowTriggeredOnLine = false;
     }
 
     private void WriteLcdc(byte value)
@@ -380,8 +401,15 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private void UpdateWindowEnable(byte previous, byte value)
     {
-        if (_mode == 3 && (previous & 0x20) != 0 && (value & 0x20) == 0)
-            _windowTriggeredOnLine = false;
+        if (_mode != 3 || ((previous ^ value) & 0x20) == 0) return;
+        if ((value & 0x20) != 0)
+        {
+            _windowDisableAfterTile = false;
+            return;
+        }
+        if (!_model.IsColor() && !_model.IsSuperGameBoy() && _windowFetchActive)
+            _windowDisableAfterTile = true;
+        else _windowTriggeredOnLine = false;
     }
 
     private void CheckWindowY()
@@ -526,7 +554,8 @@ internal sealed class PpuDevice : ICycleParticipant
         var mapBase = (_io[0x40] & 0x08) != 0 ? 0x1C00 : 0x1800;
         var unsignedTiles = (_io[0x40] & 0x10) != 0;
         var worldY = (line + _io[0x42]) & 0xFF;
-        var useWindow = _windowTriggeredOnLine && (_io[0x40] & 0x20) != 0;
+        var useWindow = _windowTriggeredOnLine &&
+            ((_io[0x40] & 0x20) != 0 || _windowDisableAfterTile && x < _mode3WindowStart + 8);
         var worldX = useWindow ? (x - _mode3WindowStart) & 0xFF : (x + _io[0x43]) & 0xFF;
         var pixelY = useWindow ? _windowLine : worldY;
         var tileColumn = worldX >> 3;
