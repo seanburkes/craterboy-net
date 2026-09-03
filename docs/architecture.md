@@ -244,7 +244,8 @@ and NR50 volume are applied independently to each side, and the returned count
 is measured in complete stereo frames; host playback remains outside the core.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
-also present.
+also present. Its 32-step wave phase advances from the channel frequency timer,
+independently of the output sample cadence.
 DMG channel 3 retriggers at a nonzero wave phase apply SameBoy's deterministic
 first-byte wave-RAM corruption variant; MGB's instance-specific variant remains
 deterministically copies the selected four-byte wave group.

@@ -3652,6 +3652,33 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelThreeWavePhaseUsesFrequencyTimer()
+    {
+        var slow = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var fast = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        foreach (var emulator in new[] { slow, fast })
+        {
+            emulator.WriteMemory(0xFF26, 0x80);
+            emulator.WriteMemory(0xFF30, 0x10);
+            emulator.WriteMemory(0xFF3F, 0xF0);
+            emulator.WriteMemory(0xFF1A, 0x80);
+        }
+
+        slow.WriteMemory(0xFF1D, 0xFF);
+        slow.WriteMemory(0xFF1E, 0x80); // frequency 0x0FF
+        fast.WriteMemory(0xFF1D, 0xFF);
+        fast.WriteMemory(0xFF1E, 0x87); // frequency 0x7FF
+
+        slow.RunCycles(2047);
+        fast.RunCycles(2047);
+
+        Assert.Equal((byte)0xF4, slow.PeekMemory(0xFF26));
+        Assert.Equal((byte)0xF4, fast.PeekMemory(0xFF26));
+        Assert.Equal((byte)0x10, slow.PeekMemory(0xFF30));
+        Assert.Equal((byte)0xF0, fast.PeekMemory(0xFF30));
+    }
+
+    [Fact]
     public void ApuChannelThreeVolumeCodeZeroMutesWaveOutput()
     {
         var rom = MakeRom();
@@ -5356,7 +5383,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1D, 0x00);
         emulator.WriteMemory(0xFF1E, 0x81);
 
-        emulator.RunCycles(95 * 2);
+        emulator.RunCycles(4096 * 2); // frequency zero advances one phase every 4096 T-cycles
         emulator.WriteMemory(0xFF1E, 0x81);
         emulator.WriteMemory(0xFF1A, 0x00);
 
@@ -5378,7 +5405,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1D, 0x00);
         emulator.WriteMemory(0xFF1E, 0x81);
 
-        emulator.RunCycles(95 * 8);
+        emulator.RunCycles(4096 * 8); // frequency zero advances one phase every 4096 T-cycles
         emulator.WriteMemory(0xFF1E, 0x81);
         emulator.WriteMemory(0xFF1A, 0x00);
 

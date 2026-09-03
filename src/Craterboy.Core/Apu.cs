@@ -38,6 +38,7 @@ internal sealed class ApuDevice : ICycleParticipant
     private bool _channel3Enabled;
     private int _wave3Phase;
     private int _channel3Frequency;
+    private int _channel3Timer;
     private int _channel4Length;
     private bool _channel4Enabled;
     private int _channel4Volume;
@@ -83,6 +84,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel3Enabled = false;
         _wave3Phase = 0;
         _channel3Frequency = 0;
+        _channel3Timer = 0;
         _channel4Length = 0;
         _channel4Enabled = false;
         _channel4Volume = 0;
@@ -147,6 +149,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel3Enabled = false;
                 _wave3Phase = 0;
                 _channel3Frequency = 0;
+                _channel3Timer = 0;
                 _channel4Length = 0;
                 _channel4Enabled = false;
                 _channel4Volume = 0;
@@ -272,6 +275,7 @@ internal sealed class ApuDevice : ICycleParticipant
                     if (_channel3Length == 0) _channel3Length = 256;
                     _channel3Enabled = (_io[0x1A] & 0x80) != 0;
                     _wave3Phase = 0;
+                    _channel3Timer = WavePeriod();
                     UpdateStatus();
                 }
                 if ((previousValue & 0x40) == 0 && (value & 0x80) == 0 && (_frameStep & 1) == 0 &&
@@ -356,6 +360,11 @@ internal sealed class ApuDevice : ICycleParticipant
         {
             _sampleCycles = 0;
             EmitSample();
+        }
+        if (_channel3Enabled && --_channel3Timer <= 0)
+        {
+            _wave3Phase = (_wave3Phase + 1) & 31;
+            _channel3Timer = WavePeriod();
         }
         if (++_frameCycles < 8192) return;
         _frameCycles = 0;
@@ -478,7 +487,7 @@ internal sealed class ApuDevice : ICycleParticipant
         writer.Write(_channel2Volume); writer.Write(_channel2EnvelopeTimer);
         writer.Write(_channel2Frequency); writer.Write(_wave2Phase);
         writer.Write(_channel3Length); writer.Write(_channel3Enabled);
-        writer.Write(_wave3Phase); writer.Write(_channel3Frequency);
+        writer.Write(_wave3Phase); writer.Write(_channel3Frequency); writer.Write(_channel3Timer);
         writer.Write(_channel4Length); writer.Write(_channel4Enabled);
         writer.Write(_channel4Volume); writer.Write(_channel4EnvelopeTimer);
         writer.Write(_noiseLfsr); writer.Write(_noiseTimer);
@@ -518,7 +527,6 @@ internal sealed class ApuDevice : ICycleParticipant
             var volumeCode = (_io[0x1C] >> 5) & 0x03;
             var waveSample = volumeCode switch { 0 => 0, 1 => nibble, 2 => nibble >> 1, _ => nibble >> 2 };
             channels[2] = volumeCode == 0 ? 0 : (waveSample - 4) * 2048;
-            _wave3Phase = (_wave3Phase + Math.Max(1, _channel3Frequency >> 8)) & 31;
         }
         if (_channel4Enabled)
         {
@@ -591,6 +599,8 @@ internal sealed class ApuDevice : ICycleParticipant
     private bool AllowsActiveWaveRamAccess() => _model is >= GameBoyModel.Cgb0 and <= GameBoyModel.CgbE;
 
     private bool HasEarlyCgbPcmGlitch => _model is >= GameBoyModel.Cgb0 and <= GameBoyModel.CgbC;
+
+    private int WavePeriod() => Math.Max(1, (2048 - _channel3Frequency) * 2);
 
     private ushort CurrentWaveRamAddress => (ushort)(0xFF30 + ((_wave3Phase & 0x1F) >> 1));
 }
