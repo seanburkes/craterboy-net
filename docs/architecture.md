@@ -475,6 +475,8 @@ boundary, count checkpoint-visible frame changes after input begins, and replay
 the completed duration without input to identify final-frame divergence and the
 first checkpoint cycle where recorded input changes rendered output.
 The CLI defaults to ten minutes at the 4,194,304 Hz hardware clock with
-one-second checkpoints, and reports whether the duration gate completed.
+one-second checkpoints. Reports expose the documented playable-gate decision
+and individual unmet criteria; the CLI exits unsuccessfully when the run
+completes but the playable gate is not satisfied.
 A native SameBoy adapter lives only in tests/CI
 and is never included in packages.
