@@ -26,6 +26,8 @@ Status meanings: **partial** is implemented but not oracle-complete;
 | SGB, debugger, cheats, rewind | extended services | deferred | — |
 
 The APU mapping now also covers SameBoy's writable wave RAM while the APU is powered off.
+Channel 3 wave phase timing now follows its frequency-derived hardware period
+instead of advancing with the output sample cadence.
 Timer mapping now also covers the DIV reset on STOP entry, including prepared
 CGB speed switches, DIV/TIMA pause during STOP, and resumption on wake.
 The CPU mapping also covers SameBoy's immediate STOP exit when the active-low
