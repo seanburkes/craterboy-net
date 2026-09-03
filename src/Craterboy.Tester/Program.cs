@@ -52,7 +52,7 @@ static int Qualify(string[] arguments)
         var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
         if (outputPath is null) Console.WriteLine(json);
         else File.WriteAllText(outputPath, json + Environment.NewLine);
-        return report.Outcome == "completed" ? 0 : 1;
+        return report.Outcome == "completed" && report.PlayableGatePassed ? 0 : 1;
     }
     catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException or InvalidDataException)
     {
