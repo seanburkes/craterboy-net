@@ -18,6 +18,8 @@ public sealed class KernelTests
         var second = RetailQualification.Run(rom, 140448, 70224, recording: recording);
 
         Assert.Equal("completed", first.Outcome);
+        Assert.False(first.PlayableGatePassed);
+        Assert.Contains("ten-minute duration was not completed", first.PlayableGateFailures);
         Assert.Equal(140448, first.CompletedCycles);
         Assert.False(first.TenMinuteDurationCompleted);
         Assert.Equal(2, first.Checkpoints.Count);
@@ -54,6 +56,8 @@ public sealed class KernelTests
         var report = RetailQualification.Run(rom, 140_448, 70_224, recording: recording);
 
         Assert.Equal("completed", report.Outcome);
+        Assert.False(report.PlayableGatePassed);
+        Assert.Contains("ten-minute duration was not completed", report.PlayableGateFailures);
         Assert.Equal(1, report.AppliedInputEvents);
         Assert.True(report.InputChangedFinalFrame);
         Assert.Equal(70_224, report.FirstInputFrameDivergenceCycle);
@@ -79,6 +83,8 @@ public sealed class KernelTests
         var report = RetailQualification.Run(rom, 1000, 1000);
 
         Assert.Equal("completed", report.Outcome);
+        Assert.False(report.PlayableGatePassed);
+        Assert.Contains("ten-minute duration was not completed", report.PlayableGateFailures);
         Assert.True(report.BatteryDirtyObserved);
         Assert.True(report.BatteryRoundTrip);
         Assert.True(report.RepeatedLoadStable);
