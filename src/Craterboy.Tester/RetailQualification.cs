@@ -32,7 +32,9 @@ public sealed record RetailQualificationReport(
     int FrameChangesAfterInput,
     bool InputChangedFinalFrame,
     long? FirstInputFrameDivergenceCycle,
-    IReadOnlyList<QualificationCheckpoint> Checkpoints);
+    IReadOnlyList<QualificationCheckpoint> Checkpoints,
+    bool PlayableGatePassed,
+    IReadOnlyList<string> PlayableGateFailures);
 
 public static class RetailQualification
 {
@@ -152,6 +154,24 @@ public static class RetailQualification
             errorMessage = exception.Message;
         }
 
+        var gateFailures = new List<string>();
+        if (completedCycles < TenMinuteCycles)
+            gateFailures.Add("ten-minute duration was not completed");
+        if (frameChanges == 0)
+            gateFailures.Add("video frame did not change");
+        if (!audioNonSilent)
+            gateFailures.Add("audio remained silent");
+        if (recording is null || appliedInputEvents == 0)
+            gateFailures.Add("no input event was applied");
+        else if (frameChangesAfterInput == 0 && !inputChangedFinalFrame)
+            gateFailures.Add("applied input did not change rendered output");
+        if (!batteryRoundTrip)
+            gateFailures.Add("battery data did not round-trip");
+        if (!repeatedLoadStable)
+            gateFailures.Add("same-instance ROM reload was not stable");
+        if (!resetStable)
+            gateFailures.Add("reset was not stable");
+
         return new(
             Convert.ToHexString(SHA256.HashData(rom.Span)), header.Title, header.CartridgeType,
             header.RomSize, header.RamSize, header.SupportsColor, model.ToString(), cycles,
@@ -159,7 +179,8 @@ public static class RetailQualification
             audioFrames, audioNonSilent, batteryDirty, batteryBytes, batteryRoundTrip,
             repeatedLoadStable, resetStable,
             recording?.Events.Count ?? 0, appliedInputEvents, frameChangesAfterInput,
-            inputChangedFinalFrame, firstInputFrameDivergenceCycle, checkpoints);
+            inputChangedFinalFrame, firstInputFrameDivergenceCycle, checkpoints,
+            outcome == "completed" && gateFailures.Count == 0, gateFailures);
     }
 
     private static EmulatorOptions DeterministicOptions() => new()

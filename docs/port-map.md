@@ -43,6 +43,9 @@ Input-assisted qualification distinguishes supplied events from events applied
 within the requested run, reports frame changes observed after input begins,
 and compares checkpoint and final frames with a deterministic no-input control
 replay, including the first divergent checkpoint cycle.
+It also reports the complete playable-gate decision and each unmet criterion,
+and the qualification CLI treats an unmet gate as a failed command even when
+the emulation run itself completed.
 DMG/MGB powered-off writes to the four channel-length registers are covered as well; CGB-family channel writes remain gated.
 The display mapping also covers VBlank interrupt requests, SameBoy's read-only
 LY register and later-CGB normal-speed first-HBlank
