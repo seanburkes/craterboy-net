@@ -28,12 +28,14 @@ internal sealed class ApuDevice : ICycleParticipant
     private int _channel1SweepFrequency;
     private bool _sweepEnabled;
     private int _wave1Phase;
+    private int _channel1Timer;
     private int _channel2Length;
     private bool _channel2Enabled;
     private int _channel2Volume;
     private int _channel2EnvelopeTimer;
     private int _channel2Frequency;
     private int _wave2Phase;
+    private int _channel2Timer;
     private int _channel3Length;
     private bool _channel3Enabled;
     private int _wave3Phase;
@@ -74,12 +76,14 @@ internal sealed class ApuDevice : ICycleParticipant
         _channel1SweepFrequency = 0;
         _sweepEnabled = false;
         _wave1Phase = 0;
+        _channel1Timer = 0;
         _channel2Length = 0;
         _channel2Enabled = false;
         _channel2Volume = 0;
         _channel2EnvelopeTimer = 0;
         _channel2Frequency = 0;
         _wave2Phase = 0;
+        _channel2Timer = 0;
         _channel3Length = 0;
         _channel3Enabled = false;
         _wave3Phase = 0;
@@ -139,12 +143,14 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel1SweepFrequency = 0;
                 _sweepEnabled = false;
                 _wave1Phase = 0;
+                _channel1Timer = 0;
                 _channel2Length = 0;
                 _channel2Enabled = false;
                 _channel2Volume = 0;
                 _channel2EnvelopeTimer = 0;
                 _channel2Frequency = 0;
                 _wave2Phase = 0;
+                _channel2Timer = 0;
                 _channel3Length = 0;
                 _channel3Enabled = false;
                 _wave3Phase = 0;
@@ -212,9 +218,11 @@ internal sealed class ApuDevice : ICycleParticipant
                 break;
             case 0xFF13:
                 _channel1Frequency = (_channel1Frequency & 0x700) | value;
+                if (_channel1Enabled) _channel1Timer = PulsePeriod(_channel1Frequency);
                 break;
             case 0xFF18:
                 _channel2Frequency = (_channel2Frequency & 0x700) | value;
+                if (_channel2Enabled) _channel2Timer = PulsePeriod(_channel2Frequency);
                 break;
             case 0xFF16:
                 _channel2Length = 64 - (value & 0x3F);
@@ -225,6 +233,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 break;
             case 0xFF19:
                 _channel2Frequency = (_channel2Frequency & 0x0FF) | ((value & 0x07) << 8);
+                if (_channel2Enabled && (value & 0x80) == 0) _channel2Timer = PulsePeriod(_channel2Frequency);
                 if ((value & 0x80) != 0)
                 {
                     if (_channel2Length == 0) _channel2Length = 64;
@@ -232,6 +241,7 @@ internal sealed class ApuDevice : ICycleParticipant
                     _channel2EnvelopeTimer = (_io[0x17] & 0x07) == 0 ? 8 : (_io[0x17] & 0x07);
                     _channel2Enabled = (_io[0x17] & 0xF8) != 0;
                     _wave2Phase = 0;
+                    _channel2Timer = PulsePeriod(_channel2Frequency);
                     UpdateStatus();
                 }
                 if ((previousValue & 0x40) == 0 && (value & 0x80) == 0 && (_frameStep & 1) == 0 &&
@@ -323,6 +333,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 break;
             case 0xFF14:
                 _channel1Frequency = (_channel1Frequency & 0x0FF) | ((value & 0x07) << 8);
+                if (_channel1Enabled && (value & 0x80) == 0) _channel1Timer = PulsePeriod(_channel1Frequency);
                 if ((value & 0x80) != 0)
                 {
                     if (_channel1Length == 0) _channel1Length = 64;
@@ -337,6 +348,7 @@ internal sealed class ApuDevice : ICycleParticipant
                         _channel1Enabled = false;
                     }
                     _wave1Phase = 0;
+                    _channel1Timer = PulsePeriod(_channel1Frequency);
                     UpdateStatus();
                 }
                 if ((previousValue & 0x40) == 0 && (value & 0x80) == 0 && (_frameStep & 1) == 0 &&
@@ -365,6 +377,16 @@ internal sealed class ApuDevice : ICycleParticipant
         {
             _wave3Phase = (_wave3Phase + 1) & 31;
             _channel3Timer = WavePeriod();
+        }
+        if (_channel1Enabled && --_channel1Timer <= 0)
+        {
+            _wave1Phase = (_wave1Phase + 1) & 7;
+            _channel1Timer = PulsePeriod(_channel1Frequency);
+        }
+        if (_channel2Enabled && --_channel2Timer <= 0)
+        {
+            _wave2Phase = (_wave2Phase + 1) & 7;
+            _channel2Timer = PulsePeriod(_channel2Frequency);
         }
         if (++_frameCycles < 8192) return;
         _frameCycles = 0;
@@ -482,10 +504,10 @@ internal sealed class ApuDevice : ICycleParticipant
         writer.Write(_channel1Volume); writer.Write(_envelopeTimer);
         writer.Write(_sweepTimer); writer.Write(_channel1Frequency);
         writer.Write(_channel1SweepFrequency); writer.Write(_sweepEnabled);
-        writer.Write(_wave1Phase);
+        writer.Write(_wave1Phase); writer.Write(_channel1Timer);
         writer.Write(_channel2Length); writer.Write(_channel2Enabled);
         writer.Write(_channel2Volume); writer.Write(_channel2EnvelopeTimer);
-        writer.Write(_channel2Frequency); writer.Write(_wave2Phase);
+        writer.Write(_channel2Frequency); writer.Write(_wave2Phase); writer.Write(_channel2Timer);
         writer.Write(_channel3Length); writer.Write(_channel3Enabled);
         writer.Write(_wave3Phase); writer.Write(_channel3Frequency); writer.Write(_channel3Timer);
         writer.Write(_channel4Length); writer.Write(_channel4Enabled);
@@ -505,20 +527,16 @@ internal sealed class ApuDevice : ICycleParticipant
             var duty = (_io[0x11] >> 6) & 0x03;
             var high = ((DutyPatterns[duty] >> (7 - _wave1Phase)) & 1) != 0;
             channels[0] = high ? _channel1Volume * 2048 : -_channel1Volume * 2048;
-            var nextPhase = (_wave1Phase + Math.Max(1, _channel1Frequency >> 8)) & 7;
-            var nextHigh = ((DutyPatterns[duty] >> (7 - nextPhase)) & 1) != 0;
-            if (HasEarlyCgbPcmGlitch && high && !nextHigh) _pcm12Mask &= 0xF0;
-            _wave1Phase = nextPhase;
+            if (HasEarlyCgbPcmGlitch && high && ((DutyPatterns[duty] >> (7 - ((_wave1Phase + 1) & 7))) & 1) == 0)
+                _pcm12Mask &= 0xF0;
         }
         if (_channel2Enabled)
         {
             var duty = (_io[0x16] >> 6) & 0x03;
             var high = ((DutyPatterns[duty] >> (7 - _wave2Phase)) & 1) != 0;
             channels[1] = high ? _channel2Volume * 2048 : -_channel2Volume * 2048;
-            var nextPhase = (_wave2Phase + Math.Max(1, _channel2Frequency >> 8)) & 7;
-            var nextHigh = ((DutyPatterns[duty] >> (7 - nextPhase)) & 1) != 0;
-            if (HasEarlyCgbPcmGlitch && high && !nextHigh) _pcm12Mask &= 0x0F;
-            _wave2Phase = nextPhase;
+            if (HasEarlyCgbPcmGlitch && high && ((DutyPatterns[duty] >> (7 - ((_wave2Phase + 1) & 7))) & 1) == 0)
+                _pcm12Mask &= 0x0F;
         }
         if (_channel3Enabled)
         {
@@ -601,6 +619,8 @@ internal sealed class ApuDevice : ICycleParticipant
     private bool HasEarlyCgbPcmGlitch => _model is >= GameBoyModel.Cgb0 and <= GameBoyModel.CgbC;
 
     private int WavePeriod() => Math.Max(1, (2048 - _channel3Frequency) * 2);
+
+    private static int PulsePeriod(int frequency) => Math.Max(1, (2048 - frequency) * 4);
 
     private ushort CurrentWaveRamAddress => (ushort)(0xFF30 + ((_wave3Phase & 0x1F) >> 1));
 }

@@ -108,3 +108,7 @@ register snapshots, memory operations, and single-instruction execution.
 SameBoy's 8 MHz tick result is normalized to T-cycles at that boundary. The
 native artifacts are ignored by Git and are not referenced by the shipping
 core project.
+
+Pulse channel 1 and 2 duty phases now advance from frequency-derived hardware
+timers rather than from the managed audio output cadence; the timer state is
+included in deterministic APU hashes.

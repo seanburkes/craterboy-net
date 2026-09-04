@@ -3341,7 +3341,7 @@ public sealed class KernelTests
         foreach (var emulator in new[] { lowFrequency, highFrequency })
         {
             emulator.WriteMemory(0xFF26, 0x80);
-            emulator.WriteMemory(0xFF11, 0x00); // duty 0
+            emulator.WriteMemory(0xFF11, 0xC0); // duty 3
             emulator.WriteMemory(0xFF12, 0xF0); // DAC and volume
         }
         lowFrequency.WriteMemory(0xFF13, 0x00);
@@ -3349,13 +3349,13 @@ public sealed class KernelTests
         highFrequency.WriteMemory(0xFF13, 0x00);
         highFrequency.WriteMemory(0xFF14, 0x87);
 
-        lowFrequency.RunCycles(95 * 2);
-        highFrequency.RunCycles(95 * 2);
-        var lowSamples = new short[4];
-        var highSamples = new short[4];
-        Assert.Equal(2, lowFrequency.CopyAudioFrames(lowSamples));
-        Assert.Equal(2, highFrequency.CopyAudioFrames(highSamples));
-        Assert.NotEqual(lowSamples[2], highSamples[2]);
+        lowFrequency.RunCycles(2300);
+        highFrequency.RunCycles(2300);
+        var lowSamples = new short[48];
+        var highSamples = new short[48];
+        Assert.Equal(24, lowFrequency.CopyAudioFrames(lowSamples));
+        Assert.Equal(24, highFrequency.CopyAudioFrames(highSamples));
+        Assert.NotEqual(lowSamples[44], highSamples[44]);
     }
 
     [Fact]
@@ -3398,7 +3398,7 @@ public sealed class KernelTests
         new byte[] { 0xC3, 0x00, 0x01 }.CopyTo(rom, 0x100);
         var emulator = NewEmulator(rom);
         emulator.WriteMemory(0xFF26, 0x80);
-        emulator.WriteMemory(0xFF16, 0x00); // duty 0
+        emulator.WriteMemory(0xFF16, 0xC0); // duty 3
         emulator.WriteMemory(0xFF17, 0xF0); // DAC and volume
         emulator.WriteMemory(0xFF19, 0x80); // trigger at low frequency
         emulator.RunCycles(95);
@@ -3406,10 +3406,10 @@ public sealed class KernelTests
         Assert.Equal(1, emulator.CopyAudioFrames(first));
 
         emulator.WriteMemory(0xFF19, 0x87); // update frequency, no trigger
-        emulator.RunCycles(95 * 2);
-        var following = new short[4];
-        Assert.Equal(2, emulator.CopyAudioFrames(following));
-        Assert.NotEqual(first[0], following[2]);
+        emulator.RunCycles(95 * 12);
+        var following = new short[24];
+        Assert.Equal(12, emulator.CopyAudioFrames(following));
+        Assert.NotEqual(first[0], following[20]);
         Assert.Equal((byte)0xF2, emulator.PeekMemory(0xFF26));
     }
 
