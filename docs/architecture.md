@@ -265,7 +265,9 @@ Channel 1 and channel 2 pulse phases reset on trigger and advance from their
 frequency registers, keeping their duty waveforms independent. Active channels
 also apply high-frequency register writes without requiring a retrigger.
 NR50 master volume and NR51 per-channel routing now shape the emitted PCM.
-Channel 1, channel 2, and channel 4 envelopes clock on frame-sequencer step 7.
+Pulse channel duty phases advance from frequency timers at hardware-cycle
+boundaries, independently of the output sample cadence. Channel 1, channel 2,
+and channel 4 envelopes clock on frame-sequencer step 7.
 All four channel length-enable writes model the divider-edge tick, including
 the older-CGB revision exception.
 Length counters clock on frame-sequencer steps 0, 2, 4, and 6.
