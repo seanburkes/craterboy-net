@@ -112,3 +112,5 @@ core project.
 Pulse channel 1 and 2 duty phases now advance from frequency-derived hardware
 timers rather than from the managed audio output cadence; the timer state is
 included in deterministic APU hashes.
+Channel 4 noise LFSR cadence now likewise advances from T-cycle timing, so
+noise playback is independent of output-buffer draining.

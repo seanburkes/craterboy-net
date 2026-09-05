@@ -388,6 +388,7 @@ internal sealed class ApuDevice : ICycleParticipant
             _wave2Phase = (_wave2Phase + 1) & 7;
             _channel2Timer = PulsePeriod(_channel2Frequency);
         }
+        AdvanceNoise();
         if (++_frameCycles < 8192) return;
         _frameCycles = 0;
         _frameStep = (_frameStep + 1) & 7;
@@ -550,15 +551,6 @@ internal sealed class ApuDevice : ICycleParticipant
         {
             var high = (_noiseLfsr & 1) == 0;
             channels[3] = high ? _channel4Volume * 2048 : -_channel4Volume * 2048;
-            if (_noiseTimer-- <= 0)
-            {
-                var feedback = (_noiseLfsr & 1) ^ ((_noiseLfsr >> 1) & 1);
-                if (HasEarlyCgbPcmGlitch && channels[3] == 0) _pcm34Mask &= 0x0F;
-                _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
-                if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
-                var divisor = (_io[0x22] & 0x07) switch { 0 => 8, 1 => 16, 2 => 32, 3 => 48, 4 => 64, 5 => 80, 6 => 96, _ => 112 };
-                _noiseTimer = divisor << ((_io[0x22] >> 4) & 0x0F);
-            }
         }
         var routing = _mixerConfigured ? _io[0x25] : 0xFF;
         var left = 0;
@@ -621,6 +613,18 @@ internal sealed class ApuDevice : ICycleParticipant
     private int WavePeriod() => Math.Max(1, (2048 - _channel3Frequency) * 2);
 
     private static int PulsePeriod(int frequency) => Math.Max(1, (2048 - frequency) * 4);
+
+    private void AdvanceNoise()
+    {
+        if (!_channel4Enabled || --_noiseTimer > 0) return;
+
+        var feedback = (_noiseLfsr & 1) ^ ((_noiseLfsr >> 1) & 1);
+        if (HasEarlyCgbPcmGlitch && _channel4Volume == 0) _pcm34Mask &= 0x0F;
+        _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
+        if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
+        var divisor = (_io[0x22] & 0x07) switch { 0 => 8, 1 => 16, 2 => 32, 3 => 48, 4 => 64, 5 => 80, 6 => 96, _ => 112 };
+        _noiseTimer = divisor << ((_io[0x22] >> 4) & 0x0F);
+    }
 
     private ushort CurrentWaveRamAddress => (ushort)(0xFF30 + ((_wave3Phase & 0x1F) >> 1));
 }

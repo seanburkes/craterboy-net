@@ -260,7 +260,8 @@ Noise LFSR edges also update the early-CGB PCM34 mask.
 CGB-0 retains SameBoy's narrower channel-two PCM12 mask for its rising
 envelope edge.
 Channel 4 noise LFSR, trigger/length timing, status, and PCM mixing are also
-present.
+present. Its LFSR cadence is driven by the emulated hardware timer rather than
+the output sample cadence.
 Channel 1 and channel 2 pulse phases reset on trigger and advance from their
 frequency registers, keeping their duty waveforms independent. Active channels
 also apply high-frequency register writes without requiring a retrigger.

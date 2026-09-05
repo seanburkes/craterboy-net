@@ -3537,6 +3537,22 @@ public sealed class KernelTests
         Assert.NotEqual(baseline, actual);
     }
 
+    [Fact]
+    public void ApuNoiseLfsrAdvancesBetweenOutputSamples()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF21, 0x10); // DAC and volume 1
+        emulator.WriteMemory(0xFF22, 0x00); // shortest noise period
+        emulator.WriteMemory(0xFF23, 0x80);
+
+        var before = emulator.PeekMemory(0xFF77);
+        emulator.RunCycles(120);
+
+        Assert.Equal((byte)0x00, before);
+        Assert.Equal((byte)0x10, emulator.PeekMemory(0xFF77));
+    }
+
     [Theory]
     [InlineData(GameBoyModel.DmgB)]
     [InlineData(GameBoyModel.CgbD)]
