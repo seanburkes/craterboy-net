@@ -3267,6 +3267,22 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuChannelOneSweepReloadsThePulseTimer()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF10, 0x19); // period 1, negate, shift 1
+        emulator.WriteMemory(0xFF11, 0x80); // duty 2
+        emulator.WriteMemory(0xFF12, 0x10); // DAC and volume 1
+        emulator.WriteMemory(0xFF13, 0x00);
+        emulator.WriteMemory(0xFF14, 0x80); // trigger at frequency 1024
+
+        emulator.RunCycles(21_000);
+
+        Assert.Equal((byte)0x00, (byte)(emulator.PeekMemory(0xFF76) & 0x0F));
+    }
+
+    [Fact]
     public void ApuChannelOneSweepRegisterWritesReconfigureActiveSweep()
     {
         var rom = MakeRom();
