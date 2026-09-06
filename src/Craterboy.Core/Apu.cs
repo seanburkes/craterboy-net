@@ -264,9 +264,11 @@ internal sealed class ApuDevice : ICycleParticipant
                 break;
             case 0xFF1D:
                 _channel3Frequency = (_channel3Frequency & 0x700) | value;
+                if (_channel3Enabled) _channel3Timer = WavePeriod();
                 break;
             case 0xFF1E:
                 _channel3Frequency = (_channel3Frequency & 0x0FF) | ((value & 0x07) << 8);
+                if (_channel3Enabled && (value & 0x80) == 0) _channel3Timer = WavePeriod();
                 if ((value & 0x80) != 0)
                 {
                     if (!_model.IsColor() && _channel3Enabled && _wave3Phase != 0)

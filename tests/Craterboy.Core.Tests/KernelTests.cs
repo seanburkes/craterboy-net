@@ -3711,6 +3711,25 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void ApuActiveWaveRespondsToFrequencyWriteWithoutRetrigger()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF30, 0x11);
+        emulator.WriteMemory(0xFF31, 0x22);
+        emulator.WriteMemory(0xFF1A, 0x80); // DAC on
+        emulator.WriteMemory(0xFF1D, 0x00);
+        emulator.WriteMemory(0xFF1E, 0x80); // trigger at frequency 0
+        emulator.RunCycles(100);
+
+        emulator.WriteMemory(0xFF1E, 0x07); // frequency 0x700, no trigger
+        emulator.RunCycles(1024);
+
+        Assert.Equal((byte)0x22, emulator.PeekMemory(0xFF30));
+        Assert.Equal((byte)0xF4, emulator.PeekMemory(0xFF26));
+    }
+
+    [Fact]
     public void ApuChannelThreeVolumeCodeZeroMutesWaveOutput()
     {
         var rom = MakeRom();

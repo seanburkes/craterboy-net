@@ -247,6 +247,7 @@ Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present. Its 32-step wave phase advances from the channel frequency timer,
 independently of the output sample cadence.
+Active frequency writes reload that timer without retriggering channel 3.
 DMG channel 3 retriggers at a nonzero wave phase apply SameBoy's deterministic
 first-byte wave-RAM corruption variant; MGB's instance-specific variant remains
 deterministically copies the selected four-byte wave group.
