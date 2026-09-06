@@ -116,3 +116,5 @@ Channel 4 noise LFSR cadence now likewise advances from T-cycle timing, so
 noise playback is independent of output-buffer draining.
 Channel 1 sweep frequency updates also reload the pulse duty timer so swept
 playback follows the new hardware period immediately.
+Active channel 3 frequency writes likewise reload the wave timer without
+restarting the channel.
