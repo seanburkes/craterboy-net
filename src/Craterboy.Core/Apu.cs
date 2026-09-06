@@ -457,6 +457,7 @@ internal sealed class ApuDevice : ICycleParticipant
             {
                 _channel1Frequency = next;
                 _channel1SweepFrequency = next;
+                _channel1Timer = PulsePeriod(next);
                 _io[0x13] = (byte)next;
                 _io[0x14] = (byte)((_io[0x14] & 0xF8) | (next >> 8));
             }
