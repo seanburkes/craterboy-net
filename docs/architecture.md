@@ -476,6 +476,8 @@ qualification workflow runs caller-owned ROMs with fixed time and entropy,
 optionally replays validated input recordings, and emits ROM-safe JSON with
 metadata, checkpoint hashes, frame/audio activity, battery round-trip evidence,
 same-instance reload/reset stability evidence, and sanitized failure details.
+Reports also identify the first checkpoint cycle with a changed frame and the
+first checkpoint cycle containing non-silent audio.
 Reports distinguish supplied input events from those applied before the run
 boundary, count checkpoint-visible frame changes after input begins, and replay
 the completed duration without input to identify final-frame divergence and the
