@@ -243,6 +243,9 @@ channel frames into a preallocated bounded managed ring and exposes caller-owned
 interleaved-stereo draining through `Emulator.CopyAudioFrames`. NR51 routing
 and NR50 volume are applied independently to each side, and the returned count
 is measured in complete stereo frames; host playback remains outside the core.
+Channel 4 noise timing uses the hardware NR43 divisor table and shift amount,
+including the separate seven-bit LFSR width mode; its period is expressed in
+master T-cycles so playback does not depend on audio-buffer draining.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present. Its 32-step wave phase advances from the channel frequency timer,
