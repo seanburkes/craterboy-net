@@ -25,6 +25,7 @@ public sealed record RetailQualificationReport(
     long? FirstFrameChangeCycle,
     long? FirstAudioCycle,
     bool BatteryDirtyObserved,
+    long? FirstBatteryDirtyCycle,
     int BatteryBytes,
     bool BatteryRoundTrip,
     bool RepeatedLoadStable,
@@ -59,6 +60,7 @@ public static class RetailQualification
         var audioNonSilent = false;
         long? firstAudioCycle = null;
         var batteryDirty = false;
+        long? firstBatteryDirtyCycle = null;
         var previousFrame = new ushort[160 * 144];
         var audio = new short[8192];
         Emulator? emulator = null;
@@ -110,7 +112,11 @@ public static class RetailQualification
                         !emulator.RawFrame.SequenceEqual(noInput.RawFrame))
                         firstInputFrameDivergenceCycle ??= target;
                 }
-                batteryDirty |= emulator.BatteryDirty;
+                if (emulator.BatteryDirty)
+                {
+                    batteryDirty = true;
+                    firstBatteryDirtyCycle ??= emulator.CycleCount;
+                }
                 checkpoints.Add(new(emulator.CycleCount, Convert.ToHexString(emulator.ComputeStateHash())));
                 if (!emulator.RawFrame.SequenceEqual(previousFrame))
                 {
@@ -186,7 +192,7 @@ public static class RetailQualification
             header.RomSize, header.RamSize, header.SupportsColor, model.ToString(), cycles,
             completedCycles, completedCycles >= TenMinuteCycles, outcome, errorType, errorMessage, frameChanges,
             audioFrames, audioNonSilent, firstFrameChangeCycle, firstAudioCycle,
-            batteryDirty, batteryBytes, batteryRoundTrip,
+            batteryDirty, firstBatteryDirtyCycle, batteryBytes, batteryRoundTrip,
             repeatedLoadStable, resetStable,
             recording?.Events.Count ?? 0, appliedInputEvents, frameChangesAfterInput,
             inputChangedFinalFrame, firstInputFrameDivergenceCycle, checkpoints,
