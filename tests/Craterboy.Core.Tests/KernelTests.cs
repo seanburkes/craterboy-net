@@ -88,6 +88,7 @@ public sealed class KernelTests
         Assert.False(report.PlayableGatePassed);
         Assert.Contains("ten-minute duration was not completed", report.PlayableGateFailures);
         Assert.True(report.BatteryDirtyObserved);
+        Assert.Equal(1000, report.FirstBatteryDirtyCycle);
         Assert.True(report.BatteryRoundTrip);
         Assert.True(report.RepeatedLoadStable);
         Assert.True(report.ResetStable);

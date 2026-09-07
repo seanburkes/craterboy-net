@@ -122,3 +122,5 @@ restarting the channel.
 Retail qualification reports now record the first checkpoint cycles at which
 video changes and non-silent audio appears, improving ROM-safe gameplay
 diagnostics without storing ROM contents.
+The report also records the first checkpoint cycle at which battery state is
+dirty, making persistence timing failures easier to diagnose.
