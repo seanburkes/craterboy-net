@@ -22,6 +22,8 @@ public sealed record RetailQualificationReport(
     int FrameChanges,
     long AudioFrames,
     bool AudioNonSilent,
+    long? FirstFrameChangeCycle,
+    long? FirstAudioCycle,
     bool BatteryDirtyObserved,
     int BatteryBytes,
     bool BatteryRoundTrip,
@@ -52,8 +54,10 @@ public static class RetailQualification
         var model = requestedModel ?? (header.SupportsColor ? GameBoyModel.CgbE : GameBoyModel.DmgB);
         var checkpoints = new List<QualificationCheckpoint>();
         var frameChanges = 0;
+        long? firstFrameChangeCycle = null;
         long audioFrames = 0;
         var audioNonSilent = false;
+        long? firstAudioCycle = null;
         var batteryDirty = false;
         var previousFrame = new ushort[160 * 144];
         var audio = new short[8192];
@@ -111,12 +115,17 @@ public static class RetailQualification
                 if (!emulator.RawFrame.SequenceEqual(previousFrame))
                 {
                     frameChanges++;
+                    firstFrameChangeCycle ??= emulator.CycleCount;
                     if (appliedInputEvents != 0) frameChangesAfterInput++;
                     emulator.RawFrame.CopyTo(previousFrame);
                 }
                 var copied = emulator.CopyAudioFrames(audio);
                 audioFrames += copied;
-                audioNonSilent |= audio.AsSpan(0, copied * 2).ContainsAnyExcept((short)0);
+                if (!audioNonSilent && audio.AsSpan(0, copied * 2).ContainsAnyExcept((short)0))
+                {
+                    audioNonSilent = true;
+                    firstAudioCycle = emulator.CycleCount;
+                }
                 if (target == cycles) break;
                 nextCheckpoint = Math.Min(cycles, checked(nextCheckpoint + checkpointCycles));
             }
@@ -176,7 +185,8 @@ public static class RetailQualification
             Convert.ToHexString(SHA256.HashData(rom.Span)), header.Title, header.CartridgeType,
             header.RomSize, header.RamSize, header.SupportsColor, model.ToString(), cycles,
             completedCycles, completedCycles >= TenMinuteCycles, outcome, errorType, errorMessage, frameChanges,
-            audioFrames, audioNonSilent, batteryDirty, batteryBytes, batteryRoundTrip,
+            audioFrames, audioNonSilent, firstFrameChangeCycle, firstAudioCycle,
+            batteryDirty, batteryBytes, batteryRoundTrip,
             repeatedLoadStable, resetStable,
             recording?.Events.Count ?? 0, appliedInputEvents, frameChangesAfterInput,
             inputChangedFinalFrame, firstInputFrameDivergenceCycle, checkpoints,

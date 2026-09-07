@@ -61,6 +61,8 @@ public sealed class KernelTests
         Assert.Equal(1, report.AppliedInputEvents);
         Assert.True(report.InputChangedFinalFrame);
         Assert.Equal(70_224, report.FirstInputFrameDivergenceCycle);
+        Assert.Equal(70_224, report.FirstFrameChangeCycle);
+        Assert.Null(report.FirstAudioCycle);
     }
 
     [Fact]
