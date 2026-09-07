@@ -114,6 +114,9 @@ timers rather than from the managed audio output cadence; the timer state is
 included in deterministic APU hashes.
 Channel 4 noise LFSR cadence now likewise advances from T-cycle timing, so
 noise playback is independent of output-buffer draining.
+Its NR43 divisor and shift fields now use the hardware master-clock period,
+and the seven-bit width mode is covered independently from the fifteen-bit
+sequence.
 Channel 1 sweep frequency updates also reload the pulse duty timer so swept
 playback follows the new hardware period immediately.
 Active channel 3 frequency writes likewise reload the wave timer without

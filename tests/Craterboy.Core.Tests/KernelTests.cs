@@ -3566,10 +3566,44 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF23, 0x80);
 
         var before = emulator.PeekMemory(0xFF77);
-        emulator.RunCycles(120);
+        emulator.RunCycles(15 * 128);
 
         Assert.Equal((byte)0x00, before);
         Assert.Equal((byte)0x10, emulator.PeekMemory(0xFF77));
+    }
+
+    [Theory]
+    [InlineData((byte)0x00, 128)]
+    [InlineData((byte)0x10, 256)]
+    [InlineData((byte)0x23, 3072)]
+    [InlineData((byte)0x07, 1792)]
+    public void ApuNoiseUsesHardwareDividerPeriod(byte nr43, int period)
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        emulator.WriteMemory(0xFF26, 0x80);
+        emulator.WriteMemory(0xFF21, 0x10); // DAC and volume 1
+        emulator.WriteMemory(0xFF22, nr43);
+        emulator.WriteMemory(0xFF23, 0x80);
+
+        emulator.RunCycles(15 * period - 1);
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF77));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0x10, emulator.PeekMemory(0xFF77));
+    }
+
+    [Fact]
+    public void ApuNoiseWidthModeChangesTheLfsrSequenceWithoutChangingCadence()
+    {
+        var fifteenBit = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        var sevenBit = NewEmulator(MakeRom(), GameBoyModel.CgbE);
+        ConfigureNoise(fifteenBit, 0x00);
+        ConfigureNoise(sevenBit, 0x08);
+
+        fifteenBit.RunCycles(128 * 15);
+        sevenBit.RunCycles(128 * 15);
+
+        Assert.NotEqual(fifteenBit.ComputeStateHash(), sevenBit.ComputeStateHash());
+        Assert.Equal(fifteenBit.PeekMemory(0xFF77), sevenBit.PeekMemory(0xFF77));
     }
 
     [Theory]

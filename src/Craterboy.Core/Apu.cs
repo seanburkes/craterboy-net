@@ -305,7 +305,7 @@ internal sealed class ApuDevice : ICycleParticipant
                 _channel4Length = 64 - (value & 0x3F);
                 break;
             case 0xFF22:
-                _noiseTimer = 0;
+                _noiseTimer = NoisePeriod();
                 break;
             case 0xFF21 when (value & 0xF8) == 0:
                 _channel4Enabled = false;
@@ -319,7 +319,7 @@ internal sealed class ApuDevice : ICycleParticipant
                     _channel4EnvelopeTimer = (_io[0x21] & 0x07) == 0 ? 8 : (_io[0x21] & 0x07);
                     _channel4Enabled = (_io[0x21] & 0xF8) != 0;
                     _noiseLfsr = 0x7FFF;
-                    _noiseTimer = 0;
+                    _noiseTimer = NoisePeriod();
                     UpdateStatus();
                 }
                 if ((previousValue & 0x40) == 0 && (value & 0x80) == 0 && (_frameStep & 1) == 0 &&
@@ -625,8 +625,15 @@ internal sealed class ApuDevice : ICycleParticipant
         if (HasEarlyCgbPcmGlitch && _channel4Volume == 0) _pcm34Mask &= 0x0F;
         _noiseLfsr = (ushort)((_noiseLfsr >> 1) | (feedback << 14));
         if ((_io[0x22] & 0x08) != 0) _noiseLfsr = (ushort)((_noiseLfsr & ~0x40) | (feedback << 6));
+        _noiseTimer = NoisePeriod();
+    }
+
+    private int NoisePeriod()
+    {
         var divisor = (_io[0x22] & 0x07) switch { 0 => 8, 1 => 16, 2 => 32, 3 => 48, 4 => 64, 5 => 80, 6 => 96, _ => 112 };
-        _noiseTimer = divisor << ((_io[0x22] >> 4) & 0x0F);
+        // NR43 derives the LFSR clock from the 512 kHz base, so one period is
+        // r * 2^(shift + 4) master T-cycles at the 4.194304 MHz clock.
+        return divisor << (((_io[0x22] >> 4) & 0x0F) + 4);
     }
 
     private ushort CurrentWaveRamAddress => (ushort)(0xFF30 + ((_wave3Phase & 0x1F) >> 1));
