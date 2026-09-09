@@ -481,6 +481,9 @@ metadata, checkpoint hashes, frame/audio activity, battery round-trip evidence,
 same-instance reload/reset stability evidence, and sanitized failure details.
 Reports also identify the first checkpoint cycle with a changed frame and the
 first checkpoint cycle containing non-silent audio.
+Each checkpoint also records whether the raw frame changed, the number of audio
+frames drained, and whether those frames were non-silent, keeping media
+evidence aligned with the deterministic state hash without retaining ROM data.
 Battery evidence identifies the first checkpoint cycle at which the cartridge
 reports dirty persistent state.
 Reports distinguish supplied input events from those applied before the run

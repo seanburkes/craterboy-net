@@ -3,7 +3,12 @@ using Craterboy;
 
 namespace Craterboy.Tester;
 
-public sealed record QualificationCheckpoint(long Cycle, string StateSha256);
+public sealed record QualificationCheckpoint(
+    long Cycle,
+    string StateSha256,
+    bool FrameChanged,
+    long AudioFrames,
+    bool AudioNonSilent);
 
 public sealed record RetailQualificationReport(
     string RomSha256,
@@ -117,8 +122,9 @@ public static class RetailQualification
                     batteryDirty = true;
                     firstBatteryDirtyCycle ??= emulator.CycleCount;
                 }
-                checkpoints.Add(new(emulator.CycleCount, Convert.ToHexString(emulator.ComputeStateHash())));
-                if (!emulator.RawFrame.SequenceEqual(previousFrame))
+                var checkpointHash = Convert.ToHexString(emulator.ComputeStateHash());
+                var frameChanged = !emulator.RawFrame.SequenceEqual(previousFrame);
+                if (frameChanged)
                 {
                     frameChanges++;
                     firstFrameChangeCycle ??= emulator.CycleCount;
@@ -127,11 +133,18 @@ public static class RetailQualification
                 }
                 var copied = emulator.CopyAudioFrames(audio);
                 audioFrames += copied;
-                if (!audioNonSilent && audio.AsSpan(0, copied * 2).ContainsAnyExcept((short)0))
+                var checkpointAudioNonSilent = copied > 0 && audio.AsSpan(0, copied * 2).ContainsAnyExcept((short)0);
+                if (!audioNonSilent && checkpointAudioNonSilent)
                 {
                     audioNonSilent = true;
                     firstAudioCycle = emulator.CycleCount;
                 }
+                checkpoints.Add(new(
+                    emulator.CycleCount,
+                    checkpointHash,
+                    frameChanged,
+                    copied,
+                    checkpointAudioNonSilent));
                 if (target == cycles) break;
                 nextCheckpoint = Math.Min(cycles, checked(nextCheckpoint + checkpointCycles));
             }

@@ -127,3 +127,5 @@ video changes and non-silent audio appears, improving ROM-safe gameplay
 diagnostics without storing ROM contents.
 The report also records the first checkpoint cycle at which battery state is
 dirty, making persistence timing failures easier to diagnose.
+Qualification checkpoints now carry per-checkpoint frame-change and drained
+audio evidence, including a non-silent marker, alongside their state hashes.

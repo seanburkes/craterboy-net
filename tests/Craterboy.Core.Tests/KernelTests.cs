@@ -63,6 +63,9 @@ public sealed class KernelTests
         Assert.Equal(70_224, report.FirstInputFrameDivergenceCycle);
         Assert.Equal(70_224, report.FirstFrameChangeCycle);
         Assert.Null(report.FirstAudioCycle);
+        Assert.True(report.Checkpoints[0].FrameChanged);
+        Assert.Equal(0, report.Checkpoints[0].AudioFrames);
+        Assert.False(report.Checkpoints[0].AudioNonSilent);
     }
 
     [Fact]
