@@ -17,8 +17,9 @@ dotnet run --project src/Craterboy.Tester -- qualify game.gb --cycles 4213440 --
 
 The `qualify` command runs a caller-supplied ROM with deterministic time and
 entropy and writes ROM-safe JSON evidence: ROM identity and header metadata,
-checkpoint hashes, frame/audio activity, battery round-trip behavior, and any
-runtime failure. Add `--recording input.cbir` for deterministic input events.
+checkpoint hashes, per-checkpoint frame/audio activity, battery round-trip
+behavior, and any runtime failure. Add `--recording input.cbir` for
+deterministic input events.
 ROM bytes are never embedded in the report. Proprietary ROMs remain local and
 must not be committed to this repository.
 
