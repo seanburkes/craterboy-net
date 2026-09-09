@@ -13,6 +13,7 @@ It is not yet a complete or playable emulator; see `docs/port-map.md`.
 dotnet test Craterboy.slnx
 dotnet run --project src/Craterboy.Tester -- game.gb --cycles 1000
 dotnet run --project src/Craterboy.Tester -- qualify game.gb --cycles 4213440 --output report.json
+dotnet run --project src/Craterboy.Tester -- qualify game.gb --model Cgb0 --output cgb-report.json
 ```
 
 The `qualify` command runs a caller-supplied ROM with deterministic time and
@@ -20,6 +21,9 @@ entropy and writes ROM-safe JSON evidence: ROM identity and header metadata,
 checkpoint hashes, per-checkpoint frame/audio activity, battery round-trip
 behavior, and any runtime failure. Add `--recording input.cbir` for
 deterministic input events.
+Qualification infers `DmgB` or `CgbE` from the cartridge header by default;
+use `--model` with a `GameBoyModel` name such as `Mgb` or `Cgb0` for
+model-specific retail runs.
 ROM bytes are never embedded in the report. Proprietary ROMs remain local and
 must not be committed to this repository.
 

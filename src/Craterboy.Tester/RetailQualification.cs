@@ -51,7 +51,7 @@ public static class RetailQualification
 
     public static RetailQualificationReport Run(
         ReadOnlyMemory<byte> rom, long cycles, int checkpointCycles,
-        GameBoyModel? requestedModel = null, InputRecording? recording = null)
+        InputRecording? recording = null, GameBoyModel? requestedModel = null)
     {
         if (cycles < 0) throw new ArgumentOutOfRangeException(nameof(cycles));
         if (checkpointCycles <= 0) throw new ArgumentOutOfRangeException(nameof(checkpointCycles));

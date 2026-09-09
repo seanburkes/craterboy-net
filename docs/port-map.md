@@ -132,3 +132,5 @@ audio evidence, including a non-silent marker, alongside their state hashes.
 The qualification suite drives a real channel-one ROM fixture to verify
 non-silent checkpoint audio and repeated-load hash stability after audio
 activity; APU reset clears the sample storage included in those hashes.
+The qualification CLI also accepts explicit `GameBoyModel` names, while
+preserving DMG/CGB-E header inference when no model override is supplied.

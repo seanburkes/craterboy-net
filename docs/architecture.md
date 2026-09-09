@@ -496,5 +496,8 @@ The CLI defaults to ten minutes at the 4,194,304 Hz hardware clock with
 one-second checkpoints. Reports expose the documented playable-gate decision
 and individual unmet criteria; the CLI exits unsuccessfully when the run
 completes but the playable gate is not satisfied.
+Qualification infers `DmgB` or `CgbE` from the ROM header unless callers pass
+`--model`; explicit model names allow MGB and individual CGB revision runs to
+share the same ROM-safe evidence workflow.
 A native SameBoy adapter lives only in tests/CI
 and is never included in packages.
