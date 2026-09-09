@@ -100,6 +100,23 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void RetailQualificationUsesRequestedModelOverride()
+    {
+        var report = RetailQualification.Run(MakeRom(), 1_000, 1_000, requestedModel: GameBoyModel.Mgb);
+
+        Assert.Equal("Mgb", report.Model);
+    }
+
+    [Fact]
+    public void RetailQualificationRetainsPositionalInputRecordingCompatibility()
+    {
+        var recording = new InputRecording();
+        var report = RetailQualification.Run(MakeRom(), 1_000, 1_000, recording);
+
+        Assert.Equal(0, report.InputEvents);
+    }
+
+    [Fact]
     public void RetailQualificationSeparatesBatteryPersistenceFromResetLeakage()
     {
         var rom = MakeRom(type: 0x03, romSizeCode: 1, ramSizeCode: 2);

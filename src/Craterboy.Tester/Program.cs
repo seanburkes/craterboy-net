@@ -4,7 +4,7 @@ using Craterboy.Tester;
 
 if (args.Length == 0 || args[0] is "-h" or "--help")
 {
-    Console.WriteLine("Usage:\n  craterboy-tester <rom> [--cycles <count>]\n  craterboy-tester qualify <rom> [--cycles <count>] [--checkpoint-cycles <count>] [--recording <path>] [--output <path>]\n\nQualification defaults to ten emulated minutes with one-second checkpoints.");
+    Console.WriteLine("Usage:\n  craterboy-tester <rom> [--cycles <count>]\n  craterboy-tester qualify <rom> [--cycles <count>] [--checkpoint-cycles <count>] [--model <model>] [--recording <path>] [--output <path>]\n\nQualification defaults to ten emulated minutes with one-second checkpoints.\nModel names: DmgB, Mgb, Cgb0, CgbA, CgbB, CgbC, CgbD, CgbE, AgbA, GbpA, Sgb, Sgb2.");
     return 0;
 }
 
@@ -19,6 +19,7 @@ static int Qualify(string[] arguments)
     var romPath = arguments[0];
     long cycles = RetailQualification.TenMinuteCycles;
     var checkpointCycles = checked((int)RetailQualification.HardwareCyclesPerSecond);
+    GameBoyModel? requestedModel = null;
     string? recordingPath = null;
     string? outputPath = null;
     for (var index = 1; index < arguments.Length; index += 2)
@@ -32,6 +33,9 @@ static int Qualify(string[] arguments)
                 break;
             case "--checkpoint-cycles" when int.TryParse(value, out var parsedCheckpoint) && parsedCheckpoint > 0:
                 checkpointCycles = parsedCheckpoint;
+                break;
+            case "--model" when TryParseModel(value, out var parsedModel):
+                requestedModel = parsedModel;
                 break;
             case "--recording": recordingPath = value; break;
             case "--output": outputPath = value; break;
@@ -48,7 +52,7 @@ static int Qualify(string[] arguments)
             using var source = File.OpenRead(recordingPath);
             recording = InputRecording.Read(source);
         }
-        var report = RetailQualification.Run(rom, cycles, checkpointCycles, recording: recording);
+        var report = RetailQualification.Run(rom, cycles, checkpointCycles, recording, requestedModel);
         var json = JsonSerializer.Serialize(report, new JsonSerializerOptions { WriteIndented = true });
         if (outputPath is null) Console.WriteLine(json);
         else File.WriteAllText(outputPath, json + Environment.NewLine);
@@ -92,4 +96,15 @@ static int UsageError(string message)
 {
     Console.Error.WriteLine(message);
     return 2;
+}
+
+static bool TryParseModel(string value, out GameBoyModel model)
+{
+    if (Enum.TryParse(value, ignoreCase: true, out model) &&
+        Enum.GetName(model) is { } name &&
+        string.Equals(name, value, StringComparison.OrdinalIgnoreCase))
+        return true;
+
+    model = default;
+    return false;
 }
