@@ -102,6 +102,7 @@ internal sealed class ApuDevice : ICycleParticipant
         _sampleRead = 0;
         _sampleWrite = 0;
         _sampleCount = 0;
+        Array.Clear(_samples);
         Array.Clear(_io, 0x10, 0x16);
         Array.Clear(_io, 0x30, 0x10);
         _io[0x26] = 0;

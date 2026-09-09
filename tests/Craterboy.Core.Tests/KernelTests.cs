@@ -69,6 +69,30 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void RetailQualificationReportsNonSilentAudioAtTheCheckpointThatDrainsIt()
+    {
+        var rom = MakeRom();
+        new byte[] {
+            0x3E, 0x80, 0xE0, 0x26, // power on the APU
+            0x3E, 0x77, 0xE0, 0x24, // enable left/right mixer volume
+            0x3E, 0x11, 0xE0, 0x25, // route channel one to both outputs
+            0x3E, 0xF0, 0xE0, 0x12, // enable channel one DAC at full volume
+            0x3E, 0x80, 0xE0, 0x11, // duty and length
+            0x3E, 0x00, 0xE0, 0x13, // frequency low
+            0x3E, 0x80, 0xE0, 0x14, // trigger channel one
+            0xC3, 0x14, 0x01,       // retrigger while the ROM runs
+        }.CopyTo(rom, 0x100);
+
+        var report = RetailQualification.Run(rom, 140_448, 70_224);
+
+        Assert.Equal("completed", report.Outcome);
+        Assert.True(report.AudioNonSilent);
+        Assert.Contains(report.Checkpoints, checkpoint => checkpoint.AudioFrames > 0);
+        Assert.Contains(report.Checkpoints, checkpoint => checkpoint.AudioNonSilent);
+        Assert.True(report.RepeatedLoadStable);
+    }
+
+    [Fact]
     public void RetailQualificationTenMinuteGateUsesDmgHardwareClock()
     {
         Assert.Equal(4_194_304, RetailQualification.HardwareCyclesPerSecond);

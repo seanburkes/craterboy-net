@@ -129,3 +129,6 @@ The report also records the first checkpoint cycle at which battery state is
 dirty, making persistence timing failures easier to diagnose.
 Qualification checkpoints now carry per-checkpoint frame-change and drained
 audio evidence, including a non-silent marker, alongside their state hashes.
+The qualification suite drives a real channel-one ROM fixture to verify
+non-silent checkpoint audio and repeated-load hash stability after audio
+activity; APU reset clears the sample storage included in those hashes.

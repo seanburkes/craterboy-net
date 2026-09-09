@@ -246,6 +246,8 @@ is measured in complete stereo frames; host playback remains outside the core.
 Channel 4 noise timing uses the hardware NR43 divisor table and shift amount,
 including the separate seven-bit LFSR width mode; its period is expressed in
 master T-cycles so playback does not depend on audio-buffer draining.
+APU reset also clears the bounded sample storage, so repeated ROM loads cannot
+leak stale queued samples into deterministic state hashes.
 Channel 2 trigger, length timing, status, and PCM mixing are now present.
 Channel 3 wave RAM, volume coding, trigger/length timing, and PCM mixing are
 also present. Its 32-step wave phase advances from the channel frequency timer,
