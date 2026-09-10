@@ -117,6 +117,19 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void RetailQualificationInfersDmgAndCgbModelsWhenNoOverrideIsProvided()
+    {
+        var dmg = RetailQualification.Run(MakeRom(), 1_000, 1_000);
+        var cgbRom = MakeRom();
+        cgbRom[0x143] = 0x80;
+        FixChecksum(cgbRom);
+        var cgb = RetailQualification.Run(cgbRom, 1_000, 1_000);
+
+        Assert.Equal("DmgB", dmg.Model);
+        Assert.Equal("CgbE", cgb.Model);
+    }
+
+    [Fact]
     public void RetailQualificationSeparatesBatteryPersistenceFromResetLeakage()
     {
         var rom = MakeRom(type: 0x03, romSizeCode: 1, ramSizeCode: 2);
