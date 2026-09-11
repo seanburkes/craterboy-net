@@ -127,6 +127,21 @@ public sealed class KernelTests
 
         Assert.Equal("DmgB", dmg.Model);
         Assert.Equal("CgbE", cgb.Model);
+        Assert.True(dmg.HeaderChecksumValid);
+        Assert.True(cgb.HeaderChecksumValid);
+    }
+
+    [Fact]
+    public void RetailQualificationReportsInvalidHeaderChecksumWithoutCopyingRomData()
+    {
+        var rom = MakeRom();
+        rom[0x14D] ^= 0xFF;
+
+        var report = RetailQualification.Run(rom, 1_000, 1_000);
+
+        Assert.False(report.HeaderChecksumValid);
+        Assert.Equal("completed", report.Outcome);
+        Assert.DoesNotContain(Convert.ToBase64String(rom), System.Text.Json.JsonSerializer.Serialize(report));
     }
 
     [Fact]

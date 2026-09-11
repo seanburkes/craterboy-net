@@ -17,6 +17,7 @@ public sealed record RetailQualificationReport(
     int RomSize,
     int RamSize,
     bool SupportsColor,
+    bool HeaderChecksumValid,
     string Model,
     long RequestedCycles,
     long CompletedCycles,
@@ -202,7 +203,7 @@ public static class RetailQualification
 
         return new(
             Convert.ToHexString(SHA256.HashData(rom.Span)), header.Title, header.CartridgeType,
-            header.RomSize, header.RamSize, header.SupportsColor, model.ToString(), cycles,
+            header.RomSize, header.RamSize, header.SupportsColor, header.HeaderChecksumValid, model.ToString(), cycles,
             completedCycles, completedCycles >= TenMinuteCycles, outcome, errorType, errorMessage, frameChanges,
             audioFrames, audioNonSilent, firstFrameChangeCycle, firstAudioCycle,
             batteryDirty, firstBatteryDirtyCycle, batteryBytes, batteryRoundTrip,
