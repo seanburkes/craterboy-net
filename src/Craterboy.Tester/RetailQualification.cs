@@ -17,7 +17,6 @@ public sealed record RetailQualificationReport(
     int RomSize,
     int RamSize,
     bool SupportsColor,
-    bool HeaderChecksumValid,
     string Model,
     long RequestedCycles,
     long CompletedCycles,
@@ -43,7 +42,10 @@ public sealed record RetailQualificationReport(
     long? FirstInputFrameDivergenceCycle,
     IReadOnlyList<QualificationCheckpoint> Checkpoints,
     bool PlayableGatePassed,
-    IReadOnlyList<string> PlayableGateFailures);
+    IReadOnlyList<string> PlayableGateFailures)
+{
+    public bool HeaderChecksumValid { get; init; }
+}
 
 public static class RetailQualification
 {
@@ -203,14 +205,17 @@ public static class RetailQualification
 
         return new(
             Convert.ToHexString(SHA256.HashData(rom.Span)), header.Title, header.CartridgeType,
-            header.RomSize, header.RamSize, header.SupportsColor, header.HeaderChecksumValid, model.ToString(), cycles,
+            header.RomSize, header.RamSize, header.SupportsColor, model.ToString(), cycles,
             completedCycles, completedCycles >= TenMinuteCycles, outcome, errorType, errorMessage, frameChanges,
             audioFrames, audioNonSilent, firstFrameChangeCycle, firstAudioCycle,
             batteryDirty, firstBatteryDirtyCycle, batteryBytes, batteryRoundTrip,
             repeatedLoadStable, resetStable,
             recording?.Events.Count ?? 0, appliedInputEvents, frameChangesAfterInput,
             inputChangedFinalFrame, firstInputFrameDivergenceCycle, checkpoints,
-            outcome == "completed" && gateFailures.Count == 0, gateFailures);
+            outcome == "completed" && gateFailures.Count == 0, gateFailures)
+        {
+            HeaderChecksumValid = header.HeaderChecksumValid,
+        };
     }
 
     private static EmulatorOptions DeterministicOptions() => new()
