@@ -67,8 +67,12 @@ static int Qualify(string[] arguments)
 
 static int RunLegacy(string[] arguments)
 {
+    if (arguments.Length is not 1 and not 3 ||
+        arguments.Length == 3 && arguments[1] != "--cycles")
+        return UsageError("Usage: craterboy-tester <rom> [--cycles <count>]");
+
     var cycles = 0;
-    if (arguments.Length == 3 && arguments[1] == "--cycles" &&
+    if (arguments.Length == 3 &&
         (!int.TryParse(arguments[2], out cycles) || cycles < 0))
         return UsageError("Cycle count must be a non-negative integer.");
     try
