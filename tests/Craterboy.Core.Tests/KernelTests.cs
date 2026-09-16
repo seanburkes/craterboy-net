@@ -129,6 +129,29 @@ public sealed class KernelTests
         Assert.Equal("CgbE", cgb.Model);
         Assert.True(dmg.HeaderChecksumValid);
         Assert.True(cgb.HeaderChecksumValid);
+        Assert.False(dmg.RequiresColor);
+        Assert.False(cgb.RequiresColor);
+        Assert.False(dmg.SupportsSuperGameBoy);
+        Assert.False(cgb.SupportsSuperGameBoy);
+    }
+
+    [Fact]
+    public void RetailQualificationReportsColorRequirementAndSgbCapability()
+    {
+        var colorOnly = MakeRom();
+        colorOnly[0x143] = 0xC0;
+        FixChecksum(colorOnly);
+        var sgb = MakeRom();
+        sgb[0x146] = 3;
+        FixChecksum(sgb);
+
+        var colorReport = RetailQualification.Run(colorOnly, 1_000, 1_000);
+        var sgbReport = RetailQualification.Run(sgb, 1_000, 1_000);
+
+        Assert.True(colorReport.RequiresColor);
+        Assert.False(colorReport.SupportsSuperGameBoy);
+        Assert.False(sgbReport.RequiresColor);
+        Assert.True(sgbReport.SupportsSuperGameBoy);
     }
 
     [Fact]

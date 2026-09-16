@@ -45,6 +45,8 @@ public sealed record RetailQualificationReport(
     IReadOnlyList<string> PlayableGateFailures)
 {
     public bool HeaderChecksumValid { get; init; }
+    public bool RequiresColor { get; init; }
+    public bool SupportsSuperGameBoy { get; init; }
 }
 
 public static class RetailQualification
@@ -215,6 +217,8 @@ public static class RetailQualification
             outcome == "completed" && gateFailures.Count == 0, gateFailures)
         {
             HeaderChecksumValid = header.HeaderChecksumValid,
+            RequiresColor = header.RequiresColor,
+            SupportsSuperGameBoy = header.SupportsSuperGameBoy,
         };
     }
 
