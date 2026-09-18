@@ -133,6 +133,21 @@ public sealed class KernelTests
         Assert.False(cgb.RequiresColor);
         Assert.False(dmg.SupportsSuperGameBoy);
         Assert.False(cgb.SupportsSuperGameBoy);
+        Assert.Equal((ushort)0, dmg.GlobalChecksum);
+        Assert.Equal((ushort)0, cgb.GlobalChecksum);
+    }
+
+    [Fact]
+    public void RetailQualificationReportsGlobalChecksumAsCartridgeIdentity()
+    {
+        var rom = MakeRom();
+        rom[0x14E] = 0x12;
+        rom[0x14F] = 0x34;
+        FixChecksum(rom);
+
+        var report = RetailQualification.Run(rom, 1_000, 1_000);
+
+        Assert.Equal((ushort)0x1234, report.GlobalChecksum);
     }
 
     [Fact]
