@@ -148,6 +148,11 @@ public sealed class KernelTests
         var report = RetailQualification.Run(rom, 1_000, 1_000);
 
         Assert.Equal((ushort)0x1234, report.GlobalChecksum);
+        var json = System.Text.Json.JsonSerializer.Serialize(report);
+        Assert.Contains("\"GlobalChecksum\":4660", json);
+        Assert.Contains("\"HeaderChecksumValid\":true", json);
+        Assert.Contains("\"RequiresColor\":false", json);
+        Assert.Contains("\"SupportsSuperGameBoy\":false", json);
     }
 
     [Fact]
