@@ -1141,6 +1141,27 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void OamDmaWriteRestartsTransferFromTheNewSourcePage()
+    {
+        var emulator = NewEmulator(MakeRom());
+        for (var i = 0; i < 0xA0; i++)
+        {
+            emulator.WriteMemory((ushort)(0xC000 + i), (byte)(0x10 + i));
+            emulator.WriteMemory((ushort)(0xD000 + i), (byte)(0x80 + i));
+        }
+
+        emulator.WriteMemory(0xFF46, 0xC0);
+        emulator.RunCycles(8);
+        emulator.WriteMemory(0xFF46, 0xD0);
+
+        emulator.RunCycles(639);
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFE9F));
+        emulator.RunCycles(1);
+        for (var i = 0; i < 0xA0; i++)
+            Assert.Equal((byte)(0x80 + i), emulator.PeekMemory((ushort)(0xFE00 + i)));
+    }
+
+    [Fact]
     public void SerialEndpointCompletesInternalClockTransferAndRequestsInterrupt()
     {
         var endpoint = new TestSerialEndpoint { Response = 0x3C };
