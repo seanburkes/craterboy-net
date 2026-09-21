@@ -1036,6 +1036,23 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void TimerTmaWriteAfterReloadWindowDoesNotRewriteLatchedTima()
+    {
+        var emulator = NewEmulator(MakeRom());
+        emulator.WriteMemory(0xFF06, 0x3C);
+        emulator.WriteMemory(0xFF05, 0xFF);
+        emulator.WriteMemory(0xFF07, 0x05);
+        emulator.RunCycles(24);
+
+        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF05));
+        Assert.Equal((byte)0x04, (byte)(emulator.PeekMemory(0xFF0F) & 0x04));
+        emulator.WriteMemory(0xFF06, 0xA5);
+
+        Assert.Equal((byte)0xA5, emulator.PeekMemory(0xFF06));
+        Assert.Equal((byte)0x3C, emulator.PeekMemory(0xFF05));
+    }
+
+    [Fact]
     public void TimerTacWriteCausesFallingEdgeIncrement()
     {
         var emulator = NewEmulator(MakeRom());
