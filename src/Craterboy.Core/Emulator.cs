@@ -1362,7 +1362,7 @@ public sealed class Emulator
         if (_cgbDmaHblankActive && (value & 0x80) == 0)
         {
             _cgbDmaHblankActive = false;
-            _cgbDmaStatus = 0xFF;
+            _cgbDmaStatus |= 0x80;
             return;
         }
 
@@ -1431,7 +1431,7 @@ public sealed class Emulator
         }
 
         _cgbDmaHblankActive = false;
-        _cgbDmaStatus = 0xFF;
+        _cgbDmaStatus |= 0x80;
     }
 
     private static int CgbDmaVramOffset(ushort address) => (address - 0x8000) & 0x1FFF;

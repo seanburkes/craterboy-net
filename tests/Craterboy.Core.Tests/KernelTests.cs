@@ -2949,6 +2949,32 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyHblankDmaCancellationReportsRemainingBlocks(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        for (var index = 0; index < 0x20; index++)
+            emulator.WriteMemory((ushort)(0xC000 + index), (byte)(index + 1));
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x00);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.WriteMemory(0xFF55, 0x81); // two blocks, one per HBlank
+
+        emulator.RunCycles(252); // first visible HBlank
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF55));
+        emulator.WriteMemory(0xFF55, 0x00); // cancel with one block remaining
+
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF55));
+        emulator.RunCycles(456 + 252);
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0x8010));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyHblankDmaDoesNotTransferWhenHaltWakesInHblank(GameBoyModel model)
     {
         var rom = MakeRom();
@@ -3112,7 +3138,7 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF55, 0x80);
         emulator.WriteMemory(0xFF55, 0x00); // cancel an active HBlank request
         emulator.RunCycles(252);
-        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF55));
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF55));
         Assert.Equal((byte)0x00, emulator.PeekMemory(0x8000));
 
         emulator.RunCycles(204); // leave line 0 HBlank before re-arming
