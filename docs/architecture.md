@@ -55,7 +55,8 @@ HDMA source reads also cover the high-RAM and interrupt-enable pages.
 They also read the usable OAM page when the LCD is disabled.
 I/O-page source reads use the same model-specific register masks as CPU reads.
 Mapped boot-ROM bytes take precedence for CGB DMA sources, matching CPU reads.
-Active HBlank transfers cancel on an FF55 stop request or LCD disable from HBlank;
+Active HBlank transfers cancel on an FF55 stop request or LCD disable from HBlank,
+and FF55 retains the inactive bit plus the remaining-block count;
 pending requests transfer one block when LCD is disabled outside HBlank. DMA source,
 destination, status, and active-transfer state are included in deterministic hashes.
 Pending HBlank blocks remain queued while the CPU is halted and transfer on a
