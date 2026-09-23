@@ -2975,6 +2975,35 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyLcdDisableCancelsActiveHblankDmaWithRemainingBlocks(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        for (var index = 0; index < 0x20; index++)
+            emulator.WriteMemory((ushort)(0xC000 + index), (byte)(index + 1));
+        emulator.WriteMemory(0xFF51, 0xC0);
+        emulator.WriteMemory(0xFF52, 0x00);
+        emulator.WriteMemory(0xFF53, 0x80);
+        emulator.WriteMemory(0xFF54, 0x00);
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.WriteMemory(0xFF55, 0x81); // two blocks, one per HBlank
+
+        emulator.RunCycles(252); // first visible HBlank
+        Assert.Equal((byte)0x00, emulator.PeekMemory(0xFF55));
+        Assert.Equal((byte)0x00, (byte)(emulator.PeekMemory(0xFF41) & 0x03));
+        for (var index = 0; index < 0x10; index++)
+            Assert.Equal((byte)(index + 1), emulator.PeekMemory((ushort)(0x8000 + index)));
+        emulator.WriteMemory(0xFF40, 0x00); // cancel during the active HBlank
+
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF55));
+        for (var index = 0; index < 0x10; index++)
+            Assert.Equal((byte)0x00, emulator.PeekMemory((ushort)(0x8010 + index)));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyHblankDmaDoesNotTransferWhenHaltWakesInHblank(GameBoyModel model)
     {
         var rom = MakeRom();
