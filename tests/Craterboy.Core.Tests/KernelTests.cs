@@ -2770,6 +2770,38 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyDmaRegistersExposeMaskedAddressesAndAdvanceAfterTransfer(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        for (var index = 0; index < 0x10; index++)
+            emulator.WriteMemory((ushort)(0xC370 + index), (byte)(index + 1));
+
+        emulator.WriteMemory(0xFF51, 0xC3);
+        emulator.WriteMemory(0xFF52, 0x7F); // low nibble is ignored
+        emulator.WriteMemory(0xFF53, 0xFF); // destination is exposed as a VRAM address
+        emulator.WriteMemory(0xFF54, 0x7F); // low nibble is ignored
+
+        Assert.Equal((byte)0xC3, emulator.PeekMemory(0xFF51));
+        Assert.Equal((byte)0x70, emulator.PeekMemory(0xFF52));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF53));
+        Assert.Equal((byte)0x70, emulator.PeekMemory(0xFF54));
+
+        emulator.WriteMemory(0xFF55, 0x00);
+
+        for (var index = 0; index < 0x10; index++)
+            Assert.Equal((byte)(index + 1), emulator.PeekMemory((ushort)(0x9F70 + index)));
+
+        Assert.Equal((byte)0xC3, emulator.PeekMemory(0xFF51));
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF52));
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF53));
+        Assert.Equal((byte)0x80, emulator.PeekMemory(0xFF54));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyDmaMapsEchoSourcePagesToWorkRam(GameBoyModel model)
     {
         var emulator = NewEmulator(MakeRom(), model);
