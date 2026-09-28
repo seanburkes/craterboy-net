@@ -2372,6 +2372,35 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyBackgroundPriorityAllowsSpriteOverColorZero(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0x8010, 0x80); // sprite tile 1, color 1
+        emulator.WriteMemory(0x9800, 0x00); // background tile 0, color 0
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x9800, 0x80); // priority attribute in bank 1
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFF6A, 10); // object palette 1, color 1
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFF6A, 11);
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFE00, 16);
+        emulator.WriteMemory(0xFE01, 8);
+        emulator.WriteMemory(0xFE02, 1);
+        emulator.WriteMemory(0xFE03, 0x01); // CGB object palette 1
+        emulator.WriteMemory(0xFF40, 0x93); // LCD, BG, and sprites on
+        emulator.RunCycles(252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x2222, frame[0]);
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyColorFrameAppliesBackgroundPriorityToSprites(GameBoyModel model)
     {
         var rom = MakeRom();
