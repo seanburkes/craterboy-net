@@ -2343,6 +2343,49 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesBankedTilesForSixteenPixelSprites(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0x8000, 0x00); // bank 0 top tile, color 2 sentinel
+        emulator.WriteMemory(0x8001, 0x80);
+        emulator.WriteMemory(0x8010, 0x00); // bank 0 bottom tile, color 2 sentinel
+        emulator.WriteMemory(0x8011, 0x80);
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x8000, 0x80); // bank 1 top tile, color 1
+        emulator.WriteMemory(0x8001, 0x00);
+        emulator.WriteMemory(0x8010, 0x80); // bank 1 bottom tile, color 3
+        emulator.WriteMemory(0x8011, 0x80);
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFF6A, 10); // object palette 1, color 1
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFF6A, 11);
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFF6A, 12); // object palette 1, color 2
+        emulator.WriteMemory(0xFF6B, 0x33);
+        emulator.WriteMemory(0xFF6A, 13);
+        emulator.WriteMemory(0xFF6B, 0x33);
+        emulator.WriteMemory(0xFF6A, 14); // object palette 1, color 3
+        emulator.WriteMemory(0xFF6B, 0x44);
+        emulator.WriteMemory(0xFF6A, 15);
+        emulator.WriteMemory(0xFF6B, 0x44);
+        emulator.WriteMemory(0xFE00, 16); // screen Y = 0
+        emulator.WriteMemory(0xFE01, 8); // screen X = 0
+        emulator.WriteMemory(0xFE02, 1); // normalized to tile pair 0/1
+        emulator.WriteMemory(0xFE03, 0x09); // tile data bank 1, object palette 1
+        emulator.WriteMemory(0xFF40, 0x96); // LCD, 8x16 sprites, BG off
+        emulator.RunCycles(8 * 456 + 252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x2222, frame[0]);
+        Assert.Equal((ushort)0x4444, frame[8 * 160]);
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyBackgroundPriorityAttributeHidesOverlappingSprite(GameBoyModel model)
     {
         var rom = MakeRom();
