@@ -2386,6 +2386,40 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyColorFrameUsesSpriteFlipAttributesForSixteenPixelSprites(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF4F, 1);
+        emulator.WriteMemory(0x800E, 0x00); // bank 1 tile 0, row 7, flipped source pixel is color 2
+        emulator.WriteMemory(0x800F, 0x01);
+        emulator.WriteMemory(0x801E, 0x01); // bank 1 tile 1, row 7, flipped source pixel is color 1
+        emulator.WriteMemory(0xFF4F, 0);
+        emulator.WriteMemory(0xFF6A, 10); // object palette 1, color 1
+        emulator.WriteMemory(0xFF6B, 0x11);
+        emulator.WriteMemory(0xFF6A, 11);
+        emulator.WriteMemory(0xFF6B, 0x11);
+        emulator.WriteMemory(0xFF6A, 12); // object palette 1, color 2
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFF6A, 13);
+        emulator.WriteMemory(0xFF6B, 0x22);
+        emulator.WriteMemory(0xFE00, 16); // screen Y = 0
+        emulator.WriteMemory(0xFE01, 8); // screen X = 0
+        emulator.WriteMemory(0xFE02, 1); // normalized to tile pair 0/1
+        emulator.WriteMemory(0xFE03, 0x69); // tile bank 1, palette 1, X/Y flip
+        emulator.WriteMemory(0xFF40, 0x96); // LCD, 8x16 sprites, BG off
+        emulator.RunCycles(8 * 456 + 252);
+
+        var frame = new ushort[160 * 144];
+        emulator.CopyColorFrame(frame);
+        Assert.Equal((ushort)0x1111, frame[0]); // flipped tile 1, row 7, source pixel 0
+        Assert.Equal((ushort)0x2222, frame[8 * 160]); // flipped tile 0, row 7, source pixel 0
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyBackgroundPriorityAttributeHidesOverlappingSprite(GameBoyModel model)
     {
         var rom = MakeRom();
