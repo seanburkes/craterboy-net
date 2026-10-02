@@ -1711,6 +1711,25 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyDelaysObjectPaletteDataUntilHblankOpens(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0xFF6A, 0x00); // object palette 0, color 0 low byte
+        emulator.WriteMemory(0xFF6B, 0x12);
+        emulator.WriteMemory(0xFF40, 0x80); // LCD on
+
+        emulator.RunCycles(252); // enter HBlank
+        Assert.Equal((byte)0xFF, emulator.PeekMemory(0xFF6B));
+
+        emulator.RunCycles(4);
+        Assert.Equal((byte)0x12, emulator.PeekMemory(0xFF6B));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyDelaysPaletteDataUntilHblankOpens(GameBoyModel model)
     {
         var emulator = NewEmulator(MakeRom(), model);
