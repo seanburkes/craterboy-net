@@ -1751,6 +1751,30 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyAllowsObjectPaletteWritesAtFirstDoubleSpeedHblank(GameBoyModel model)
+    {
+        var rom = MakeRom();
+        new byte[] { 0x10, 0x00 }.CopyTo(rom, 0x100); // STOP for speed switch
+        var emulator = NewEmulator(rom, model);
+        emulator.WriteMemory(0xFF6A, 0x80); // object palette byte 0, auto-increment
+        emulator.WriteMemory(0xFF6B, 0x12);
+        emulator.WriteMemory(0xFF4D, 0x01);
+        emulator.StepInstruction();
+        emulator.WriteMemory(0xFF40, 0x80);
+
+        emulator.RunCycles(253); // enter HBlank at double speed
+        emulator.WriteMemory(0xFF6B, 0x34);
+
+        Assert.Equal((byte)0xC2, emulator.PeekMemory(0xFF6A));
+        emulator.WriteMemory(0xFF6A, 0x01);
+        Assert.Equal((byte)0x34, emulator.PeekMemory(0xFF6B));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void CgbFamilyDelaysPaletteDataUntilHblankOpens(GameBoyModel model)
     {
         var emulator = NewEmulator(MakeRom(), model);
