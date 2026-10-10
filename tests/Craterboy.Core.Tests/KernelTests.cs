@@ -2139,6 +2139,25 @@ public sealed class KernelTests
     [InlineData(GameBoyModel.CgbE)]
     [InlineData(GameBoyModel.AgbA)]
     [InlineData(GameBoyModel.GbpA)]
+    public void CgbFamilyBlocksVramAccessAfterModeThreeStarts(GameBoyModel model)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.WriteMemory(0x8000, 0x12);
+        emulator.WriteMemory(0xFF40, 0x80); // LCD on: mode 2
+
+        emulator.RunCycles(80); // mode 3 begins
+        emulator.WriteMemory(0x8000, 0x34);
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0x8000));
+
+        emulator.WriteMemory(0xFF40, 0x00);
+        Assert.Equal((byte)0x12, emulator.ReadMemory(0x8000));
+    }
+
+    [Theory]
+    [InlineData(GameBoyModel.CgbD)]
+    [InlineData(GameBoyModel.CgbE)]
+    [InlineData(GameBoyModel.AgbA)]
+    [InlineData(GameBoyModel.GbpA)]
     public void LaterCgbDoubleSpeedKeepsInitialMode2OamReadWindow(GameBoyModel model)
     {
         var rom = MakeRom();
