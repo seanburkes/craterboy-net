@@ -4366,10 +4366,12 @@ public sealed class KernelTests
         Assert.Equal((short)0, samples[1]);
     }
 
-    [Fact]
-    public void ApuActiveWaveRamIsInaccessibleOnDmg()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB)]
+    [InlineData(GameBoyModel.Mgb)]
+    public void ApuActiveWaveRamIsInaccessibleOnDmgAndMgb(GameBoyModel model)
     {
-        var emulator = NewEmulator(MakeRom());
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF26, 0x80);
         emulator.WriteMemory(0xFF30, 0xF0);
         emulator.WriteMemory(0xFF31, 0x0F);
