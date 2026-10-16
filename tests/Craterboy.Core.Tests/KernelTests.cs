@@ -6043,13 +6043,18 @@ public sealed class KernelTests
         Assert.Equal(expectedStatus, emulator.PeekMemory(0xFF26));
     }
 
-    [Fact]
-    public void DmgWaveRetriggerCopiesTheCurrentSampleGroupToWaveByteZero()
+    [Theory]
+    [InlineData(GameBoyModel.DmgB, 0x20)]
+    [InlineData(GameBoyModel.Mgb, 0x10)]
+    public void WaveRetriggerHasModelSpecificFirstWaveByteResult(
+        GameBoyModel model, byte expectedFirstWaveByte)
     {
-        var emulator = NewEmulator(MakeRom());
+        var emulator = NewEmulator(MakeRom(), model);
         emulator.WriteMemory(0xFF26, 0x80);
         emulator.WriteMemory(0xFF30, 0x10);
         emulator.WriteMemory(0xFF31, 0x20);
+        emulator.WriteMemory(0xFF32, 0x30);
+        emulator.WriteMemory(0xFF33, 0x40);
         emulator.WriteMemory(0xFF1A, 0x80);
         emulator.WriteMemory(0xFF1D, 0x00);
         emulator.WriteMemory(0xFF1E, 0x81);
@@ -6058,7 +6063,10 @@ public sealed class KernelTests
         emulator.WriteMemory(0xFF1E, 0x81);
         emulator.WriteMemory(0xFF1A, 0x00);
 
-        Assert.Equal((byte)0x20, emulator.PeekMemory(0xFF30));
+        Assert.Equal(expectedFirstWaveByte, emulator.PeekMemory(0xFF30));
+        Assert.Equal((byte)0x20, emulator.PeekMemory(0xFF31));
+        Assert.Equal((byte)0x30, emulator.PeekMemory(0xFF32));
+        Assert.Equal((byte)0x40, emulator.PeekMemory(0xFF33));
     }
 
     [Theory]

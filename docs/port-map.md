@@ -121,6 +121,8 @@ Channel 1 sweep frequency updates also reload the pulse duty timer so swept
 playback follows the new hardware period immediately.
 Active channel 3 frequency writes likewise reload the wave timer without
 restarting the channel.
+Wave-RAM retrigger coverage records the different DMG/MGB first-byte results
+within the first sample group.
 
 Retail qualification reports now record the first checkpoint cycles at which
 video changes and non-silent audio appears, improving ROM-safe gameplay
