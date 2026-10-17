@@ -1322,6 +1322,35 @@ public sealed class KernelTests
         Assert.Equal((byte)0x0E, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB, 48, 24)]
+    [InlineData(GameBoyModel.Mgb, 32, 8)]
+    public void JoypadDelayedSelectionRequestsInterruptWhenHeldButtonBecomesVisible(
+        GameBoyModel model, int initialSelectionDelay, int rowSwitchDelay)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        emulator.SetButtonState(GameBoyButton.Right, true);
+        emulator.WriteMemory(0xFF0F, 0);
+        emulator.WriteMemory(0xFF00, 0x10);
+        emulator.RunCycles(initialSelectionDelay - 1);
+        Assert.Equal((byte)0x0E, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF0F) & 0x10));
+        emulator.RunCycles(1);
+        Assert.Equal((byte)0x0F, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF0F) & 0x10));
+
+        emulator.WriteMemory(0xFF0F, 0);
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF0F) & 0x10));
+
+        emulator.WriteMemory(0xFF00, 0x20);
+        emulator.RunCycles(rowSwitchDelay - 1);
+        Assert.Equal((byte)0, (byte)(emulator.PeekMemory(0xFF0F) & 0x10));
+        emulator.RunCycles(1);
+
+        Assert.Equal((byte)0x10, (byte)(emulator.PeekMemory(0xFF0F) & 0x10));
+        Assert.Equal((byte)0x0E, (byte)(emulator.PeekMemory(0xFF00) & 0x0F));
+    }
+
     [Fact]
     public void JoypadSelectionSwitchIsImmediateOnCgbFamily()
     {
