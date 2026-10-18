@@ -467,7 +467,23 @@ internal sealed class PpuDevice : ICycleParticipant
 
     private bool IsLaterCgbRevision() => _model is GameBoyModel.CgbD or GameBoyModel.CgbE or GameBoyModel.AgbA or GameBoyModel.GbpA;
 
-    public void CorruptOamOnCpuAccess(ushort address)
+    public void CorruptOamOnCpuRead(ushort address)
+    {
+        if (_model.IsColor() || _mode != 2 || address >= 0xFEA0 || _oamCorruptionRow < 8) return;
+
+        var row = _oamCorruptionRow;
+        if (_model.IsMgb() && row == 0x40)
+        {
+            CorruptMgbOamReadAtRowForty(row);
+            return;
+        }
+
+        CorruptOamOnCpuAccess(address);
+    }
+
+    public void CorruptOamOnCpuWrite(ushort address) => CorruptOamOnCpuAccess(address);
+
+    private void CorruptOamOnCpuAccess(ushort address)
     {
         if (_model.IsColor() || _mode != 2 || address >= 0xFEA0 || _oamCorruptionRow < 8) return;
 
@@ -484,6 +500,27 @@ internal sealed class PpuDevice : ICycleParticipant
         _oam[row] = (byte)glitched;
         _oam[row + 1] = (byte)(glitched >> 8);
         for (var i = 2; i < 8; i++) _oam[row + i] = _oam[row - 8 + i];
+    }
+
+    private void CorruptMgbOamReadAtRowForty(int row)
+    {
+        var current = ReadOamWord(row);
+        var previous = ReadOamWord(row - 4);
+        var preceding = ReadOamWord(row - 8);
+        var older = ReadOamWord(row - 16);
+        var oldest = ReadOamWord(row - 32);
+        var glitched = (ushort)((preceding & (current | previous | older | oldest)) | (previous & older & oldest));
+        _oam[row - 8] = (byte)glitched;
+        _oam[row - 7] = (byte)(glitched >> 8);
+
+        for (var i = 0; i < 8; i++)
+        {
+            var source = _oam[row - 8 + i];
+            _oam[row - 16 + i] = source;
+            _oam[row - 32 + i] = source;
+        }
+        for (var i = 0; i < 8; i++) _oam[row + i] = _oam[row - 8 + i];
+        for (var i = 0; i < 8; i++) _oam[i] = _oam[row + i];
     }
 
     private ushort ReadOamWord(int offset) => (ushort)(_oam[offset] | (_oam[offset + 1] << 8));
