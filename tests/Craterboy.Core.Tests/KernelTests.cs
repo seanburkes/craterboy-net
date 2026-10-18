@@ -6962,6 +6962,55 @@ public sealed class KernelTests
             Assert.Equal((byte)(0xA0 + i), emulator.PeekMemory((ushort)(0xFE00 + i)));
     }
 
+    [Theory]
+    [InlineData(GameBoyModel.DmgB, false)]
+    [InlineData(GameBoyModel.Mgb, true)]
+    public void DmgOamReadAtRowFortyCopiesToFirstRowOnlyOnMgb(
+        GameBoyModel model, bool copiesToFirstRow)
+    {
+        var emulator = NewEmulator(MakeRom(), model);
+        for (var offset = 0; offset < 0xA0; offset++)
+            emulator.WriteMemory((ushort)(0xFE00 + offset), (byte)(offset * 37 + 11));
+
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.RunCycles(30); // OAM search reaches row 0x40
+        Assert.Equal(2, emulator.PeekMemory(0xFF41) & 3);
+        Assert.Equal((byte)0xFF, emulator.ReadMemory(0xFE00));
+        emulator.WriteMemory(0xFF40, 0);
+
+        byte[] expectedMgbRow = [0xA3, 0x48, 0x6D, 0x92, 0xB7, 0xDC, 0x01, 0x26];
+        byte[] expectedDmgFirstRow = [0x0B, 0x30, 0x55, 0x7A, 0x9F, 0xC4, 0xE9, 0x0E];
+        var rowsToCheck = copiesToFirstRow ? new[] { 0, 0x20, 0x30, 0x38, 0x40 } : new[] { 0 };
+        foreach (var row in rowsToCheck)
+        {
+            var expectedRow = copiesToFirstRow ? expectedMgbRow : expectedDmgFirstRow;
+            for (var offset = 0; offset < expectedRow.Length; offset++)
+                Assert.Equal(expectedRow[offset], emulator.PeekMemory((ushort)(0xFE00 + row + offset)));
+        }
+    }
+
+    [Fact]
+    public void MgbOamWriteAtRowFortyUsesGenericCorruptionWithoutCopyingToFirstRow()
+    {
+        var emulator = NewEmulator(MakeRom(), GameBoyModel.Mgb);
+        for (var offset = 0; offset < 0xA0; offset++)
+            emulator.WriteMemory((ushort)(0xFE00 + offset), (byte)(offset * 37 + 11));
+
+        emulator.WriteMemory(0xFF40, 0x80);
+        emulator.RunCycles(30); // OAM search reaches row 0x40
+        Assert.Equal(2, emulator.PeekMemory(0xFF41) & 3);
+        emulator.WriteMemory(0xFE00, 0x00);
+        emulator.WriteMemory(0xFF40, 0);
+
+        byte[] expectedFirstRow = [0x0B, 0x30, 0x55, 0x7A, 0x9F, 0xC4, 0xE9, 0x0E];
+        byte[] expectedCorruptedRow = [0x23, 0x58, 0x6D, 0x92, 0xB7, 0xDC, 0x01, 0x26];
+        for (var offset = 0; offset < expectedFirstRow.Length; offset++)
+        {
+            Assert.Equal(expectedFirstRow[offset], emulator.PeekMemory((ushort)(0xFE00 + offset)));
+            Assert.Equal(expectedCorruptedRow[offset], emulator.PeekMemory((ushort)(0xFE40 + offset)));
+        }
+    }
+
     [Fact]
     public void Mbc3RtcLatchesDeterministicallyAndPersistsThroughStreams()
     {

@@ -1216,7 +1216,7 @@ public sealed class Emulator
 
     private byte ReadBlockedOam(ushort address)
     {
-        _ppu.CorruptOamOnCpuAccess(address);
+        _ppu.CorruptOamOnCpuRead(address);
         return 0xFF;
     }
 
@@ -1270,7 +1270,7 @@ public sealed class Emulator
             case < 0xFE00 when address >= 0xC000: _wram[WramOffset(address)] = value; break;
             case < 0xFEA0:
                 if (_ppu.CpuCanWriteOam) _oam[address - 0xFE00] = value;
-                else _ppu.CorruptOamOnCpuAccess(address);
+                else _ppu.CorruptOamOnCpuWrite(address);
                 break;
             case < 0xFF00: break;
             case >= 0xFF04 and <= 0xFF07:
