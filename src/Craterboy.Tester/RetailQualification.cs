@@ -197,7 +197,7 @@ public static class RetailQualification
             gateFailures.Add("audio remained silent");
         if (recording is null || appliedInputEvents == 0)
             gateFailures.Add("no input event was applied");
-        else if (frameChangesAfterInput == 0 && !inputChangedFinalFrame)
+        else if (firstInputFrameDivergenceCycle is null)
             gateFailures.Add("applied input did not change rendered output");
         if (!batteryRoundTrip)
             gateFailures.Add("battery data did not round-trip");
