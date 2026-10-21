@@ -216,6 +216,8 @@ not corrupt OAM. MGB also copies the post-corruption row 0x40 into the first
 OAM row on a blocked read, matching its model-specific SameBoy path. STAT
 sources share edge-triggered line logic so
 enabling an already-active source raises the interrupt once.
+The CPU's 16-bit register-pair INC/DEC instructions also expose their internal
+address-bus cycle to the DMG/MGB OAM corruption logic.
 Disabling the LCD resets LY/timing state and blanks the raw frame buffer.
 
 The APU is now a scheduler-owned register and power-control device. NR52

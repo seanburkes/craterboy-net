@@ -483,6 +483,8 @@ internal sealed class PpuDevice : ICycleParticipant
 
     public void CorruptOamOnCpuWrite(ushort address) => CorruptOamOnCpuAccess(address);
 
+    public void CorruptOamOnCpuAddressBus(ushort address) => CorruptOamOnCpuAccess(address);
+
     private void CorruptOamOnCpuAccess(ushort address)
     {
         if (_model.IsColor() || _mode != 2 || address >= 0xFEA0 || _oamCorruptionRow < 8) return;

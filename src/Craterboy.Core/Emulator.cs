@@ -19,6 +19,7 @@ public sealed class Emulator
     private byte _vramBank;
     private byte _wramBank;
     private bool _doubleSpeed;
+    private int _instructionPreAdvancedCycles;
     private bool _speedSwitchPrepared;
     private bool _stopped;
     private ushort _cgbDmaSource;
@@ -338,9 +339,11 @@ public sealed class Emulator
         else cpu.PC++;
         var enableImeAfterInstruction = cpu.ImeEnablePending;
         cpu.ImeEnablePending = false;
+        _instructionPreAdvancedCycles = 0;
         var cycles = Execute(opcode);
         var elapsedCycles = ScaledCycles(cycles, wasDoubleSpeed);
-        Advance(elapsedCycles);
+        Advance(elapsedCycles - _instructionPreAdvancedCycles);
+        _instructionPreAdvancedCycles = 0;
         if (enableImeAfterInstruction && opcode != 0xF3) cpu.Ime = true;
         return elapsedCycles;
     }
@@ -848,14 +851,26 @@ public sealed class Emulator
 
     private int IncrementPair(Func<ushort> getter, Action<ushort> setter)
     {
-        setter(unchecked((ushort)(getter() + 1)));
+        var value = getter();
+        AdvanceOamAddressBusCycle(value);
+        setter(unchecked((ushort)(value + 1)));
         return 8;
     }
 
     private int DecrementPair(Func<ushort> getter, Action<ushort> setter)
     {
-        setter(unchecked((ushort)(getter() - 1)));
+        var value = getter();
+        AdvanceOamAddressBusCycle(value);
+        setter(unchecked((ushort)(value - 1)));
         return 8;
+    }
+
+    private void AdvanceOamAddressBusCycle(ushort address)
+    {
+        var cycles = ScaledCycles(4, _doubleSpeed);
+        Advance(cycles);
+        _instructionPreAdvancedCycles += cycles;
+        _ppu.CorruptOamOnCpuAddressBus(address);
     }
 
     private int AddHl(ushort value)
