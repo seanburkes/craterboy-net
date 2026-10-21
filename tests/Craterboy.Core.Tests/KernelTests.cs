@@ -6943,6 +6943,36 @@ public sealed class KernelTests
             Assert.Equal(firstRow[i], emulator.PeekMemory((ushort)(0xFE08 + i)));
     }
 
+    [Theory]
+    [InlineData(0x23, 0xFE09)]
+    [InlineData(0x2B, 0xFE07)]
+    public void DmgIncrementAndDecrementPairCorruptTheOamRowOnItsAddressBusCycle(
+        byte opcode, ushort expectedHl)
+    {
+        var rom = MakeRom();
+        byte[] program = [0x21, 0x08, 0xFE, 0x3E, 0x80, 0xE0, 0x40, opcode, 0x76];
+        program.CopyTo(rom, 0x100);
+        FixChecksum(rom);
+        var emulator = NewEmulator(rom);
+        for (var offset = 0; offset < 0xA0; offset++)
+            emulator.WriteMemory((ushort)(0xFE00 + offset), (byte)(offset * 37 + 11));
+
+        var current = (ushort)(unchecked((byte)(0x20 * 37 + 11)) | (unchecked((byte)(0x21 * 37 + 11)) << 8));
+        var previous = (ushort)(unchecked((byte)(0x18 * 37 + 11)) | (unchecked((byte)(0x19 * 37 + 11)) << 8));
+        var preceding = (ushort)(unchecked((byte)(0x1C * 37 + 11)) | (unchecked((byte)(0x1D * 37 + 11)) << 8));
+        var expected = (ushort)(((current ^ preceding) & (previous ^ preceding)) ^ preceding);
+
+        emulator.StepInstruction(); // LD HL, $FE08
+        emulator.StepInstruction(); // LD A, $80
+        emulator.StepInstruction(); // Enable LCD; OAM search advances to cycle 12
+        emulator.StepInstruction(); // 16-bit INC/DEC: address-bus glitch is after the first machine cycle
+        emulator.WriteMemory(0xFF40, 0);
+
+        Assert.Equal((byte)expected, emulator.PeekMemory(0xFE20));
+        Assert.Equal((byte)(expected >> 8), emulator.PeekMemory(0xFE21));
+        Assert.Equal(expectedHl, (ushort)((emulator.Registers.H << 8) | emulator.Registers.L));
+    }
+
     [Fact]
     public void DmgOamReadAtRowEightZeroCopiesThatRowToTheStart()
     {
