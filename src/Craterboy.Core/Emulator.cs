@@ -518,10 +518,10 @@ public sealed class Emulator
         0xCA => AbsoluteJump(Flag(CpuFlags.Zero)),
         0xD2 => AbsoluteJump(!Flag(CpuFlags.Carry)),
         0xDA => AbsoluteJump(Flag(CpuFlags.Carry)),
-        0xC5 => Push(_state.Cpu.BC),
-        0xD5 => Push(_state.Cpu.DE),
-        0xE5 => Push(_state.Cpu.HL),
-        0xF5 => Push((ushort)((_state.Cpu.A << 8) | (_state.Cpu.F & 0xF0))),
+        0xC5 => PushRegisterPair(_state.Cpu.BC),
+        0xD5 => PushRegisterPair(_state.Cpu.DE),
+        0xE5 => PushRegisterPair(_state.Cpu.HL),
+        0xF5 => PushRegisterPair((ushort)((_state.Cpu.A << 8) | (_state.Cpu.F & 0xF0))),
         0xC1 => Pop(v => _state.Cpu.BC = v),
         0xD1 => Pop(v => _state.Cpu.DE = v),
         0xE1 => Pop(v => _state.Cpu.HL = v),
@@ -1179,6 +1179,12 @@ public sealed class Emulator
     {
         _state.Cpu.SP--; Write(_state.Cpu.SP, (byte)(value >> 8));
         _state.Cpu.SP--; Write(_state.Cpu.SP, (byte)value); return 16;
+    }
+
+    private int PushRegisterPair(ushort value)
+    {
+        AdvanceOamAddressBusCycle(_state.Cpu.SP);
+        return Push(value);
     }
     private int Pop(Action<ushort> setter)
     {

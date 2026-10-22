@@ -137,4 +137,4 @@ activity; APU reset clears the sample storage included in those hashes.
 The qualification CLI also accepts explicit `GameBoyModel` names, while
 preserving DMG/CGB-E header inference when no model override is supplied.
 The DMG/MGB CPU slice now advances the internal machine cycle for 16-bit
-register-pair INC/DEC and applies the OAM address-bus corruption at that cycle.
+register-pair INC/DEC and PUSH, applying OAM address-bus corruption there.
