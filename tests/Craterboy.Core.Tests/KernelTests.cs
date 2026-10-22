@@ -6974,6 +6974,42 @@ public sealed class KernelTests
     }
 
     [Fact]
+    public void DmgPushUsesStackPointerOnItsOamAddressBusCycle()
+    {
+        var rom = MakeRom();
+        byte[] program = [0x31, 0x00, 0xFE, 0x3E, 0x80, 0xE0, 0x40, 0xC5, 0x76];
+        program.CopyTo(rom, 0x100);
+        FixChecksum(rom);
+        var emulator = NewEmulator(rom);
+        var originalOam = new byte[0xA0];
+        for (var offset = 0; offset < originalOam.Length; offset++)
+        {
+            originalOam[offset] = (byte)(offset * 37 + 11);
+            emulator.WriteMemory((ushort)(0xFE00 + offset), originalOam[offset]);
+        }
+
+        var current = (ushort)(originalOam[0x20] | (originalOam[0x21] << 8));
+        var previous = (ushort)(originalOam[0x18] | (originalOam[0x19] << 8));
+        var preceding = (ushort)(originalOam[0x1C] | (originalOam[0x1D] << 8));
+        var expected = (ushort)(((current ^ preceding) & (previous ^ preceding)) ^ preceding);
+        Assert.Equal(originalOam[0x20], emulator.PeekMemory(0xFE20));
+
+        emulator.StepInstruction(); // LD SP, $FE00
+        emulator.StepInstruction(); // LD A, $80
+        emulator.StepInstruction(); // Enable LCD; mode-2 search advances to cycle 12
+        emulator.StepInstruction(); // PUSH BC: OAM address-bus cycle selects row $20 at cycle 16
+        emulator.WriteMemory(0xFF40, 0);
+
+        Assert.Equal((byte)expected, emulator.PeekMemory(0xFE20));
+        Assert.Equal((byte)(expected >> 8), emulator.PeekMemory(0xFE21));
+        for (var offset = 2; offset < 8; offset++)
+            Assert.Equal(originalOam[0x18 + offset], emulator.PeekMemory((ushort)(0xFE20 + offset)));
+        for (var offset = 0x28; offset < 0x30; offset++)
+            Assert.Equal(originalOam[offset], emulator.PeekMemory((ushort)(0xFE00 + offset)));
+        Assert.Equal((ushort)0xFDFE, emulator.Registers.StackPointer);
+    }
+
+    [Fact]
     public void DmgOamReadAtRowEightZeroCopiesThatRowToTheStart()
     {
         var emulator = NewEmulator(MakeRom());
