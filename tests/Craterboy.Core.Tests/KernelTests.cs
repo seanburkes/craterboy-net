@@ -25,6 +25,7 @@ public sealed class KernelTests
         Assert.Equal(2, first.Checkpoints.Count);
         Assert.Equal(first.RomSha256, second.RomSha256);
         Assert.Equal(first.Checkpoints, second.Checkpoints);
+        Assert.All(first.Checkpoints, checkpoint => Assert.True(checkpoint.SameInstanceReloadStable));
         Assert.True(first.BatteryRoundTrip);
         Assert.True(first.RepeatedLoadStable);
         Assert.True(first.ResetStable);
@@ -52,13 +53,14 @@ public sealed class KernelTests
         }.CopyTo(rom, 0x100);
         var recording = new InputRecording();
         recording.Add(new InputEvent(10_000, GameBoyButton.A, true));
+        recording.Add(new InputEvent(70_224, GameBoyButton.A, false));
 
         var report = RetailQualification.Run(rom, 140_448, 70_224, recording: recording);
 
         Assert.Equal("completed", report.Outcome);
         Assert.False(report.PlayableGatePassed);
         Assert.Contains("ten-minute duration was not completed", report.PlayableGateFailures);
-        Assert.Equal(1, report.AppliedInputEvents);
+        Assert.Equal(2, report.AppliedInputEvents);
         Assert.True(report.InputChangedFinalFrame);
         Assert.Equal(70_224, report.FirstInputFrameDivergenceCycle);
         Assert.Equal(70_224, report.FirstFrameChangeCycle);
@@ -89,6 +91,7 @@ public sealed class KernelTests
         Assert.True(report.AudioNonSilent);
         Assert.Contains(report.Checkpoints, checkpoint => checkpoint.AudioFrames > 0);
         Assert.Contains(report.Checkpoints, checkpoint => checkpoint.AudioNonSilent);
+        Assert.All(report.Checkpoints, checkpoint => Assert.True(checkpoint.SameInstanceReloadStable));
         Assert.True(report.RepeatedLoadStable);
     }
 
@@ -97,6 +100,20 @@ public sealed class KernelTests
     {
         Assert.Equal(4_194_304, RetailQualification.HardwareCyclesPerSecond);
         Assert.Equal(2_516_582_400, RetailQualification.TenMinuteCycles);
+    }
+
+    [Fact]
+    public void RetailQualificationWithNoCyclesDoesNotApplyCycleZeroInputsDuringStabilityChecks()
+    {
+        var recording = new InputRecording();
+        recording.Add(new InputEvent(0, GameBoyButton.A, true));
+
+        var report = RetailQualification.Run(MakeRom(), 0, 1_000, recording: recording);
+
+        Assert.Empty(report.Checkpoints);
+        Assert.Equal(0, report.AppliedInputEvents);
+        Assert.True(report.RepeatedLoadStable);
+        Assert.True(report.ResetStable);
     }
 
     [Fact]

@@ -39,6 +39,9 @@ Common retail MBC1, MBC2, MBC3, and MBC5 reset coverage restores mapper controls
 while retaining battery-backed contents and pending-save state.
 The retail qualification report now replays its first deterministic checkpoint
 after same-instance ROM reload and reset to expose cross-session state leakage.
+Same-instance reload replay now checks every reported checkpoint, including
+per-checkpoint stability evidence, while draining audio at the same boundaries
+so queued samples do not create false hash mismatches.
 Its default run is the full ten-minute retail gate at the DMG hardware clock,
 with bounded one-second checkpoints and explicit duration completion evidence.
 Input-assisted qualification distinguishes supplied events from events applied
